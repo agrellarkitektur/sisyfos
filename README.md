@@ -57,7 +57,7 @@ Lägg alla filer i roten (utom `test/`, README och LICENSE) i samma mapp, till e
 ### Arbetsflöden
 
 - **Publicera på webbhotellet** – laddar upp appen via FTPS vid varje push till `main`. Aktiveras när hemligheterna `FTP_SERVER`, `FTP_USERNAME` och `FTP_PASSWORD` finns (frivilligt `FTP_DIR`, standard `/sisyfos/`, och `FTP_PROTOCOL`, standard `ftps`).
-- **Release-zip** – när en tagg `vX.Y.Z` pushas skapas en release med `sisyfos-vX.Y.Z.zip`, färdig att lägga på webbhotellet. Taggen måste stämma med `APP_VERSION` i `index.html`.
+- **Release-zip** – när en release publiceras på GitHub (tagg `vX.Y.Z`) läggs `sisyfos-vX.Y.Z.zip` till, färdig att lägga på webbhotellet. Taggen måste stämma med `APP_VERSION` i `index.html`.
 - **Test – gamla böcker öppnas** – se ovan.
 
 ## Licens
