@@ -11,7 +11,8 @@ Tidrapport och projektdagbok för en- och fåmansföretag. Körs helt lokalt i w
   · helt lokal: ingen server, inget konto, inget moln, ingen AI, ingen spårning
   · inte bokföring/fakturering – PDF-underlag till egna system
   · löpande mot budget, påminnelser 50/75/90 %, öppet vs hanterat
-  · smartanteckning, dag-, vecka- och månadsvy, mobil
+  · smartshell: tid, kommandon och frågor på en rad, överst på alla sidor (nytt i 0.9)
+  · dag-, vecka- och månadsvy, mobil
   · fungerar utan nät, kan installeras som app (nytt i 0.7)
   · boken skyddas: ögonblicksbilder, påminnelse om kopia, autospar till mapp (nytt i 0.7)
   · alfa, synpunkter välkomna
@@ -23,6 +24,24 @@ Tidrapport och projektdagbok för en- och fåmansföretag. Körs helt lokalt i w
 Öppna **https://agrellarkitektur.se/sisyfos/**. Sisyfos startar med en exempelbok; skapa din egen bok under menyn *Sisyfos → Ny tom bok*.
 
 Sisyfos är en **alfaversion**. Den fungerar, men ändras fortfarande. Spara en kopia av boken som fil regelbundet (menyn *Sisyfos → Säkerhetskopior*).
+
+## Smartshell
+
+Fältet överst på alla sidor. Raden under fältet säger vad Enter gör innan något händer, och nästan allt kan ångras direkt efteråt. Klicka i fältet (eller skriv `?`) för hela förteckningen.
+
+| Skriv | Gör |
+|---|---|
+| `3,5 strand ritade fasad` · `tor 8 strand` · `v43 fl` | tid – timmarna först, sedan projekt och anteckning |
+| `v43` · `okt` · `idag` | går dit i tidboken |
+| `ch` · `ch v43` · `öppna v43` · `sign v43` | checkar av, öppnar, signerar |
+| `db okt strand` · `db ner okt strand` · `db ner öppet strand` | visar eller laddar ner projektdagboken |
+| `pers fv` · `översikt 2025` | personsammanställning, månadsöversikt |
+| `hant fm strand` · `häv okt strand` | markerar som hanterad och låser, eller häver |
+| `proj strand` · `proj Kv. Lärkan 2 100000 Diamanten` | öppnar eller skapar projekt (budget och kund valfritt) |
+| `kund Diamanten Bygg` · `uppg strand Bygglov` · `ant strand …` · `budget strand 180k` · `avsluta strand` | kunder, uppgifter, anteckningar, budget, status |
+| `? strand` · `? öppet` · `? saldo` · `? v43` | frågor – svaret visas i panelen |
+
+Perioder: `idag`, `tor`, `mån-fre`, `15/10-22/10`, `v40-43`, `fv` (förra veckan), `okt`, `sept-okt`, `fm` (förra månaden), `sept-`, `2026`, `öppet`. Ett projekt anges med ett ord ur namnet, numret eller en egen förkortning; namn med siffror kan skrivas inom citattecken.
 
 ## Var boken sparas
 

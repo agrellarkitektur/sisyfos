@@ -1,5 +1,19 @@
 # Ändringar i Sisyfos
 
+## 0.9.0
+
+Smartshell. Filformatet är oförändrat (7).
+
+- **Smartanteckningen heter nu smartshell** och står överst på alla sidor – på dator fäst när man rullar. Tid skrivs som förut, med timmarna först.
+- **Kommandon med verbet först**, sedan period och projekt: `ch v43` checkar av, `öppna v43`, `sign v43` (med bekräftelse), `db okt strand` visar projektdagboken och `db ner okt strand` laddar ner den, `db ner öppet strand` tar all öppen tid, `pers fv`, `översikt 2025`, `hant fm strand` och `häv okt strand`.
+- **Skapa och ändra**: `proj …` öppnar ett projekt eller skapar det med budget och kund (`proj Kv. Lärkan 2 100000 Diamanten`), `kund …` öppnar eller skapar en kund, `uppg`, `ant`, `budget`, `aktiv`/`inaktiv`/`avsluta`.
+- **Frågor** med `?`: `? strand`, `? öppet`, `? saldo`, `? v43`, `? okt` – svaret visas i egenskapspanelen.
+- **Perioder** överallt: `idag`, `tor`, `15/10-22/10`, `v40-43`, `fv`, `okt`, `sept-okt`, `fm`, `sept-`, `2026`, `öppet`. Bara en period hoppar dit i tidboken.
+- Namn med siffror fungerar: en budget är minst fyra siffror, `100 000`, `100k` eller `löp`; annars skrivs namnet inom citattecken.
+- Raden under fältet säger alltid vad Enter gör. Nästan allt kan ångras direkt. **Tab** fyller i kommandon, projekt och kunder; **pil upp** hämtar tidigare rader (sparas bara i webbläsaren).
+- **Förteckningen över kommandon** visas i egenskapspanelen när man klickar i fältet, med det kommando man skriver överst. Klick på ett exempel lägger in det. På telefon öppnas den med `?`.
+- Egna förkortningar för kommandon kommer med nästa filformat; förkortningar för projekt och uppgifter finns som förut.
+
 ## 0.8.1
 
 Egenskapspanelen på alla sidor. Filformatet är oförändrat (7).
