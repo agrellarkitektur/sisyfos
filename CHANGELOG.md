@@ -1,5 +1,13 @@
 # Ändringar i Sisyfos
 
+## 0.7.1
+
+Små justeringar. Filformatet är oförändrat (6).
+
+- Vyerna ligger i ordningen **Månad – Vecka – Dag**.
+- Avcheckade och signerade veckor markeras med fasta färger i stället för streck: grönt för avcheckad, blått för signerad (veckonummer och dagrutor i månadsvyn, veckans statusknapp och ruta).
+- **Redo att hanteras**: projektsidans månader och månadsvyns projekttabell visar för avslutade månader om alla timmar ligger i avcheckade veckor ("redo") eller vilka veckor som inte är avcheckade. Månadsmenyn säger detsamma, och den som markerar en månad som hanterad varnas om veckor inte är avcheckade.
+
 ## 0.7.0
 
 Trygg lagring och månadsvy. Filformatet är oförändrat (6) – böcker från 0.6 öppnas direkt och kan fortfarande öppnas i 0.6.

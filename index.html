@@ -26,7 +26,7 @@
 :root{
   --paper:#f3f5f6; --chrome:#fbfcfc; --ink:#1d2328; --muted:#5d666e; --rule:#dce1e4; --faint:#e9edef;
   --accent:#a86b12; --accent-ink:#8a5608; --accent-soft:#f4e7d1;
-  --ok:#3f7d4e; --warn:#c2631e; --warn-ink:#a3480f; --warn-soft:#fbeee3; --alarm:#b3261e; --alarm-ink:#9c1f18; --alarm-soft:#fbe9e7; --due:#b4574f; --due-ink:#9a4740; --due-soft:#f7edeb;
+  --ok:#3f7d4e; --warn:#c2631e; --warn-ink:#a3480f; --warn-soft:#fbeee3; --alarm:#b3261e; --alarm-ink:#9c1f18; --alarm-soft:#fbe9e7; --due:#b4574f; --due-ink:#9a4740; --due-soft:#f7edeb; --sig:#47699a;
   --p0:#3d6fb6; --p1:#2f8a6a; --p2:#8a5cc2; --p3:#c0573c; --p4:#2a8b9c; --p5:#b8487a; --p6:#6f7f2e; --p7:#a7741a; --pint:#7d878e; --pabs:#5f7d8c;
   --scroll:#cdd4d8; --scroll-h:#aeb7bd; --q-base:color-mix(in srgb,#a86b12 30%,#dce1e4); --q-pulse:#c28a3a; --q-hi:#e2bf86;
   --shadow:0 14px 36px rgb(20 28 34 / .16);
@@ -37,14 +37,14 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --paper:#161a1d; --chrome:#1d2226; --ink:#e3e7ea; --muted:#99a2aa; --rule:#2c3338; --faint:#232a2e;
   --accent:#e3a94a; --accent-ink:#e8b562; --accent-soft:#3a2f1c;
-  --ok:#6fb27f; --warn:#e08a4e; --warn-ink:#f0a675; --warn-soft:#3a2618; --alarm:#e0675c; --alarm-ink:#f29a90; --alarm-soft:#3a1c19; --due:#cf8279; --due-ink:#e4a8a0; --due-soft:#33221f;
+  --ok:#6fb27f; --warn:#e08a4e; --warn-ink:#f0a675; --warn-soft:#3a2618; --alarm:#e0675c; --alarm-ink:#f29a90; --alarm-soft:#3a1c19; --due:#cf8279; --due-ink:#e4a8a0; --due-soft:#33221f; --sig:#86a6d4;
   --p0:#7fa6e6; --p1:#63c19d; --p2:#b08ee6; --p3:#ec8e72; --p4:#5fc1d1; --p5:#e57fab; --p6:#a9bb5c; --p7:#e0ae4a; --pint:#8e979f; --pabs:#8fb0bf;
   --scroll:#3a4248; --scroll-h:#4c565d; --q-base:color-mix(in srgb,#e3a94a 18%,#2c3338); --q-pulse:#8a6a33; --q-hi:#a8814a;
   --shadow:0 14px 36px rgb(0 0 0 / .45); color-scheme:dark}}
 :root[data-theme="dark"]{
   --paper:#161a1d; --chrome:#1d2226; --ink:#e3e7ea; --muted:#99a2aa; --rule:#2c3338; --faint:#232a2e;
   --accent:#e3a94a; --accent-ink:#e8b562; --accent-soft:#3a2f1c;
-  --ok:#6fb27f; --warn:#e08a4e; --warn-ink:#f0a675; --warn-soft:#3a2618; --alarm:#e0675c; --alarm-ink:#f29a90; --alarm-soft:#3a1c19; --due:#cf8279; --due-ink:#e4a8a0; --due-soft:#33221f;
+  --ok:#6fb27f; --warn:#e08a4e; --warn-ink:#f0a675; --warn-soft:#3a2618; --alarm:#e0675c; --alarm-ink:#f29a90; --alarm-soft:#3a1c19; --due:#cf8279; --due-ink:#e4a8a0; --due-soft:#33221f; --sig:#86a6d4;
   --p0:#7fa6e6; --p1:#63c19d; --p2:#b08ee6; --p3:#ec8e72; --p4:#5fc1d1; --p5:#e57fab; --p6:#a9bb5c; --p7:#e0ae4a; --pint:#8e979f; --pabs:#8fb0bf;
   --scroll:#3a4248; --scroll-h:#4c565d; --q-base:color-mix(in srgb,#e3a94a 18%,#2c3338); --q-pulse:#8a6a33; --q-hi:#a8814a;
   --shadow:0 14px 36px rgb(0 0 0 / .45); color-scheme:dark}
@@ -405,7 +405,8 @@ button.stat:hover{border-color:var(--rule)}
 .wkstate{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:7px 8px 7px 12px;border-radius:11px;background:color-mix(in srgb,var(--ok) 12%,var(--chrome));border:1px solid color-mix(in srgb,var(--ok) 40%,transparent);font-size:13px}
 .wkstate>.ic{color:var(--ok)}
 .wkstate .txt{flex:1 1 240px}
-.wkstate.signed{background:var(--paper);border-color:var(--rule)}
+.wkstate.signed{background:color-mix(in srgb,var(--sig) 12%,var(--chrome));border-color:color-mix(in srgb,var(--sig) 40%,transparent)}.wkstate.signed>.ic{color:var(--sig)}
+.btn.done.sig{background:color-mix(in srgb,var(--sig) 14%,var(--chrome));border-color:color-mix(in srgb,var(--sig) 50%,transparent);color:var(--sig)}
 .btn.sm{height:30px;padding:0 10px;font-size:12.5px}
 .btn.done{background:color-mix(in srgb,var(--ok) 14%,var(--chrome));border-color:color-mix(in srgb,var(--ok) 50%,transparent);color:var(--ok)}
 .miss{display:flex;flex-direction:column;gap:4px;margin:0 0 4px;padding:0;list-style:none;max-height:260px;overflow:auto}
@@ -917,6 +918,8 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 .dtab tr.arch td{color:var(--muted)}
 .st-done{display:inline-flex;align-items:center;gap:4px;color:var(--ok);font-size:12px;font-weight:560}
 .st-done .ic{width:13px;height:13px}
+.st-ready,.st-wait{display:inline-flex;align-items:center;gap:3px;margin-left:8px;font-size:11.5px;font-weight:560;color:var(--ok)}.st-wait{color:var(--warn-ink)}.st-ready .ic,.st-wait .ic{width:12px;height:12px}
+.mh.ready{color:var(--ok)}.mh.wait{color:var(--warn-ink)}.mh.ready .ic,.mh.wait .ic{width:13px;height:13px;vertical-align:-2px;margin-right:4px}
 .st-open{display:inline-flex;align-items:center;gap:4px;color:var(--due-ink);font-size:12px;font-weight:620}
 .ppl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .ppl li{display:flex;align-items:center;gap:10px}
@@ -979,7 +982,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 .mw b{font-size:15px;font-weight:650;color:var(--ink);font-family:var(--font-data)}
 .mw .ic{position:absolute;top:7px;right:6px;width:14px;height:14px}
 .mw.checked .ic{color:var(--ok)}
-.mw.signed .ic{color:var(--muted)}
+.mw.signed .ic{color:var(--sig)}
 .mw-dot{position:absolute;top:9px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--warn)}
 .mw-n{font-size:10.5px;opacity:.8}
 .mw:hover{background:var(--chrome);border-color:var(--rule);color:var(--ink)}
@@ -987,7 +990,11 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 .mc:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--rule))}
 .mc.out{background:transparent;border-style:dashed;opacity:.62}
 .mc.we{background:color-mix(in srgb,var(--chrome) 55%,var(--paper))}
-.mc.lk{background-image:repeating-linear-gradient(135deg,transparent 0 7px,color-mix(in srgb,var(--rule) 45%,transparent) 7px 8px)}
+.mc.ck{background:color-mix(in srgb,var(--ok) 10%,var(--chrome));border-color:color-mix(in srgb,var(--ok) 30%,var(--rule))}
+.mc.sg{background:color-mix(in srgb,var(--sig) 13%,var(--chrome));border-color:color-mix(in srgb,var(--sig) 36%,var(--rule))}
+.mc.ck.we{background:color-mix(in srgb,var(--ok) 6%,var(--paper))}.mc.sg.we{background:color-mix(in srgb,var(--sig) 6%,var(--paper))}
+.mw.checked{background:color-mix(in srgb,var(--ok) 12%,transparent)}
+.mw.signed{background:color-mix(in srgb,var(--sig) 12%,transparent)}
 .mc.today{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .mc.sel{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
 .mc-top{display:flex;align-items:baseline;gap:6px;min-width:0}
@@ -1023,7 +1030,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
   .mw{padding:4px 2px;align-items:center}
   .mw b{font-size:12px}
   .mw .mono,.mw-n,.mw .ic,.mw-dot{display:none}
-  .mw.checked b,.mw.signed b{color:var(--ok)}
+  .mw.checked b{color:var(--ok)}.mw.signed b{color:var(--sig)}
   .mw.open b{color:var(--warn-ink)}
   .mc{min-height:58px;padding:4px 4px 5px;gap:2px;border-radius:8px}
   .mc-d{font-size:12px}.mc-d small,.mc-hol,.mc-bal{display:none}
@@ -1053,7 +1060,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
     <div class="spacer"></div>
     <div class="save" id="saveState" role="status"><span class="d"></span><span class="t">Sparas i den här webbläsaren</span></div>
     <button class="icon-btn th-btn" data-act="theme" aria-label="Byt mellan ljust och mörkt tema"><svg class="ic th-moon" viewBox="0 0 24 24" aria-hidden="true"><title>Byt till mörkt läge</title><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><svg class="ic th-sun" viewBox="0 0 24 24" aria-hidden="true"><title>Byt till ljust läge</title><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg></button>
-    <button class="badge beta-btn" data-act="feedback" id="alfaBtn" title="Sisyfos är en alfaversion – skicka synpunkter"><b>Alfa <span class="v-num">0.7.0</span></b><small>Skicka synpunkter</small></button>
+    <button class="badge beta-btn" data-act="feedback" id="alfaBtn" title="Sisyfos är en alfaversion – skicka synpunkter"><b>Alfa <span class="v-num">0.7.1</span></b><small>Skicka synpunkter</small></button>
   </header>
   <nav class="rail" id="rail" aria-label="Organisatör"></nav>
   <main class="main" id="main"></main>
@@ -1075,7 +1082,8 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 
 /* ───────────── Hjälpfunktioner ───────────── */
 const FORMAT = 'sisyfos', FORMAT_VERSION = 6, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.7.0', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const APP_VERSION = '0.7.1', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+{ const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
 const DOW = ['sön','mån','tis','ons','tor','fre','lör'];
@@ -1404,6 +1412,20 @@ const needsNote = e => !!e && e.hours > 0 && !(e.note || '').trim() && !absKind(
 const pRank = p => p.kind === 'absence' ? 2 : p.internal ? 1 : 0;
 const billable = e => { const p = proj(e.projectId); return !!p && !p.internal && !!taskOf(p, e.taskId)?.billable; };
 const live = () => [...E.values()].filter(e => !e.deleted && e.person === me());
+/* Är alla timmar i projektet den månaden i avcheckade eller signerade veckor? Gäller alla personer i boken.
+   Ger { ready, hours, open:[{person, week}] } – open är veckor som inte är avcheckade. */
+function monthReady(pid, ym) {
+  const open = new Map(); let hours = 0;
+  for (const e of E.values()) {
+    if (e.deleted || e.projectId !== pid || !(e.hours > 0) || e.date.slice(0, 7) !== ym) continue;
+    hours += e.hours;
+    const wk = monday(e.date), k = e.person + '|' + wk;
+    if (!WEEKS.get(k)?.checked && !R().signed[k]) open.set(k, { person: e.person, week: wk });
+  }
+  return { ready: hours > 0 && !open.size, hours, open: [...open.values()].sort((a, b) => a.week < b.week ? -1 : 1) };
+}
+const openWeeksTxt = r => { const ws = [...new Set(r.open.map(o => isoWeek(o.week).w))]; return (ws.length > 1 ? 'Vecka ' + ws.slice(0, -1).join(', ') + ' och ' + ws.at(-1) + ' är' : 'Vecka ' + ws[0] + ' är') + ' inte avcheckad' + (ws.length > 1 ? 'e' : ''); };
+const readyHtml = (pid, ym) => { if (ym >= ymOf(today())) return ''; const r = monthReady(pid, ym); return r.hours ? r.ready ? `<span class="st-ready" title="Alla timmar är avcheckade – månaden kan markeras som hanterad">${ic('check')}redo</span>` : `<span class="st-wait" title="${openWeeksTxt(r)}">${ic('clock')}v ${[...new Set(r.open.map(o => isoWeek(o.week).w))].join(', ')}</span>` : ''; };
 const cell = (rk, d) => { const id = IDX.get(`${me()}|${rk}|${d}`); return id ? E.get(id) : null; };
 const splitRow = rk => rk.split('~');
 const splitKey = k => k.split('|');
@@ -1877,7 +1899,7 @@ function renderMain() {
   if (st.page === 'installningar') safetyRender();
   if (st.page === 'rapporter') { const w = $('.mo-wrap'), c = $('.mo thead th.cur'); if (w && c && w.scrollWidth > w.clientWidth) w.scrollLeft = Math.max(0, c.offsetLeft - w.clientWidth / 2); }
 }
-const viewSeg = () => `<div class="seg" role="group" aria-label="Visning"><button data-act="view" data-view="week" aria-pressed="${st.view === 'week'}" title="Vecka">${ic('week')}<span class="opt">Vecka</span></button><button data-act="view" data-view="day" aria-pressed="${st.view === 'day'}" title="Dag">${ic('day')}<span class="opt">Dag</span></button><button data-act="view" data-view="month" aria-pressed="${st.view === 'month'}" title="Månad">${ic('month')}<span class="opt">Månad</span></button></div>`;
+const viewSeg = () => `<div class="seg" role="group" aria-label="Visning"><button data-act="view" data-view="month" aria-pressed="${st.view === 'month'}" title="Månad">${ic('month')}<span class="opt">Månad</span></button><button data-act="view" data-view="week" aria-pressed="${st.view === 'week'}" title="Vecka">${ic('week')}<span class="opt">Vecka</span></button><button data-act="view" data-view="day" aria-pressed="${st.view === 'day'}" title="Dag">${ic('day')}<span class="opt">Dag</span></button></div>`;
 const quickHtml = () => `<div class="quick"><div class="quick-top">${ic('bolt')}<label for="quickIn">Smartanteckning</label><button class="q-help" data-act="quickHelp" title="Så skriver du – och dina egna förkortningar">${ic('help')}<span class="hide-narrow">Hjälp och förkortningar</span></button><kbd class="hide-narrow">Enter</kbd></div><div class="quick-row"><input id="quickIn" autocomplete="off" spellcheck="false" placeholder="3,5 strand ritade fasad · tor 8 strand · v43 fl"></div><div class="quick-hint" id="quickHint" aria-live="polite"></div></div>`;
 
 function weekHtml() {
@@ -1889,7 +1911,7 @@ function weekHtml() {
   const ws = weekState(wk), lk = ws.checked || !!ws.signed;
   const selDate = st.sel ? splitKey(st.sel)[1] : st.selDay;
   let h = `<div class="view wkv">${quickHtml()}<div class="wk-head"><div class="wk-nav"><button class="icon-btn" data-act="week" data-d="-7" aria-label="Föregående vecka">${ic('left')}</button><h1>Vecka ${w}</h1><button class="icon-btn" data-act="week" data-d="7" aria-label="Nästa vecka">${ic('right')}</button></div><span class="range">${range}</span>${monday(t) !== wk ? `<button class="btn ghost" data-act="today">Till i dag</button>` : ''}<span class="spacer"></span>`
-    + `<button class="btn${lk ? ' done' : ''}" data-act="${lk ? 'weekStateMenu' : 'checkWeek'}" ${lk ? 'aria-haspopup="menu"' : ''}>${ic(ws.signed ? 'lock' : 'check')}<span>${ws.signed ? 'Signerad' : ws.checked ? 'Avcheckad' : 'Checka av<span class="opt"> veckan</span>'}</span></button>`
+    + `<button class="btn${lk ? ' done' : ''}${ws.signed ? ' sig' : ''}" data-act="${lk ? 'weekStateMenu' : 'checkWeek'}" ${lk ? 'aria-haspopup="menu"' : ''}>${ic(ws.signed ? 'lock' : 'check')}<span>${ws.signed ? 'Signerad' : ws.checked ? 'Avcheckad' : 'Checka av<span class="opt"> veckan</span>'}</span></button>`
     + `<button class="btn" data-act="weekend" aria-pressed="${!!S.prefs.showWeekend}" title="Visa lördag och söndag">${ic('weekend')}<span class="opt">Helg</span></button><button class="btn" data-act="expandAll" aria-pressed="${!!allOpen}" title="Visa alla dagböcker">${ic('book')}<span class="opt">Dagböcker</span></button><button class="btn ico" data-act="compact" aria-pressed="${!!S.prefs.compact}" title="Kompakt läge – tätare rader" aria-label="Kompakt läge">${ic('compact')}</button>${viewSeg()}</div>`;
   if (lk) h += wkStateHtml(wk, ws);
   h += `<div class="alerts" id="alerts">${alertsHtml()}</div>`;
@@ -2023,7 +2045,7 @@ function dayHtml() {
   // Samma huvud som veckovyn: pilarna byter vecka, dagen väljs i blocken nedanför
   const { w } = isoWeek(wk), d0 = pd(days[0]), d1 = pd(days[days.length - 1]);
   const range = d0.getMonth() === d1.getMonth() ? `${d0.getDate()}–${d1.getDate()} ${MONL[d1.getMonth()]} ${d1.getFullYear()}` : `${d0.getDate()} ${MON[d0.getMonth()]} – ${d1.getDate()} ${MON[d1.getMonth()]} ${d1.getFullYear()}`;
-  let h = `<div class="view">${quickHtml()}<div class="wk-head"><div class="wk-nav"><button class="icon-btn" data-act="dayStep" data-d="-7" aria-label="Föregående vecka">${ic('left')}</button><h1>Vecka ${w}</h1><button class="icon-btn" data-act="dayStep" data-d="7" aria-label="Nästa vecka">${ic('right')}</button></div><span class="range">${range}</span>${monday(t) !== wk ? `<button class="btn ghost" data-act="today">Till i dag</button>` : ''}<span class="spacer"></span><button class="btn${lk ? ' done' : ''}" data-act="${lk ? 'weekStateMenu' : 'checkWeek'}" ${lk ? 'aria-haspopup="menu"' : ''}>${ic(ws.signed ? 'lock' : 'check')}<span>${ws.signed ? 'Signerad' : ws.checked ? 'Avcheckad' : 'Checka av<span class="opt"> veckan</span>'}</span></button><button class="btn" data-act="weekend" aria-pressed="${!!S.prefs.showWeekend}" title="Visa lördag och söndag">${ic('weekend')}<span class="opt">Helg</span></button><button class="btn ico" data-act="compact" aria-pressed="${!!S.prefs.compact}" title="Kompakt läge – tätare rader" aria-label="Kompakt läge">${ic('compact')}</button>${viewSeg()}</div>`;
+  let h = `<div class="view">${quickHtml()}<div class="wk-head"><div class="wk-nav"><button class="icon-btn" data-act="dayStep" data-d="-7" aria-label="Föregående vecka">${ic('left')}</button><h1>Vecka ${w}</h1><button class="icon-btn" data-act="dayStep" data-d="7" aria-label="Nästa vecka">${ic('right')}</button></div><span class="range">${range}</span>${monday(t) !== wk ? `<button class="btn ghost" data-act="today">Till i dag</button>` : ''}<span class="spacer"></span><button class="btn${lk ? ' done' : ''}${ws.signed ? ' sig' : ''}" data-act="${lk ? 'weekStateMenu' : 'checkWeek'}" ${lk ? 'aria-haspopup="menu"' : ''}>${ic(ws.signed ? 'lock' : 'check')}<span>${ws.signed ? 'Signerad' : ws.checked ? 'Avcheckad' : 'Checka av<span class="opt"> veckan</span>'}</span></button><button class="btn" data-act="weekend" aria-pressed="${!!S.prefs.showWeekend}" title="Visa lördag och söndag">${ic('weekend')}<span class="opt">Helg</span></button><button class="btn ico" data-act="compact" aria-pressed="${!!S.prefs.compact}" title="Kompakt läge – tätare rader" aria-label="Kompakt läge">${ic('compact')}</button>${viewSeg()}</div>`;
   h += `<div class="day-strip" id="dayStrip" style="--n:${days.length}">${stripHtml(days)}</div>`;
   h += (lk ? wkStateHtml(wk, ws) : '') + `<div class="alerts" id="alerts">${alertsHtml()}</div><div class="dcards${lk ? ' locked' : ''}">`;
   // Uppgifter i samma projekt grupperas i ett kort (som i veckovyn); projekt med tid i dag först
@@ -2096,7 +2118,7 @@ function monthBodyHtml() {
       const segs = es.map(e => { const P = proj(e.projectId), on = !mp || P.id === mp.id; return `<i class="${on ? '' : 'dim'}" style="width:${(e.hours / scale * 100).toFixed(2)}%;--pc:${pc(P)}" title="${esc(P.name)} ${fh(e.hours)} h"></i>`; }).join('');
       const bal = nh && !out ? dayBal(d, tot) : 0, showBal = nh && !out && d <= t && (nm > 0 || tot > 0) && !(d === t && bal === 0);
       const lab = `${ldate(d)}${hol ? ', ' + hol.name : ''}: ${fh(tot)} timmar${nh ? ' av ' + fh(nm) : ''}${miss ? ', anteckning saknas' : ''}`;
-      h += `<button class="mc${out ? ' out' : ''}${d === t ? ' today' : ''}${d === sel ? ' sel' : ''}${hol && !hol.eve ? ' red' : ''}${dow(d) % 6 === 0 ? ' we' : ''}${tot > 0 ? ' has' : ''}${lk ? ' lk' : ''}${mp && mine > 0 ? ' mine' : ''}" data-act="mPick" data-day="${d}" aria-pressed="${d === sel}" aria-label="${esc(lab)}" role="gridcell">`
+      h += `<button class="mc${out ? ' out' : ''}${d === t ? ' today' : ''}${d === sel ? ' sel' : ''}${hol && !hol.eve ? ' red' : ''}${dow(d) % 6 === 0 ? ' we' : ''}${tot > 0 ? ' has' : ''}${lk ? (weekState(monday(d)).signed ? ' sg' : ' ck') : ''}${mp && mine > 0 ? ' mine' : ''}" data-act="mPick" data-day="${d}" aria-pressed="${d === sel}" aria-label="${esc(lab)}" role="gridcell">`
         + `<span class="mc-top"><span class="mc-d">${pd(d).getDate()}${out ? ` <small>${MON[pd(d).getMonth()]}</small>` : ''}</span>${hol ? `<span class="mc-hol">${esc(hol.name)}</span>` : ''}${miss ? '<i class="mc-nn" title="Anteckning saknas"></i>' : ''}</span>`
         + `<span class="mc-h mono">${mp ? (mine ? fh(mine) + (tot > mine ? `<small> / ${fh(tot)}</small>` : '') : tot ? `<small>${fh(tot)}</small>` : '') : tot ? fh(tot) : ''}</span>`
         + `<span class="mc-bar">${segs}${nh && nm > 0 && tot > 0 ? `<b class="mc-norm" style="left:${Math.min(nm / scale * 100, 100).toFixed(2)}%"></b>` : ''}</span>`
@@ -2123,7 +2145,7 @@ function monthSumHtml(ym) {
   if (rows.length) {
     h += `<table class="dtab mtab"><thead><tr><th>Projekt</th><th class="r">Timmar</th><th class="r hide-narrow">Belopp</th><th>Status</th></tr></thead><tbody>${rows.map(({ P, h: hh, a, miss: mi }) => {
       const hd = R().handled[P.id + '|' + ym], cust2 = !P.internal && P.kind !== 'absence';
-      const status = !cust2 ? '<span class="muted">–</span>' : hd ? `<span class="st-done">${ic('lock')}Hanterad</span>` : ym >= ymOf(t) ? '<span class="muted">Pågår</span>' : '<span class="st-open">Öppen</span>';
+      const status = !cust2 ? '<span class="muted">–</span>' : hd ? `<span class="st-done">${ic('lock')}Hanterad</span>` : (ym >= ymOf(t) ? '<span class="muted">Pågår</span>' : '<span class="st-open">Öppen</span>') + readyHtml(P.id, ym);
       return `<tr class="${st.mproj === P.id ? 'on' : ''}" style="--pc:${pc(P)}"><td><button class="lnk mp-b" data-act="mproj" data-p="${P.id}" title="Markera ${esc(P.name)} i kalendern"><span class="dot"></span>${P.number && P.number !== '–' ? `<span class="r-num">${esc(P.number)}</span>` : ''}${esc(P.name)}</button>${mi ? ` <i class="mo-w" title="${mi} utan anteckning"></i>` : ''}</td><td class="r mono">${fh(hh)}</td><td class="r mono hide-narrow">${a ? fkr(a) : '–'}</td><td>${cust2 ? `<button class="lnk st-b" data-act="moCell" data-p="${P.id}" data-ym="${ym}" aria-haspopup="menu">${status}</button>` : status}</td></tr>`;
     }).join('')}</tbody></table>`;
   } else h += `<p class="muted small" style="margin:8px 2px 0">Ingen tid registrerad i ${MONL[+ym.slice(5, 7) - 1]}.</p>`;
@@ -2135,7 +2157,7 @@ function monthSumHtml(ym) {
 function monthOverviewHtml() {
   const ym = st.month, f = `${ym}-01`, l = ymLast(ym), ps = [...new Set(live().filter(e => e.date >= f && e.date <= l && e.hours > 0).map(e => e.projectId))].map(proj).filter(p => p && !p.internal && p.kind !== 'absence');
   return `<section class="psec"><h3>Projekt i ${MONL[+ym.slice(5, 7) - 1]}</h3>${ps.length ? `<ul class="plist">${ps.map(p => `<li style="--pc:${pc(p)}"><span class="dot"></span><span class="r-text"><span class="r-name">${esc(p.name)}</span><span class="r-sub mono">${fkr(used(p.id))}${running(p) ? ' · löpande' : ' av ' + fkr(p.budgetKr)}</span></span>${ring(p, 34, true)}</li>`).join('')}</ul>` : '<p class="small muted" style="margin:0">Inga kundprojekt den här månaden.</p>'}</section>
-  <section class="psec"><h3>Månadsvyn</h3><ul class="tips"><li>Klicka på en <b>dag</b> för att se dess poster här.</li><li>Klicka på <b>veckonumret</b> för att öppna veckan. En bock betyder avcheckad, ett lås signerad och en orange prick att veckan inte är avcheckad.</li><li>Klicka på ett <b>projekt</b> i tabellen för att markera det i kalendern.</li><li>Smartanteckningen lägger tiden på markerad dag.</li></ul></section>`;
+  <section class="psec"><h3>Månadsvyn</h3><ul class="tips"><li>Klicka på en <b>dag</b> för att se dess poster här.</li><li>Klicka på <b>veckonumret</b> för att öppna veckan. Grön med bock betyder avcheckad, blå med lås signerad och en orange prick att veckan inte är avcheckad.</li><li>Klicka på ett <b>projekt</b> i tabellen för att markera det i kalendern.</li><li>Smartanteckningen lägger tiden på markerad dag.</li></ul></section>`;
 }
 
 /* ───────────── Egenskapspanel ─────────────
@@ -3624,7 +3646,7 @@ function projPageHtml(P) {
   // Månader: öppna och hanterade
   const months = new Map(); for (const e of es) { const ym = ymOf(e.date), o = months.get(ym) || { h: 0, a: 0, miss: 0 }; o.h += e.hours; o.a += amountOf(e); if (needsNote(e)) o.miss++; months.set(ym, o); }
   const ml = [...months].sort((a, b) => b[0].localeCompare(a[0])), cur = ymOf(today());
-  if (!abs) h += `<section class="dsec"><h2>Månader</h2>${ml.length ? `<table class="dtab"><thead><tr><th>Månad</th><th class="r">Timmar</th>${P.internal ? '' : '<th class="r">Belopp</th>'}<th>Status</th></tr></thead><tbody>${ml.map(([ym, o]) => { const hd = R().handled[P.id + '|' + ym]; return `<tr><td><button class="lnk" data-act="moCell" data-p="${P.id}" data-ym="${ym}">${ymLabel(ym)}</button></td><td class="r mono">${fh(o.h)}</td>${P.internal ? '' : `<td class="r mono">${o.a ? fkr(o.a) : '–'}</td>`}<td>${hd ? `<span class="st-done">${ic('lock')}Hanterad ${sdate(hd.at.slice(0, 10))}</span>` : ym >= cur ? '<span class="muted">Pågår</span>' : P.internal ? '<span class="muted">–</span>' : `<span class="st-open">Öppen</span>`}${o.miss ? ` <i class="mo-w" title="${o.miss} utan anteckning"></i>` : ''}</td></tr>`; }).join('')}</tbody></table><p class="small muted" style="margin:6px 0 0">Klicka på en månad för att gå till tidboken, ladda ner dagboken eller markera den som hanterad.</p>` : '<p class="muted small">Ingen tid registrerad än.</p>'}</section>`;
+  if (!abs) h += `<section class="dsec"><h2>Månader</h2>${ml.length ? `<table class="dtab"><thead><tr><th>Månad</th><th class="r">Timmar</th>${P.internal ? '' : '<th class="r">Belopp</th>'}<th>Status</th></tr></thead><tbody>${ml.map(([ym, o]) => { const hd = R().handled[P.id + '|' + ym]; return `<tr><td><button class="lnk" data-act="moCell" data-p="${P.id}" data-ym="${ym}">${ymLabel(ym)}</button></td><td class="r mono">${fh(o.h)}</td>${P.internal ? '' : `<td class="r mono">${o.a ? fkr(o.a) : '–'}</td>`}<td>${hd ? `<span class="st-done">${ic('lock')}Hanterad ${sdate(hd.at.slice(0, 10))}</span>` : ym >= cur ? '<span class="muted">Pågår</span>' : P.internal ? '<span class="muted">–</span>' : `<span class="st-open">Öppen</span>`}${hd ? '' : readyHtml(P.id, ym)}${o.miss ? ` <i class="mo-w" title="${o.miss} utan anteckning"></i>` : ''}</td></tr>`; }).join('')}</tbody></table><p class="small muted" style="margin:6px 0 0">Klicka på en månad för att gå till tidboken, ladda ner dagboken eller markera den som hanterad.</p>` : '<p class="muted small">Ingen tid registrerad än.</p>'}</section>`;
   // Uppgifter
   const tsum = new Map(); for (const e of es) { const o = tsum.get(e.taskId) || { h: 0, a: 0 }; o.h += e.hours; o.a += amountOf(e); tsum.set(e.taskId, o); }
   h += `<section class="dsec"><h2>Uppgifter</h2><table class="dtab"><tbody>${P.tasks.filter(t => !taskHidden(P, t) || t.archived).map(t => { const o = tsum.get(t.id) || { h: 0, a: 0 }; return `<tr class="${t.archived ? 'arch' : ''}"><td>${esc(t.name)}${t.archived ? ' <span class="ptag">arkiverad</span>' : ''}${t.abbr ? ` <span class="mono muted small">${esc(t.abbr)}</span>` : ''}</td><td class="muted small">${abs ? ABS_INFO[t.absence] || '' : P.internal || !t.billable ? 'ej debiterbar' : 'debiterbar'}</td><td class="r mono">${o.h ? fh(o.h) + ' h' : '–'}</td>${P.internal || abs ? '' : `<td class="r mono">${o.a ? fkr(o.a) : ''}</td>`}</tr>`; }).join('')}</tbody></table></section>`;
@@ -3991,7 +4013,7 @@ function monthHtml() {
 function moMenu(btn) {
   const P = proj(btn.dataset.p), ym = btn.dataset.ym, hd = R().handled[P.id + '|' + ym], d = diaryData(P.id, `${ym}-01`, ymLast(ym), 'ex'), miss = d.miss;
   const m = $('#menu');
-  m.innerHTML = `<div class="mh" style="--pc:${pc(P)}"><span class="dot"></span><b style="color:var(--ink)">${esc(P.name)}</b> · ${ymLabel(ym)}</div><div class="mh">${fh(d.hours)} h${d.amount > 0 ? ' · ' + fkr(d.amount) + ' exkl. moms' : ''}${miss ? ` · <span style="color:var(--warn-ink)">${miss} utan anteckning</span>` : ''}</div><hr>
+  m.innerHTML = `<div class="mh" style="--pc:${pc(P)}"><span class="dot"></span><b style="color:var(--ink)">${esc(P.name)}</b> · ${ymLabel(ym)}</div><div class="mh">${fh(d.hours)} h${d.amount > 0 ? ' · ' + fkr(d.amount) + ' exkl. moms' : ''}${miss ? ` · <span style="color:var(--warn-ink)">${miss} utan anteckning</span>` : ''}</div>${hd || !d.hours ? '' : (r => r.ready ? `<div class="mh ready">${ic('check')}Alla timmar avcheckade – redo att hanteras</div>` : `<div class="mh wait">${ic('clock')}${openWeeksTxt(r)}</div>`)(monthReady(P.id, ym))}<hr>
   ${st.page === 'tid' && st.view === 'month' && st.month === ym ? '' : `<button role="menuitem" data-act="gotoTidbok" data-p="${P.id}" data-ym="${ym}">${ic('month')}Gå till tidboken – ${MONL[+ym.slice(5, 7) - 1]}</button>`}<button role="menuitem" data-act="dlDiary" data-p="${P.id}" data-ym="${ym}">${ic('export')}Ladda ner projektdagbok (PDF)</button><button role="menuitem" data-act="showDiary" data-p="${P.id}" data-ym="${ym}">${ic('report')}Visa projektdagboken</button><hr>
   ${hd ? `<div class="mh">${ic('lock')}Hanterad ${sdate(hd.at.slice(0, 10))} – låst</div><button role="menuitem" data-act="unhandle" data-p="${P.id}" data-ym="${ym}">${ic('unlock')}Häv hanterad och lås upp</button>` : `<button role="menuitem" data-act="handle" data-p="${P.id}" data-ym="${ym}">${ic('lock')}Markera som hanterad och lås</button>`}`;
   const b = btn.getBoundingClientRect(); placeMenu(m, b.left, b.bottom + 4); $('button', m)?.focus();
@@ -3999,6 +4021,7 @@ function moMenu(btn) {
 function handleAsk(pid, ym) {
   const P = proj(pid), d = diaryData(pid, `${ym}-01`, ymLast(ym), 'ex'), open = ym >= ymOf(today()), warn = [];
   if (open) warn.push(ym === ymOf(today()) ? 'Månaden är inte slut än.' : 'Månaden har inte börjat än.');
+  const rd = monthReady(pid, ym); if (rd.hours && !rd.ready) warn.push(openWeeksTxt(rd) + ' – tidrapporten kan ändras.');
   if (d.miss) warn.push(`${d.miss === 1 ? 'En tid saknar' : d.miss + ' tider saknar'} anteckning.`);
   if (!warn.length) { doHandle(pid, ym); return; }
   openDlg(`<h2 id="dlgTitle">Markera ${esc(P.name)}, ${MONL[+ym.slice(5, 7) - 1]} som hanterad?</h2><p>${warn.join(' ')} En hanterad månad låses – ingen tid i projektet den månaden kan ändras förrän markeringen hävs.</p><div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="forceHandle" data-p="${pid}" data-ym="${ym}">${ic('lock')}Markera ändå</button></div>`);
