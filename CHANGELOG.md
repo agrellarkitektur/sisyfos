@@ -1,5 +1,15 @@
 # Ändringar i Sisyfos
 
+## 0.8.0
+
+Sparad semester per år. **Nytt filformat 7** – böcker från tidigare versioner uppgraderas när de öppnas (en ögonblicksbild tas först). En bok som sparats i 0.8 kan inte öppnas i 0.7.
+
+- Semesterkontot räknar själv vid varje årsskifte: årets dagar tas ut först, därefter sparade dagar, äldsta först. Outtagna dagar sparas – högst dagarna utöver de 20 som ska tas ut och högst 5 per år – och resten betalas ut som semesterlön. Sparade dagar som är äldre än 5 år betalas ut.
+- Reglerna (dagar som ska tas ut, högst sparade per år, antal år) går att ändra efter kollektivavtal och gäller hela boken.
+- Semestern kan visas som en pott eller som årets dagar och sparade för sig, med sparade dagar per år (år 1–5) och sista dag att ta ut dem.
+- Sparade dagar anges per år, både i *Anställning, saldo och semester* och i guiden för ny bok ("Har du sparad semester från tidigare år?").
+- Uppgradering: den tidigare "Sparade dagar in i året" blir sparade dagar från förra semesteråret.
+
 ## 0.7.1
 
 Små justeringar. Filformatet är oförändrat (6).

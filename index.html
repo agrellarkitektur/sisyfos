@@ -579,7 +579,12 @@ button.stat:hover{border-color:var(--rule)}
 .fld.full{grid-column:1 / -1}
 .fld label,.fld .lbl{font-size:12px;color:var(--muted);font-weight:550}
 .dsub{margin:8px 0 0;font-size:13px;font-weight:650;padding-top:10px;border-top:1px solid var(--rule)}
-.vacnow{height:38px;display:flex;align-items:center;font-size:12.5px;color:var(--muted)}
+.vacnow{min-height:38px;display:flex;align-items:center;flex-wrap:wrap;gap:0 4px;font-size:12.5px;color:var(--muted)}
+.vacnow b.neg{color:var(--alarm-ink)}
+.vactab{font-size:12.5px}
+.vacdet{border:1px solid var(--rule);border-radius:11px;padding:8px 12px}
+.vacdet summary{cursor:pointer;font-size:13px;font-weight:560}
+.vacin{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px 12px}
 .vacnow b{color:var(--ink);font-size:15px;margin-right:4px}
 .fld input,.fld select,.fld textarea{height:38px;padding:0 10px;border:1px solid var(--rule);border-radius:9px;background:var(--paper);min-width:0}
 .fld textarea{height:auto;padding:8px 10px;font:12px/1.4 var(--font-data);min-height:160px}
@@ -1081,8 +1086,8 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 'use strict';
 
 /* ───────────── Hjälpfunktioner ───────────── */
-const FORMAT = 'sisyfos', FORMAT_VERSION = 6, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.7.1', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const FORMAT = 'sisyfos', FORMAT_VERSION = 7, KEY = 'sisyfos.bok';
+const APP_VERSION = '0.8.0', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 { const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
@@ -1177,7 +1182,7 @@ function sampleBook() {
       { id: 'roll1', name: 'Arkitekt', rate: 950 },
       { id: 'roll2', name: 'Uppdragsansvarig', rate: 1150 }
     ],
-    people: [{ id: pid, name: 'Du', initials: 'DU', defaultRoleId: 'roll1', admin: true, employment: 'full', pct: 100, balanceStart: addD(mon, -84), balanceIn: 6, vacation: { perYear: 25, yearStart: '04-01', carried: 3 } }],
+    people: [{ id: pid, name: 'Du', initials: 'DU', defaultRoleId: 'roll1', admin: true, employment: 'full', pct: 100, balanceStart: addD(mon, -84), balanceIn: 6, vacation: { perYear: 25, yearStart: '04-01', from: semStart(today(), '04-01'), saved: [4, 2, 1] } }],
     projects: [
       { id: 'proj1', number: '2026-07', name: 'Villa Strand', customerId: 'kund1', property: 'Strand 1:12', budgetKr: 150000, internal: false, color: 0, status: 'active',
         tasks: [{ id: 'upg1', name: 'Bygglov', billable: true }, { id: 'upg2', name: 'Skiss', billable: true }], roleRates: {}, personRates: {}, memberRoles: {}, notices: {} },
@@ -1279,7 +1284,7 @@ function emptyBook() {
     register: {
       book: { name: 'Min bok', company: '', rounding: 0.25, vatRate: 25, numberFormat: DEF_NUMFMT, idleDays: 90, team: 'solo', norm: { 0: 0, 1: 8, 2: 8, 3: 8, 4: 8, 5: 8, 6: 0 }, created: now },
       customers: [], roles: [{ id: 'roll1', name: 'Standard', rate: 900 }],
-      people: [{ id: pid, name: 'Jag', initials: 'JA', defaultRoleId: 'roll1', admin: true, employment: 'full', pct: 100, balanceStart: today(), balanceIn: 0, vacation: { perYear: 25, yearStart: '04-01', carried: 0 } }],
+      people: [{ id: pid, name: 'Jag', initials: 'JA', defaultRoleId: 'roll1', admin: true, employment: 'full', pct: 100, balanceStart: today(), balanceIn: 0, vacation: { perYear: 25, yearStart: '04-01', from: semStart(today(), '04-01'), saved: [] } }],
       projects: [{ id: 'proj' + uid(), number: 'Intern', name: 'Företaget', customerId: null, property: '', budgetKr: 0, internal: true, color: -1, status: 'active',
         tasks: [{ id: 'u' + uid(), name: 'Administration', billable: false }, { id: 'u' + uid(), name: 'Utbildning', billable: false }, { id: 'u' + uid(), name: 'Anbud', billable: false }],
         roleRates: {}, personRates: {}, memberRoles: {}, notices: {} }, absenceProject()],
@@ -1331,6 +1336,18 @@ const MIGRATIONS = {
     for (const wk in hid) { const W = d.prefs.weekRows = d.prefs.weekRows || {}, a = W[wk] = W[wk] || []; for (const rk of hid[wk]) if (!a.includes(rk)) a.push(rk); }
     if (d.prefs) d.prefs.hiddenRows = {};
     d.version = 6; return d;
+  },
+  // 6 → 7: sparad semester per år. "Sparade dagar in i året" (carried) blir sparade dagar från förra semesteråret,
+  // räknat från innevarande semesterår. Regler för sparande ligger i boken (book.vacation).
+  6: d => {
+    const B = d.register.book; B.vacation = Object.assign({}, VAC_DEF, B.vacation || {});
+    for (const p of d.register.people) {
+      const v = p.vacation = p.vacation || { perYear: 25, yearStart: '04-01' };
+      if (!v.from) v.from = semStart(today(), v.yearStart || '04-01');
+      if (!Array.isArray(v.saved)) v.saved = +v.carried > 0 ? [+v.carried] : [];
+      delete v.carried;
+    }
+    d.version = 7; return d;
   }
 };
 function migrate(d) {
@@ -1494,15 +1511,57 @@ function fullDay(d) {
   const p = person(), base = Math.max(...Object.values(R().book.norm).map(Number)) || 8;
   return p.employment === 'part' ? base * (+p.pct || 100) / 100 : base;
 }
-function vacInfo() {
-  const p = person(); if (p.employment === 'hourly') return null;
-  const v = p.vacation || { perYear: 25, yearStart: '04-01', carried: 0 }, t = today(), y = +t.slice(0, 4);
-  let start = `${y}-${v.yearStart}`; if (start > t) start = `${y - 1}-${v.yearStart}`;
-  const end = addD(`${+start.slice(0, 4) + 1}-${v.yearStart}`, -1);
-  let taken = 0, planned = 0;
-  for (const e of live()) if (absKind(e) === 'vacation' && e.date >= start && e.date <= end && e.hours > 0) { const dd = e.hours / fullDay(e.date); if (e.date <= t) taken += dd; else planned += dd; }
-  const total = (+v.perYear || 0) + (+v.carried || 0);
-  return { start, end, total, taken, planned, left: total - taken - planned };
+/* ───────────── Semester ─────────────
+   Årets betalda dagar tas ut först, därefter sparade dagar, äldsta först. Vid semesterårets slut sparas outtagna dagar,
+   högst perYear − keep (semesterlagen: 20 dagar ska tas ut) och högst savePerYear. Resten betalas ut som lön.
+   Sparade dagar ska tas ut inom `years` år – det som är kvar därefter betalas ut. */
+const VAC_DEF = { keep: 20, savePerYear: 5, years: 5, view: 'pot' };
+const vacRules = () => Object.assign({}, VAC_DEF, R().book.vacation || {});
+function semStart(d, ys = '04-01') { let s = `${d.slice(0, 4)}-${ys}`; if (s > d) s = `${+d.slice(0, 4) - 1}-${ys}`; return s; }
+const ydate = d => `${+d.slice(8)} ${MONL[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}`;
+const semLabel = (y, ys) => ys === '01-01' ? String(y) : `${y}/${String((y + 1) % 100).padStart(2, '0')}`;
+function vacInfo(p = person(), t = today()) {
+  if (!p || p.employment === 'hourly') return null;
+  const v = p.vacation || {}, ys = v.yearStart || '04-01', per = +v.perYear || 0, ru = vacRules();
+  const curS = semStart(t, ys), cy = +curS.slice(0, 4), y0 = Math.min(+semStart(v.from || curS, ys).slice(0, 4), cy);
+  let pools = (v.saved || []).map((n, i) => ({ y: y0 - 1 - i, left: +n || 0 })).filter(x => x.left > 0.004);
+  const by = new Map();
+  for (const e of [...E.values()]) if (!e.deleted && e.person === p.id && e.hours > 0 && absKind(e) === 'vacation') {
+    const y = +semStart(e.date, ys).slice(0, 4); if (y < y0 || y > cy) continue;
+    if (!by.has(y)) by.set(y, []); by.get(y).push(e);
+  }
+  const saveMax = Math.max(0, Math.min(per - ru.keep, ru.savePerYear)), paid = [];
+  for (let y = y0; ; y++) {
+    for (const x of pools) if (x.y < y - ru.years && x.left > 0.004) paid.push({ y: x.y, days: x.left, why: 'old', at: y });
+    pools = pools.filter(x => x.y >= y - ru.years).sort((a, b) => a.y - b.y);
+    const atStart = pools.map(x => ({ y: x.y, days: x.left }));
+    let yl = per, taken = 0, planned = 0, over = 0;
+    for (const e of (by.get(y) || []).sort((a, b) => a.date < b.date ? -1 : 1)) {
+      let dd = e.hours / fullDay(e.date); if (e.date <= t) taken += dd; else planned += dd;
+      const a = Math.min(dd, yl); yl -= a; dd -= a;
+      for (const x of pools) { if (dd <= 1e-6) break; const b = Math.min(dd, x.left); x.left -= b; dd -= b; }
+      over += dd;
+    }
+    if (y < cy) {
+      const sv = Math.min(yl, saveMax); if (yl - sv > 0.004) paid.push({ y, days: yl - sv, why: 'over', at: y + 1 });
+      pools = pools.filter(x => x.left > 0.004); if (sv > 0.004) pools.push({ y, left: sv });
+      continue;
+    }
+    const saved = atStart.map(x0 => { const x = pools.find(q => q.y === x0.y); return { y: x0.y, label: semLabel(x0.y, ys), age: cy - x0.y, days: x0.days, left: x ? x.left : 0, last: addD(`${x0.y + ru.years + 1}-${ys}`, -1) }; });
+    const savedStart = saved.reduce((a, x) => a + x.days, 0), savedLeft = saved.reduce((a, x) => a + x.left, 0);
+    return { start: curS, end: addD(`${cy + 1}-${ys}`, -1), label: semLabel(cy, ys), perYear: per, yearLeft: yl, saved, savedStart, savedLeft,
+      total: per + savedStart, taken, planned, left: yl + savedLeft - over, view: ru.view, rules: ru, paid: paid.filter(x => x.at === cy) };
+  }
+}
+// Kort text om semestern – en pott eller årets dagar och sparade för sig
+function vacText(vi, long) {
+  if (!vi) return '';
+  const tp = `${vi.taken > 0.05 ? ` · uttaget ${fdays(vi.taken)}` : ''}${vi.planned > 0.05 ? ` · planerat ${fdays(vi.planned)}` : ''}`;
+  if (vi.view === 'split') {
+    const sp = vi.saved.filter(x => x.left > 0.05);
+    return `Årets semester kvar <b class="mono${vi.left < 0 ? ' neg' : ''}">${fdays(vi.left < 0 ? vi.left : vi.yearLeft)}</b> av ${fdays(vi.perYear)}${sp.length ? ` · sparade <b class="mono">${fdays(vi.savedLeft)}</b>${long ? ' (' + sp.map(x => `år ${x.age}: ${fdays(x.left)}`).join(', ') + ')' : ''}` : ''}${tp}`;
+  }
+  return `Semester kvar <b class="mono${vi.left < 0 ? ' neg' : ''}">${fdays(vi.left)}</b> av ${fdays(vi.total)} dagar${vi.savedStart > 0.05 ? ` (varav ${fdays(vi.savedStart)} sparade)` : ''}${tp}`;
 }
 const sgn = x => (x > 0.004 ? '+' : '') + fh(Math.abs(x) < 0.004 ? 0 : x);
 
@@ -1553,7 +1612,7 @@ function setCell(rk, date, patch) {
 }
 // Varning när semesterdagarna eller kompsaldot inte räcker
 function absWarn(T, dates) {
-  if (T.absence === 'vacation') { const vi = vacInfo(); if (vi && vi.left < -0.05) return `Semesterdagarna räcker inte – ${fdays(-vi.left)} dagar över årets ${fdays(vi.total)}`; }
+  if (T.absence === 'vacation') { const vi = vacInfo(); if (vi && vi.left < -0.05) return `Semesterdagarna räcker inte – ${fdays(-vi.left)} dagar för många (${fdays(vi.total)} dagar i semesteråret, sparade inräknade)`; }
   if (T.absence === 'comp') { const cb = compBalance(); if (cb != null && cb < -0.004 && dates.some(d => d <= today())) return `Kompsaldot blir ${sgn(cb)} h`; }
   return '';
 }
@@ -2020,7 +2079,7 @@ function sumFootHtml() {
   if (!hasNorm()) return '';
   const cb = compBalance(), vi = vacInfo(), p = person(), bin = +p.balanceIn || 0, earned = cb - bin, cls = x => x < -0.004 ? 'neg' : x > 0.004 ? 'pos' : '';
   return `<button class="sf" data-act="personDlg" title="Kompsaldo = ingående saldo + intjänat sedan ${sdate(p.balanceStart)}. I dag räknas när normtiden är nådd.">Kompsaldo <b class="mono ${cls(cb)}">${sgn(cb)} h</b>${Math.abs(bin) > 0.004 ? `<span class="sf-sub">(ingående <span class="mono">${sgn(bin)}</span> · intjänat sedan ${sdate(p.balanceStart)} <span class="mono ${cls(earned)}">${sgn(earned)}</span>)</span>` : ''}</button>`
-    + (vi ? `<button class="sf" data-act="personDlg" title="Semesterår ${sdate(vi.start)} – ${sdate(vi.end)}">Semester kvar <b class="mono ${vi.left < 0 ? 'neg' : ''}">${fdays(vi.left)}</b> av ${fdays(vi.total)} dagar${vi.planned > 0.05 ? ` · ${fdays(vi.planned)} planerade` : ''}</button>` : '');
+    + (vi ? `<button class="sf" data-act="personDlg" title="Semesterår ${sdate(vi.start)} – ${sdate(vi.end)}">${vacText(vi)}</button>` : '');
 }
 // Budgetlarm: vid 90 % och igen när budgeten är slut. Kan skjutas upp en dag eller en vecka.
 function alertLevel(p) { const x = budgetPct(p); return x == null ? null : x >= 1 ? '100' : x >= .9 ? '90' : null; }
@@ -2193,7 +2252,7 @@ function dayPanelHtml(d) {
 // Avräkning för en frånvarouppgift (visas i panelen och smartmenyn)
 function acctHtml(T) {
   if (!T?.absence || !hasNorm()) return '';
-  if (T.absence === 'vacation') { const vi = vacInfo(); return vi ? `Semester kvar <b class="mono${vi.left < 0 ? ' neg' : ''}">${fdays(vi.left)}</b> av ${fdays(vi.total)} dagar${vi.taken > 0.05 ? ` · uttaget ${fdays(vi.taken)}` : ''}${vi.planned > 0.05 ? ` · planerat ${fdays(vi.planned)}` : ''}` : 'Timanställd – semesterersättning, inget semesterkonto'; }
+  if (T.absence === 'vacation') { const vi = vacInfo(); return vi ? vacText(vi, true) : 'Timanställd – semesterersättning, inget semesterkonto'; }
   if (T.absence === 'comp') { const cb = compBalance(); return cb != null ? `Kompsaldo <b class="mono${cb < 0 ? ' neg' : ''}">${sgn(cb)} h</b> · kompledig tid dras av från saldot` : 'Timanställd – inget kompsaldo'; }
   return 'Fyller ut dagen – påverkar inte kompsaldot';
 }
@@ -2227,13 +2286,13 @@ function renderStatus() {
   if (st.view === 'month' && st.page === 'tid') {
     const f = `${st.month}-01`, l = ymLast(st.month); let tot = 0, nm = 0; for (const e of live()) if (e.date >= f && e.date <= l) tot += e.hours; for (let d = f; d <= l; d = addD(d, 1)) nm += norm(d);
     const cb = compBalance();
-    $('#status').innerHTML = `<span><span class="label">${cap(MONL[+st.month.slice(5, 7) - 1])}</span><span class="value">${fh(tot)}</span>${hasNorm() ? ` / ${fh(nm)}` : ''} h</span>${cb != null ? `<span><span class="label">Komp</span><span class="value">${sgn(cb)}</span> h</span>` : ''}${(vi => vi ? `<span><span class="label">Sem<span class="hide-narrow">ester</span></span><span class="value">${fdays(vi.left)}</span> d</span>` : '')(vacInfo())}<span class="end hide-narrow">format ${FORMAT_VERSION} · lokalt</span>`;
+    $('#status').innerHTML = `<span><span class="label">${cap(MONL[+st.month.slice(5, 7) - 1])}</span><span class="value">${fh(tot)}</span>${hasNorm() ? ` / ${fh(nm)}` : ''} h</span>${cb != null ? `<span><span class="label">Komp</span><span class="value">${sgn(cb)}</span> h</span>` : ''}${(vi => vi ? `<span><span class="label">Sem<span class="hide-narrow">ester</span></span><span class="value">${vi.view === 'split' && vi.savedLeft > 0.05 && vi.left >= 0 ? fdays(vi.yearLeft) + ' + ' + fdays(vi.savedLeft) : fdays(vi.left)}</span> d</span>` : '')(vacInfo())}<span class="end hide-narrow">format ${FORMAT_VERSION} · lokalt</span>`;
     return;
   }
   const wk = st.view === 'day' ? monday(st.day) : st.week, days = visDays(wk), { w } = isoWeek(wk);
   const tot = days.reduce((s, d) => s + dayTotal(d), 0), nm = days.reduce((s, d) => s + norm(d), 0);
   const cb = compBalance(), ws = weekState(wk);
-  $('#status').innerHTML = `<span><span class="label">Vecka ${w}</span><span class="value">${fh(tot)}</span>${hasNorm() ? ` / ${fh(nm)}` : ''} h${ws.signed ? ' · signerad' : ws.checked ? ' · avcheckad' : ''}</span>${cb != null ? `<span><span class="label">Komp</span><span class="value">${sgn(cb)}</span> h</span>` : ''}${(vi => vi ? `<span><span class="label">Sem<span class="hide-narrow">ester</span></span><span class="value">${fdays(vi.left)}</span> d</span>` : '')(vacInfo())}<span class="hide-narrow"><span class="label">Poster</span><span class="value">${live().length}</span></span><span class="hide-narrow"><span class="label">Händelser</span><span class="value">${log().length}</span></span><span class="end hide-narrow">format ${FORMAT_VERSION} · lokalt</span>`;
+  $('#status').innerHTML = `<span><span class="label">Vecka ${w}</span><span class="value">${fh(tot)}</span>${hasNorm() ? ` / ${fh(nm)}` : ''} h${ws.signed ? ' · signerad' : ws.checked ? ' · avcheckad' : ''}</span>${cb != null ? `<span><span class="label">Komp</span><span class="value">${sgn(cb)}</span> h</span>` : ''}${(vi => vi ? `<span><span class="label">Sem<span class="hide-narrow">ester</span></span><span class="value">${vi.view === 'split' && vi.savedLeft > 0.05 && vi.left >= 0 ? fdays(vi.yearLeft) + ' + ' + fdays(vi.savedLeft) : fdays(vi.left)}</span> d</span>` : '')(vacInfo())}<span class="hide-narrow"><span class="label">Poster</span><span class="value">${live().length}</span></span><span class="hide-narrow"><span class="label">Händelser</span><span class="value">${log().length}</span></span><span class="end hide-narrow">format ${FORMAT_VERSION} · lokalt</span>`;
 }
 
 /* ───────────── Förslag (utan AI: ur egna anteckningar i projektet) ───────────── */
@@ -2622,7 +2681,8 @@ function weekStateMenu(btn) {
 /* ───────────── Anställning och kompsaldo ───────────── */
 function personDlg() {
   const p = person();
-  const v = p.vacation || { perYear: 25, yearStart: '04-01', carried: 0 }, vi = vacInfo();
+  const v = p.vacation || { perYear: 25, yearStart: '04-01' }, vi = vacInfo(), ru = vacRules(), ys = v.yearStart || '04-01', cy = +semStart(today(), ys).slice(0, 4);
+  const nIn = Math.max(ru.years, 1), inAt = a => { const x = vi?.saved.find(q => q.age === a); return x ? x.days : 0; };
   openDlg(`<h2 id="dlgTitle">Anställning, saldo och semester</h2><p>Normtiden kommer från bokens normtid per veckodag. Timanställda har ingen normtid, inget kompsaldo och inget semesterkonto.</p><form class="form" id="psForm" novalidate>
    <div class="fld"><label for="psEmp">Anställningsform</label><select id="psEmp"><option value="full" ${p.employment === 'full' ? 'selected' : ''}>Heltid</option><option value="part" ${p.employment === 'part' ? 'selected' : ''}>Deltid</option><option value="hourly" ${p.employment === 'hourly' ? 'selected' : ''}>Timanställd</option></select></div>
    <div class="fld" id="psPctF" ${p.employment === 'part' ? '' : 'hidden'}><label for="psPct">Omfattning, % av heltid</label><input id="psPct" inputmode="numeric" value="${p.pct ?? 100}"></div>
@@ -2632,8 +2692,22 @@ function personDlg() {
    <h3 class="fld full dsub" data-norm>Semester</h3>
    <div class="fld" data-norm><label for="psVac">Semesterdagar per år</label><input id="psVac" inputmode="numeric" value="${v.perYear}"></div>
    <div class="fld" data-norm><label for="psVacY">Semesteråret börjar</label><select id="psVacY"><option value="04-01" ${v.yearStart === '04-01' ? 'selected' : ''}>1 april (semesterlagen)</option><option value="01-01" ${v.yearStart === '01-01' ? 'selected' : ''}>1 januari (kalenderår)</option></select></div>
-   <div class="fld" data-norm><label for="psVacC">Sparade dagar in i året</label><input id="psVacC" inputmode="decimal" value="${fdays(+v.carried || 0)}"></div>
-   <div class="fld" data-norm><span class="lbl">I år</span><div class="vacnow">${vi ? `<b class="mono">${fdays(vi.left)}</b> dagar kvar · uttaget ${fdays(vi.taken)}${vi.planned > 0.05 ? ` · planerat ${fdays(vi.planned)}` : ''}` : '–'}</div></div>
+   <div class="fld full" data-norm><span class="lbl">Semesteråret ${vi ? vi.label : ''}</span><div class="vacnow">${vi ? vacText(vi, true) : '–'}</div></div>
+   ${vi && vi.saved.length ? `<div class="fld full" data-norm><table class="dtab vactab"><thead><tr><th>Sparade dagar</th><th class="r">Vid årets början</th><th class="r">Kvar</th><th>Tas ut senast</th></tr></thead><tbody>${vi.saved.map(x => `<tr><td>År ${x.age} <span class="muted">· från ${x.label}</span></td><td class="r mono">${fdays(x.days)}</td><td class="r mono">${fdays(x.left)}</td><td>${ydate(x.last)}${x.age === ru.years ? ' <span class="st-wait">sista året</span>' : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}
+   ${vi && vi.paid.length ? `<p class="small muted fld full" data-norm style="margin:0">Vid årsskiftet betalades ${fdays(vi.paid.reduce((a, x) => a + x.days, 0))} dagar ut som semesterlön (${vi.paid.map(x => `${fdays(x.days)} från ${semLabel(x.y, ys)}${x.why === 'old' ? ', för gamla' : ''}`).join('; ')}).</p>` : ''}
+   <details class="fld full vacdet" data-norm><summary>Ändra sparade dagar vid början av ${semLabel(cy, ys)}</summary>
+    <p class="small muted" style="margin:6px 0 8px">Ange hur många sparade dagar du hade med dig in i semesteråret, per år de sparades. Därefter räknar Sisyfos själv vid varje årsskifte.</p>
+    <div class="vacin">${Array.from({ length: nIn }, (_, i) => `<div class="fld"><label for="psSv${i}">År ${i + 1} <span class="muted">· ${semLabel(cy - 1 - i, ys)}</span></label><input id="psSv${i}" class="mono" inputmode="decimal" value="${fdays(inAt(i + 1))}" data-was="${fdays(inAt(i + 1))}"></div>`).join('')}</div>
+   </details>
+   <details class="fld full vacdet" data-norm><summary>Regler för sparad semester och visning</summary>
+    <p class="small muted" style="margin:6px 0 8px">Semesterlagen: minst 20 dagar ska tas ut varje år – bara dagar utöver dem får sparas. Många kollektivavtal tillåter högst 5 sparade dagar per år, och sparade dagar ska tas ut inom 5 år. Årets dagar tas ut först, sedan de äldsta sparade. Dagar som inte får sparas betalas ut som semesterlön. Reglerna gäller hela boken.</p>
+    <div class="vacin">
+     <div class="fld"><label for="psKeep">Ska tas ut varje år, dagar</label><input id="psKeep" class="mono" inputmode="numeric" value="${ru.keep}"></div>
+     <div class="fld"><label for="psSpy">Högst sparade per år, dagar</label><input id="psSpy" class="mono" inputmode="numeric" value="${ru.savePerYear}"></div>
+     <div class="fld"><label for="psYrs">Sparade tas ut inom, år</label><input id="psYrs" class="mono" inputmode="numeric" value="${ru.years}"></div>
+     <div class="fld"><label for="psView">Visa semestern</label><select id="psView"><option value="pot" ${ru.view !== 'split' ? 'selected' : ''}>Som en pott</option><option value="split" ${ru.view === 'split' ? 'selected' : ''}>Årets och sparade för sig</option></select></div>
+    </div>
+   </details>
    <p class="small muted fld full" data-norm style="margin:0">Semester registreras på projektet Frånvaro. En dag motsvarar din normtid den dagen, så en halv dag räknas som 0,5.</p>
    <div class="err fld full" id="psErr"></div>
    <div class="dlg-foot fld full"><button type="button" class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" type="submit">${ic('check')}Spara</button></div></form>`);
@@ -2645,10 +2719,19 @@ function savePerson() {
   if (emp === 'part' && !(pct > 0 && pct <= 100)) { $('#psErr').textContent = 'Ange omfattningen som 1–100 %.'; return; }
   if (emp !== 'hourly' && !isFinite(bin)) { $('#psErr').textContent = 'Ingående saldo ska vara ett tal, till exempel 12,5 eller -4.'; return; }
   if (emp !== 'hourly' && !/^\d{4}-\d{2}-\d{2}$/.test(start)) { $('#psErr').textContent = 'Välj ett startdatum.'; return; }
-  const vac = +$('#psVac').value.replace(',', '.'), vc = +$('#psVacC').value.replace(',', '.').replace('−', '-');
-  if (emp !== 'hourly' && !(vac >= 0 && vac <= 60)) { $('#psErr').textContent = 'Ange antal semesterdagar per år, till exempel 25.'; return; }
-  if (emp !== 'hourly' && !isFinite(vc)) { $('#psErr').textContent = 'Sparade dagar ska vara ett tal, till exempel 3 eller 0.'; return; }
-  Object.assign(p, { employment: emp, pct: emp === 'part' ? pct : p.pct ?? 100 }, emp === 'hourly' ? {} : { balanceIn: bin, balanceStart: start, vacation: { perYear: vac, yearStart: $('#psVacY').value, carried: vc } });
+  const nr = id => +($(id)?.value ?? '').replace(/\s/g, '').replace(',', '.').replace('−', '-');
+  const vac = nr('#psVac'), sv = $$('#psForm [id^="psSv"]').map(x => nr('#' + x.id)), svChanged = $$('#psForm [id^="psSv"]').some(x => x.value.trim() !== x.dataset.was);
+  const ru = { keep: nr('#psKeep'), savePerYear: nr('#psSpy'), years: Math.round(nr('#psYrs')), view: $('#psView').value };
+  if (emp !== 'hourly') {
+    if (!(vac >= 0 && vac <= 60)) { $('#psErr').textContent = 'Ange antal semesterdagar per år, till exempel 25.'; return; }
+    if (sv.some(x => !(x >= 0 && x <= 60))) { $('#psErr').textContent = 'Sparade dagar ska vara ett tal, till exempel 3 eller 0.'; $('#psSv0').closest('details').open = true; return; }
+    if (!(ru.keep >= 0 && ru.keep <= 60) || !(ru.savePerYear >= 0 && ru.savePerYear <= 60) || !(ru.years >= 1 && ru.years <= 10)) { $('#psErr').textContent = 'Reglerna ska vara tal – till exempel 20 dagar, 5 dagar och 5 år (1–10 år).'; $('#psKeep').closest('details').open = true; return; }
+  }
+  const ys = $('#psVacY').value, old = p.vacation || {};
+  let vacation = { perYear: vac, yearStart: ys, from: old.from || semStart(today(), ys), saved: old.saved || [] };
+  if (svChanged || ys !== old.yearStart) { while (sv.length && !(sv.at(-1) > 0)) sv.pop(); vacation = { perYear: vac, yearStart: ys, from: semStart(today(), ys), saved: sv }; }
+  if (emp !== 'hourly') R().book.vacation = ru;
+  Object.assign(p, { employment: emp, pct: emp === 'part' ? pct : p.pct ?? 100 }, emp === 'hourly' ? {} : { balanceIn: bin, balanceStart: start, vacation });
   save(); closeDlg(); renderMain(); renderPanel(); renderStatus(); toast('Anställning, saldo och semester sparade');
 }
 
@@ -2831,7 +2914,7 @@ function createProject() {
 /* ───────────── Ny bok: guide i fyra steg ─────────────
    Företaget → personal och arbetstid → projektnummer → klart. Inget sparas förrän man trycker Skapa boken. */
 const WIZ = ['Företaget', 'Personal och arbetstid', 'Projektnummer', 'Klart'];
-const wizDefaults = () => ({ company: '', name: '', orgNr: '', email: '', phone: '', web: '', address: '', logo: null, team: 'solo', emp: 'full', pct: 100, person: '', initials: '', dayH: 8, vac: 25, vacStart: '04-01', roleName: 'Konsult', rate: 900, vat: 25, fmt: DEF_NUMFMT, start: 1, idle: 90 });
+const wizDefaults = () => ({ company: '', name: '', orgNr: '', email: '', phone: '', web: '', address: '', logo: null, team: 'solo', emp: 'full', pct: 100, person: '', initials: '', dayH: 8, vac: 25, vacStart: '04-01', savedVac: 'no', sv1: 0, sv2: 0, sv3: 0, sv4: 0, sv5: 0, roleName: 'Konsult', rate: 900, vat: 25, fmt: DEF_NUMFMT, start: 1, idle: 90 });
 function newBookWizard() { st.wiz = { step: 0, d: wizDefaults() }; wizRender(); }
 const wf = (key, label, o = {}) => { const v = st.wiz.d[key]; return `<div class="fld${o.full ? ' full' : ''}"${o.hide ? ' data-hide="' + o.hide + '"' : ''}><label for="w_${key}">${label}</label>${o.ta ? `<textarea id="w_${key}" class="ta" data-w="${key}" rows="3" placeholder="${o.ph || ''}">${esc(v)}</textarea>` : `<input id="w_${key}" data-w="${key}" value="${esc(v)}" ${o.num ? 'inputmode="decimal" data-num="1" class="mono"' : ''} ${o.type ? `type="${o.type}"` : ''} placeholder="${o.ph || ''}" autocomplete="off">`}${o.hint ? `<span class="fld-hint">${o.hint}</span>` : ''}</div>`; };
 const wRadio = (key, opts) => `<div class="wz-opts">${opts.map(([v, t, sub]) => `<label class="wz-opt"><input type="radio" name="w_${key}" data-w="${key}" value="${v}" ${String(st.wiz.d[key]) === String(v) ? 'checked' : ''}><span><b>${t}</b>${sub ? `<small>${sub}</small>` : ''}</span></label>`).join('')}</div>`;
@@ -2852,6 +2935,8 @@ function wizRender() {
       + `<div class="fld full"><span class="lbl" data-team-lbl>${d.team === 'team' ? 'Huvudsaklig anställningsform i företaget' : 'Din arbetstid'}</span>${wRadio('emp', [['full', 'Heltid', 'Normtid varje dag, kompsaldo och semester'], ['part', 'Deltid', 'En andel av normtiden'], ['hourly', 'Timanställd', 'Ingen normtid, inget kompsaldo eller semesterkonto']])}${d.team === 'team' ? '<span class="fld-hint">Gäller dig från början och blir standard för medarbetare som läggs till senare.</span>' : ''}</div>`
       + wf('pct', 'Omfattning, % av heltid', { num: 1, hide: 'part' }) + wf('dayH', 'Normal arbetsdag, timmar', { num: 1, hide: 'norm', hint: 'Måndag–fredag. Röda dagar räknas bort automatiskt.' })
       + wf('vac', 'Semesterdagar per år', { num: 1, hide: 'norm' }) + `<div class="fld" data-hide="norm"><label for="w_vacStart">Semesteråret börjar</label><select id="w_vacStart" data-w="vacStart"><option value="04-01" ${d.vacStart === '04-01' ? 'selected' : ''}>1 april (semesterlagen)</option><option value="01-01" ${d.vacStart === '01-01' ? 'selected' : ''}>1 januari (kalenderår)</option></select></div>`
+      + `<div class="fld full" data-hide="norm"><span class="lbl">Har du sparad semester från tidigare år?</span>${wRadio('savedVac', [['no', 'Nej'], ['yes', 'Ja', 'Ange dagarna per år – sedan räknar Sisyfos själv']])}</div>`
+      + [1, 2, 3, 4, 5].map(n => wf('sv' + n, `Sparade år ${n} · ${semLabel(+semStart(today(), d.vacStart).slice(0, 4) - n, d.vacStart)}`, { num: 1, hide: 'saved' })).join('')
       + `<h3 class="fld full dsub">Timpris</h3>` + wf('roleName', 'Din roll', { ph: 'Arkitekt, konsult …' }) + wf('rate', 'Timpris, kr exkl. moms', { num: 1 }) + wf('vat', 'Momssats i rapporter, %', { num: 1 })
       + `<p class="small muted fld" style="margin:0;align-self:end">Fler roller och priser per projekt lägger du till under Inställningar.</p>`;
   } else if (step === 2) {
@@ -2874,7 +2959,7 @@ function wizCollect() {
   const d = st.wiz.d;
   for (const el of $$('#wzForm [data-w]')) { if (el.type === 'radio' && !el.checked) continue; d[el.dataset.w] = el.value; }
 }
-function wizSync() { const d = st.wiz.d; $$('#wzForm [data-hide]').forEach(x => x.hidden = x.dataset.hide === 'part' ? d.emp !== 'part' : x.dataset.hide === 'norm' ? d.emp === 'hourly' : false); }
+function wizSync() { const d = st.wiz.d; $$('#wzForm [data-hide]').forEach(x => x.hidden = x.dataset.hide === 'part' ? d.emp !== 'part' : x.dataset.hide === 'norm' ? d.emp === 'hourly' : x.dataset.hide === 'saved' ? d.emp === 'hourly' || d.savedVac !== 'yes' : false); }
 const initialsFrom = n => n.trim().split(/\s+/).map(w => w[0] || '').join('').slice(0, 3).toUpperCase();
 function wizValidate() {
   const d = st.wiz.d, step = st.wiz.step, num = v => +String(v).replace(/\s/g, '').replace(',', '.');
@@ -2883,6 +2968,7 @@ function wizValidate() {
     if (d.emp === 'part' && !(num(d.pct) > 0 && num(d.pct) <= 100)) return ['Ange omfattningen som 1–100 %.', 'w_pct'];
     if (d.emp !== 'hourly' && !(num(d.dayH) > 0 && num(d.dayH) <= 24)) return ['Ange en normal arbetsdag i timmar, till exempel 8.', 'w_dayH'];
     if (d.emp !== 'hourly' && !(num(d.vac) >= 0 && num(d.vac) <= 60)) return ['Ange semesterdagar per år, till exempel 25.', 'w_vac'];
+    if (d.emp !== 'hourly' && d.savedVac === 'yes') for (const n of [1, 2, 3, 4, 5]) if (!(num(d['sv' + n] || 0) >= 0 && num(d['sv' + n] || 0) <= 60)) return ['Sparade dagar ska vara ett tal, till exempel 5 eller 0.', 'w_sv' + n];
     if (!(num(d.rate) >= 0)) return ['Timpriset ska vara ett tal i kronor.', 'w_rate'];
     if (!(num(d.vat) >= 0 && num(d.vat) <= 100)) return ['Ange momssatsen som 0–100.', 'w_vat'];
     for (const k of ['pct', 'dayH', 'vac', 'rate', 'vat']) d[k] = num(d[k]);
@@ -2897,14 +2983,14 @@ function wizNext(dir) {
   st.wiz.step = Math.max(0, Math.min(WIZ.length - 1, st.wiz.step + dir)); wizRender();
 }
 function createFromWizard() {
-  const d = st.wiz.d, b = emptyBook(), reg = b.register, B = reg.book, P0 = reg.people[0], f = wizNum();
+  const d = st.wiz.d, b = emptyBook(), reg = b.register, B = reg.book, P0 = reg.people[0], f = wizNum(), num = v => +String(v).replace(/\s/g, '').replace(',', '.');
   Object.assign(B, { name: d.name.trim() || d.company.trim() || 'Min bok', company: d.company.trim(), orgNr: d.orgNr.trim(), email: d.email.trim(), phone: d.phone.trim(), web: d.web.trim(), address: d.address.trim(), vatRate: d.vat, numberFormat: d.fmt.trim() || DEF_NUMFMT, idleDays: +d.idle, team: d.team, defaultEmployment: d.emp });
   if (d.logo) B.logo = d.logo;
   if (d.start > 1 && f.serial) B.serialStart = { re: f.re, n: d.start };
   const dh = d.emp === 'hourly' ? 8 : d.dayH; B.norm = { 0: 0, 1: dh, 2: dh, 3: dh, 4: dh, 5: dh, 6: 0 };
   reg.roles[0].name = d.roleName.trim() || 'Konsult'; reg.roles[0].rate = d.rate;
   const nm = d.person.trim() || 'Jag';
-  Object.assign(P0, { name: nm, initials: (d.initials.trim() || initialsFrom(nm)).toUpperCase().slice(0, 4), employment: d.emp, pct: d.emp === 'part' ? d.pct : 100, vacation: { perYear: d.vac, yearStart: d.vacStart, carried: 0 } });
+  Object.assign(P0, { name: nm, initials: (d.initials.trim() || initialsFrom(nm)).toUpperCase().slice(0, 4), employment: d.emp, pct: d.emp === 'part' ? d.pct : 100, vacation: { perYear: num(d.vac), yearStart: d.vacStart, from: semStart(today(), d.vacStart), saved: d.emp !== 'hourly' && d.savedVac === 'yes' ? (a => { while (a.length && !(a.at(-1) > 0)) a.pop(); return a; })([1, 2, 3, 4, 5].map(n => num(d['sv' + n] || 0) || 0)) : [] } });
   st.wiz = null; replaceBook(b, 'Före ny bok');
   toast(`${B.name} är skapad – lägg till ditt första projekt med + Lägg till rad`);
 }
@@ -4145,7 +4231,7 @@ function personSummary(d) {
   const s = [['Totalt', fh(d.tot) + ' h'], ['Debiterbart', fh(d.bill) + ' h'], ['Internt', fh(d.intern) + ' h'], ['Frånvaro', fh(d.abs) + ' h']];
   if (d.hn) s.push(['Normtid', fh(d.norm) + ' h'], ['Periodens saldo', sgn(d.bal) + ' h'], ['Kompsaldo vid periodens slut', sgn(d.comp) + ' h']);
   const work = d.bill + d.intern, k = billKpi(d.bill, work, d.norm); if (d.hn) s.push(['Debiteringsgrad (av normtid)', k.grad != null ? fpct(k.grad) : '–']); s.push(['Debiterbar närvaro (av arbetad tid)', k.pres != null ? fpct(k.pres) : '–']);
-  if (d.vac) s.push(['Semester kvar i semesteråret', `${fdays(d.vac.left)} av ${fdays(d.vac.total)} dagar`]);
+  if (d.vac) { s.push(['Semester kvar i semesteråret', `${fdays(d.vac.left)} av ${fdays(d.vac.total)} dagar${d.vac.savedStart > 0.05 ? ` (varav ${fdays(d.vac.savedStart)} sparade)` : ''}`]); if (d.vac.view === 'split') for (const x of d.vac.saved) if (x.left > 0.05) s.push([`Sparade från ${x.label} (år ${x.age})`, `${fdays(x.left)} dagar, tas ut senast ${ydate(x.last)}`]); }
   return s;
 }
 function personPreview(d, label) {
@@ -4224,7 +4310,7 @@ document.addEventListener('change', ev => {
   if (t.id === 's_idle') { R().book.idleDays = +t.value; save(); flashSaved(t); return; }
   if (t.id === 'setLogo') { processLogo(t.files[0]); return; }
   if (t.id === 'wzLogo') { const f = t.files[0]; if (!f) return; wizCollect(); logoFrom(f).then(lg => { st.wiz.d.logo = lg; wizRender(); }, () => toast('Bilden gick inte att läsa – prova en PNG eller JPEG')); return; }
-  if (t.matches('#wzForm [data-w]')) { wizCollect(); if (t.dataset.w === 'emp' || t.dataset.w === 'team') { if (t.dataset.w === 'team') { wizRender(); return; } wizSync(); } return; }
+  if (t.matches('#wzForm [data-w]')) { wizCollect(); if (t.dataset.w === 'emp' || t.dataset.w === 'team' || t.dataset.w === 'savedVac' || t.dataset.w === 'vacStart') { if (t.dataset.w === 'team' || t.dataset.w === 'vacStart') { wizRender(); return; } wizSync(); } return; }
   if (t.id === 'cuInvTog') { $('#cuInvF').hidden = !t.checked; if (t.checked) $('#cuInv').focus(); return; }
   if (t.id === 'pjInt') { syncProjDlg(); return; }
   const r = st.rep;
