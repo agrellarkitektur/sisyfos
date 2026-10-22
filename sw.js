@@ -33,7 +33,8 @@ self.addEventListener('fetch', ev => {
     ev.respondWith((async () => {
       const c = await caches.open(CACHE);
       try {
-        const res = await timeout(fetch(req, { cache: 'no-cache' }), 4000);
+        // Ny begäran (inte navigeringsbegäran med extra inställningar – det tillåter inte alla webbläsare)
+        const res = await timeout(fetch(new Request(url.href, { cache: 'no-cache', credentials: 'same-origin' })), 4000);
         if (res.ok) c.put('./index.html', res.clone());
         return res;
       } catch (_) {
