@@ -1,0 +1,36 @@
+# Publicerar appen på webbhotellet via FTPS vid varje push till main (och för hand).
+# Aktiveras först när hemligheterna finns: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD
+# och frivilligt FTP_DIR (standard /sisyfos/) och FTP_PROTOCOL (standard ftps).
+name: Publicera på webbhotellet
+on:
+  push:
+    branches: [main]
+    paths: ['index.html', 'feedback.php', 'sw.js', 'manifest.webmanifest', '*.png', 'icon.svg']
+  workflow_dispatch:
+concurrency: deploy
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HAR_FTP: ${{ secrets.FTP_SERVER != '' && secrets.FTP_USERNAME != '' && secrets.FTP_PASSWORD != '' }}
+    steps:
+      - name: Hoppa över utan hemligheter
+        if: env.HAR_FTP != 'true'
+        run: echo "::notice::FTP-hemligheterna saknas – inget publiceras."
+      - uses: actions/checkout@v4
+        if: env.HAR_FTP == 'true'
+      - name: Samla filerna
+        if: env.HAR_FTP == 'true'
+        run: |
+          mkdir -p publicera
+          cp index.html feedback.php sw.js manifest.webmanifest icon.svg favicon-32.png icon-192.png icon-512.png icon-maskable-512.png apple-touch-icon.png publicera/
+      - uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        if: env.HAR_FTP == 'true'
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ secrets.FTP_PROTOCOL || 'ftps' }}
+          server-dir: ${{ secrets.FTP_DIR || '/sisyfos/' }}
+          local-dir: ./publicera/
+          dangerous-clean-slate: false

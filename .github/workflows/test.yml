@@ -1,0 +1,20 @@
+# Kontrollerar att alla gamla böcker i test/bocker går att öppna i den nya versionen.
+name: Test – gamla böcker öppnas
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install playwright && python -m playwright install --with-deps chromium
+      - name: Öppna varje bok
+        run: |
+          python -m http.server 8765 >/dev/null 2>&1 &
+          sleep 1
+          python test/oppna_gamla_bocker.py

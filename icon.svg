@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <style>
+    .bg{fill:#fbfcfc;stroke:#dce1e4;stroke-width:8}
+    .slope{stroke:#1d2328;stroke-width:30;stroke-linecap:round;fill:none}
+    .stone{fill:#a86b12}
+    @media (prefers-color-scheme:dark){.bg{fill:#1d2226;stroke:#2c3338}.slope{stroke:#e3e7ea}.stone{fill:#e3a94a}}
+  </style>
+  <rect class="bg" x="20" y="20" width="472" height="472" rx="112"/>
+  <g transform="translate(0 -21)">
+    <path class="slope" d="M104 392 408 179.2"/>
+    <circle class="stone" cx="238.4" cy="227.2" r="60"/>
+  </g>
+</svg>

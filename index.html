@@ -7,6 +7,13 @@
 <meta name="description" content="Sisyfos – tidrapport och projektdagbok för en- och fåmansföretag. Körs helt lokalt i webbläsaren.">
 <meta name="theme-color" content="#fbfcfc" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1d2226" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sisyfos">
 <style>
 /* Typsnitten är inbyggda (SIL Open Font License 1.1): Archivo © The Archivo Project Authors, IBM Plex Mono © IBM Corp.
    Inga anrop till Google eller någon annan server. Bara latinska tecken (å ä ö é ü – …). */
@@ -19,7 +26,7 @@
 :root{
   --paper:#f3f5f6; --chrome:#fbfcfc; --ink:#1d2328; --muted:#5d666e; --rule:#dce1e4; --faint:#e9edef;
   --accent:#a86b12; --accent-ink:#8a5608; --accent-soft:#f4e7d1;
-  --ok:#3f7d4e; --warn:#c2631e; --warn-ink:#a3480f; --warn-soft:#fbeee3; --alarm:#b3261e; --alarm-ink:#9c1f18; --alarm-soft:#fbe9e7;
+  --ok:#3f7d4e; --warn:#c2631e; --warn-ink:#a3480f; --warn-soft:#fbeee3; --alarm:#b3261e; --alarm-ink:#9c1f18; --alarm-soft:#fbe9e7; --due:#b4574f; --due-ink:#9a4740; --due-soft:#f7edeb;
   --p0:#3d6fb6; --p1:#2f8a6a; --p2:#8a5cc2; --p3:#c0573c; --p4:#2a8b9c; --p5:#b8487a; --p6:#6f7f2e; --p7:#a7741a; --pint:#7d878e; --pabs:#5f7d8c;
   --scroll:#cdd4d8; --scroll-h:#aeb7bd; --q-base:color-mix(in srgb,#a86b12 30%,#dce1e4); --q-pulse:#c28a3a; --q-hi:#e2bf86;
   --shadow:0 14px 36px rgb(20 28 34 / .16);
@@ -30,14 +37,14 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --paper:#161a1d; --chrome:#1d2226; --ink:#e3e7ea; --muted:#99a2aa; --rule:#2c3338; --faint:#232a2e;
   --accent:#e3a94a; --accent-ink:#e8b562; --accent-soft:#3a2f1c;
-  --ok:#6fb27f; --warn:#e08a4e; --warn-ink:#f0a675; --warn-soft:#3a2618; --alarm:#e0675c; --alarm-ink:#f29a90; --alarm-soft:#3a1c19;
+  --ok:#6fb27f; --warn:#e08a4e; --warn-ink:#f0a675; --warn-soft:#3a2618; --alarm:#e0675c; --alarm-ink:#f29a90; --alarm-soft:#3a1c19; --due:#cf8279; --due-ink:#e4a8a0; --due-soft:#33221f;
   --p0:#7fa6e6; --p1:#63c19d; --p2:#b08ee6; --p3:#ec8e72; --p4:#5fc1d1; --p5:#e57fab; --p6:#a9bb5c; --p7:#e0ae4a; --pint:#8e979f; --pabs:#8fb0bf;
   --scroll:#3a4248; --scroll-h:#4c565d; --q-base:color-mix(in srgb,#e3a94a 18%,#2c3338); --q-pulse:#8a6a33; --q-hi:#a8814a;
   --shadow:0 14px 36px rgb(0 0 0 / .45); color-scheme:dark}}
 :root[data-theme="dark"]{
   --paper:#161a1d; --chrome:#1d2226; --ink:#e3e7ea; --muted:#99a2aa; --rule:#2c3338; --faint:#232a2e;
   --accent:#e3a94a; --accent-ink:#e8b562; --accent-soft:#3a2f1c;
-  --ok:#6fb27f; --warn:#e08a4e; --warn-ink:#f0a675; --warn-soft:#3a2618; --alarm:#e0675c; --alarm-ink:#f29a90; --alarm-soft:#3a1c19;
+  --ok:#6fb27f; --warn:#e08a4e; --warn-ink:#f0a675; --warn-soft:#3a2618; --alarm:#e0675c; --alarm-ink:#f29a90; --alarm-soft:#3a1c19; --due:#cf8279; --due-ink:#e4a8a0; --due-soft:#33221f;
   --p0:#7fa6e6; --p1:#63c19d; --p2:#b08ee6; --p3:#ec8e72; --p4:#5fc1d1; --p5:#e57fab; --p6:#a9bb5c; --p7:#e0ae4a; --pint:#8e979f; --pabs:#8fb0bf;
   --scroll:#3a4248; --scroll-h:#4c565d; --q-base:color-mix(in srgb,#e3a94a 18%,#2c3338); --q-pulse:#8a6a33; --q-hi:#a8814a;
   --shadow:0 14px 36px rgb(0 0 0 / .45); color-scheme:dark}
@@ -76,7 +83,8 @@ button{cursor:pointer}
 .badge{font-size:10.5px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink);border:1px solid currentColor;border-radius:4px;padding:1px 5px 0}
 .spacer{flex:1}
 .beta-btn{cursor:pointer;display:inline-flex;flex-direction:column;align-items:flex-start;gap:0;padding:3px 8px;line-height:1.05;background:transparent;font-family:var(--font-ui);border-radius:6px}
-.beta-btn b{font-size:10.5px;font-weight:700;letter-spacing:.1em}
+.beta-btn b{font-size:10.5px;font-weight:700;letter-spacing:.1em;white-space:nowrap}
+.beta-btn .v-num{font-family:var(--font-data);font-weight:500;letter-spacing:0;opacity:.8}
 .beta-btn small{font-size:9.5px;font-weight:500;letter-spacing:.02em;text-transform:none;opacity:.85}
 .beta-btn:hover{background:var(--accent-soft)}
 .about-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
@@ -160,6 +168,31 @@ button{cursor:pointer}
 .save{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);white-space:nowrap}
 .save .d{width:8px;height:8px;border-radius:50%;background:var(--ok)}
 .save.err .d{background:var(--alarm)}
+.save.warn .d{background:var(--warn)}
+.save[data-act]{cursor:pointer;border-radius:6px;padding:3px 6px;margin:0 -6px}
+.save[data-act]:hover{background:var(--faint);color:var(--ink)}
+.safe-box{margin:4px 0 14px}
+.sf-grid{display:flex;flex-direction:column;border:1px solid var(--rule);border-radius:10px;overflow:hidden;background:var(--chrome)}
+.sf-row{display:grid;grid-template-columns:minmax(150px,200px) minmax(0,1fr) auto;gap:6px 14px;align-items:center;padding:9px 12px;border-top:1px solid var(--rule);font-size:13px}
+.sf-row:first-child{border-top:0}
+.sf-row .k{color:var(--muted);font-weight:550;font-size:12.5px}
+.sf-row .v .ic{width:15px;height:15px;vertical-align:-3px;color:var(--ok)}
+.sf-row .v .neg{color:var(--warn-ink)}
+.sf-row>.btn,.sf-row>span+.btn{justify-self:end}
+.sf-row:has(> .btn ~ .btn){grid-template-columns:minmax(150px,200px) minmax(0,1fr) auto auto auto}
+.snaps{list-style:none;margin:6px 0 0;padding:0;border:1px solid var(--rule);border-radius:10px;overflow:hidden;background:var(--chrome)}
+.snaps li{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto auto;gap:4px 12px;align-items:center;padding:6px 8px 6px 12px;border-top:1px solid var(--rule);font-size:13px}
+.snaps li:first-child{border-top:0}
+.snaps .sn-w{font-family:var(--font-data);font-size:12.5px;white-space:nowrap}
+.snaps .sn-r{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.snaps .sn-s{font-size:11.5px;white-space:nowrap}
+@media (width <= 760px){
+  .sf-row,.sf-row:has(> .btn ~ .btn){grid-template-columns:1fr;gap:4px}
+  .sf-row>.btn{justify-self:start}
+  .snaps li{grid-template-columns:minmax(0,1fr) auto auto}
+  .snaps .sn-w{grid-column:1/-1}
+  .snaps .sn-s{display:none}
+}
 .hamb{display:none}
 /* Temaknappen visar läget man byter till: måne i ljust läge, sol i mörkt */
 .th-btn .th-sun{display:none}
@@ -796,7 +829,8 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 .runbox b{font-weight:620}
 .runbox.big{font-size:13.5px;padding:12px 14px}
 .neg{color:var(--alarm-ink)}
-.open-t{color:var(--alarm-ink);font-weight:650}
+.open-t{color:var(--warn-ink);font-weight:650}
+.open-t.due{color:var(--due-ink)}
 
 /* Listor: sök, filter och sortering */
 .list-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
@@ -828,8 +862,10 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 .money .k{font-size:10px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .money b{font:600 14px var(--font-data);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .money small{font:11px var(--font-ui);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.money .m-open.on{background:var(--alarm-soft);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--alarm) 45%,transparent)}
-.money .m-open.on .k,.money .m-open.on b{color:var(--alarm-ink)}
+.m-open.on,.k-open.on{--o:var(--due);--o-ink:var(--due-ink);--o-soft:var(--due-soft)}
+.m-open.on.cur,.k-open.on.cur{--o:var(--warn);--o-ink:var(--warn-ink);--o-soft:var(--warn-soft)}
+.money .m-open.on{background:var(--o-soft);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--o) 40%,transparent)}
+.money .m-open.on .k,.money .m-open.on b{color:var(--o-ink)}
 .money .m-done b{color:var(--ok)}
 .money .m-run b{color:var(--accent-ink)}
 .pc-foot{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -862,8 +898,8 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 .dp-kpi .k{font-size:10.5px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
 .dp-kpi b{font:600 19px var(--font-data);letter-spacing:-.01em}
 .dp-kpi small{font:11.5px var(--font-data);color:var(--muted)}
-.dp-kpi .k-open.on{background:var(--alarm-soft);border-color:color-mix(in srgb,var(--alarm) 55%,transparent)}
-.dp-kpi .k-open.on .k,.dp-kpi .k-open.on b{color:var(--alarm-ink)}
+.dp-kpi .k-open.on{background:var(--o-soft);border-color:color-mix(in srgb,var(--o) 45%,transparent)}
+.dp-kpi .k-open.on .k,.dp-kpi .k-open.on b{color:var(--o-ink)}
 .dp-kpi .k-done b{color:var(--ok)}
 .dp-bud{padding:12px 14px;border:1px solid var(--rule);border-radius:12px;background:var(--chrome)}
 .dp-cols{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:12px;align-items:start}
@@ -881,7 +917,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 .dtab tr.arch td{color:var(--muted)}
 .st-done{display:inline-flex;align-items:center;gap:4px;color:var(--ok);font-size:12px;font-weight:560}
 .st-done .ic{width:13px;height:13px}
-.st-open{display:inline-flex;align-items:center;gap:4px;color:var(--alarm-ink);font-size:12px;font-weight:620}
+.st-open{display:inline-flex;align-items:center;gap:4px;color:var(--due-ink);font-size:12px;font-weight:620}
 .ppl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .ppl li{display:flex;align-items:center;gap:10px}
 .ppl .r-text{flex:1;min-width:0}
@@ -927,6 +963,81 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 .dlg p.fld{margin:0;display:block}
 .alert.fld{flex-direction:row}
 .s-foot:empty{display:none}
+/* ───── 0.7: månadsvy ───── */
+.mfocus{display:flex;align-items:center;gap:10px;padding:6px 8px 6px 12px;border-radius:11px;background:var(--chrome);border:1px solid color-mix(in srgb,var(--pc) 50%,var(--rule));border-left:4px solid var(--pc);font-size:13px}
+.mfocus .dot{width:10px;height:10px;border-radius:50%;background:var(--pc);flex:none}
+.mfocus .txt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mcal{display:flex;flex-direction:column;gap:6px}
+.mrow{display:grid;grid-template-columns:62px repeat(var(--n),minmax(0,1fr));gap:6px}
+.mhead{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);text-align:center;padding:2px 0}
+.mhead>span{container-type:inline-size}
+.mhead .we{opacity:.75}
+.mhead .dn-s{display:none}
+@container (width < 92px){.mhead .dn-l{display:none}.mhead .dn-s{display:inline}}
+.mw-h{text-align:left;padding-left:8px}
+.mw{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;padding:6px 8px;border:1px solid transparent;border-radius:11px;background:transparent;color:var(--muted);font-size:11.5px;text-align:left;cursor:pointer;position:relative}
+.mw b{font-size:15px;font-weight:650;color:var(--ink);font-family:var(--font-data)}
+.mw .ic{position:absolute;top:7px;right:6px;width:14px;height:14px}
+.mw.checked .ic{color:var(--ok)}
+.mw.signed .ic{color:var(--muted)}
+.mw-dot{position:absolute;top:9px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--warn)}
+.mw-n{font-size:10.5px;opacity:.8}
+.mw:hover{background:var(--chrome);border-color:var(--rule);color:var(--ink)}
+.mc{--sh:var(--rule);display:flex;flex-direction:column;align-items:stretch;gap:4px;min-height:86px;padding:6px 8px 7px;border:1px solid var(--rule);border-radius:11px;background:var(--chrome);color:var(--ink);text-align:left;cursor:pointer;position:relative;min-width:0}
+.mc:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--rule))}
+.mc.out{background:transparent;border-style:dashed;opacity:.62}
+.mc.we{background:color-mix(in srgb,var(--chrome) 55%,var(--paper))}
+.mc.lk{background-image:repeating-linear-gradient(135deg,transparent 0 7px,color-mix(in srgb,var(--rule) 45%,transparent) 7px 8px)}
+.mc.today{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.mc.sel{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.mc-top{display:flex;align-items:baseline;gap:6px;min-width:0}
+.mc-d{font-weight:650;font-size:13px;white-space:nowrap}
+.mc-d small{font-weight:500;color:var(--muted);font-size:10.5px}
+.mc.red .mc-d,.mc.we .mc-d{color:var(--alarm-ink)}
+.mc.we:not(.red) .mc-d{color:var(--muted)}
+.mc-hol{font-size:10.5px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mc-nn{position:absolute;top:7px;right:7px;width:8px;height:8px;border-radius:50%;border:1.8px solid var(--warn)}
+.mc-h{font-size:17px;font-weight:550;line-height:1.1;min-height:19px}
+.mc-h small{font-size:11px;color:var(--muted);font-weight:400}
+.mcal.focus .mc.mine{border-color:color-mix(in srgb,var(--pc) 55%,var(--rule));box-shadow:inset 3px 0 0 var(--pc)}
+.mcal.focus .mc.mine.sel{box-shadow:inset 3px 0 0 var(--pc),inset 0 0 0 1px var(--ink)}
+.mc-bar{position:relative;display:flex;height:7px;border-radius:4px;background:var(--faint);overflow:hidden;margin-top:auto}
+.mc-bar i{display:block;height:100%;background:color-mix(in srgb,var(--pc) 70%,var(--chrome))}
+.mc-bar i.dim{background:color-mix(in srgb,var(--pc) 16%,var(--faint))}
+.mc-bar i+i{box-shadow:inset 1px 0 0 var(--chrome)}
+.mc-norm{position:absolute;top:-1px;bottom:-1px;width:2px;margin-left:-1px;background:var(--ink);opacity:.45}
+.mc-bal{position:absolute;right:8px;bottom:14px;font-size:11px;color:var(--muted)}
+.mc-bal.neg{color:var(--warn-ink)}.mc-bal.pos{color:var(--ok)}
+.msum .mtab{margin-top:4px}
+.mtab tr.on td{background:color-mix(in srgb,var(--pc) 10%,transparent)}
+.mp-b{display:inline-flex;align-items:center;gap:7px;text-align:left}
+.mp-b .dot{width:9px;height:9px;border-radius:50%;background:var(--pc);flex:none}
+.mp-b .r-num{font-family:var(--font-data);font-size:12px;color:var(--muted);margin-right:6px}
+.st-b{text-decoration:none}
+.m-open-w{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:10px 6px 0;color:var(--warn-ink)}
+.m-open-w .ic{width:15px;height:15px}
+.app.compact .mc{min-height:62px;padding:4px 6px 5px;gap:2px}
+.app.compact .mc-h{font-size:14px}
+@media (width <= 760px){
+  .mrow{grid-template-columns:34px repeat(var(--n),minmax(0,1fr));gap:3px}
+  .mw{padding:4px 2px;align-items:center}
+  .mw b{font-size:12px}
+  .mw .mono,.mw-n,.mw .ic,.mw-dot{display:none}
+  .mw.checked b,.mw.signed b{color:var(--ok)}
+  .mw.open b{color:var(--warn-ink)}
+  .mc{min-height:58px;padding:4px 4px 5px;gap:2px;border-radius:8px}
+  .mc-d{font-size:12px}.mc-d small,.mc-hol,.mc-bal{display:none}
+  .mc-h{font-size:12.5px;min-height:15px}
+  .mc-h small{display:none}
+  .mc-nn{top:5px;right:4px;width:6px;height:6px;border-width:1.5px}
+  .mc-bar{height:5px}
+}
+/* Orange ring för tider utan anteckning i tabeller (stod förut fel placerad, längst upp till höger på sidan) */
+.dtab .mo-w{position:static;display:inline-block;vertical-align:-1px;margin-left:4px}
+.p-nav{display:flex;flex-wrap:wrap;gap:6px}
+/* Tre vyer (vecka/dag/månad) får plats i huvudet: segmentet visar bara ikoner när det är trångt */
+@container (width < 1140px){.wk-head .seg .opt{display:none}.wk-head .seg button{padding:0 10px}}
+.sf-row select{height:32px;padding:0 8px;border:1px solid var(--rule);border-radius:8px;background:var(--paper);color:var(--ink);font:inherit;font-size:13px}
 </style>
 </head>
 <body>
@@ -942,7 +1053,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
     <div class="spacer"></div>
     <div class="save" id="saveState" role="status"><span class="d"></span><span class="t">Sparas i den här webbläsaren</span></div>
     <button class="icon-btn th-btn" data-act="theme" aria-label="Byt mellan ljust och mörkt tema"><svg class="ic th-moon" viewBox="0 0 24 24" aria-hidden="true"><title>Byt till mörkt läge</title><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><svg class="ic th-sun" viewBox="0 0 24 24" aria-hidden="true"><title>Byt till ljust läge</title><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg></button>
-    <button class="badge beta-btn" data-act="feedback" title="Skicka synpunkter på Sisyfos"><b>Beta</b><small>Skicka synpunkter</small></button>
+    <button class="badge beta-btn" data-act="feedback" id="alfaBtn" title="Sisyfos är en alfaversion – skicka synpunkter"><b>Alfa <span class="v-num">0.7.0</span></b><small>Skicka synpunkter</small></button>
   </header>
   <nav class="rail" id="rail" aria-label="Organisatör"></nav>
   <main class="main" id="main"></main>
@@ -964,7 +1075,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 
 /* ───────────── Hjälpfunktioner ───────────── */
 const FORMAT = 'sisyfos', FORMAT_VERSION = 6, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.6', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const APP_VERSION = '0.7.0', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
 const DOW = ['sön','mån','tis','ons','tor','fre','lör'];
@@ -1009,6 +1120,7 @@ const I = {
   plus: '<path d="M12 5v14M5 12h14"/>', minus: '<path d="M5 12h14"/>', x: '<path d="M6 6l12 12M18 6 6 18"/>',
   alert: '<path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4.5M12 17.2v.3"/>', check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   week: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M9 9.5v10M14.5 9.5v10"/>',
+  month: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M3.5 14.5h17M9.2 9.5v10M14.8 9.5v10"/>',
   day: '<rect x="5" y="4.5" width="14" height="15" rx="2"/><path d="M5 9.5h14M9 13h6M9 16h4"/>',
   search: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>',
   bolt: '<path d="M13 3 5 13.5h6L10 21l8-10.5h-6z"/>',
@@ -1041,7 +1153,7 @@ const ic = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hid
          + logs (en tidlogg per person – händelser med unika id).
    I v1 sparas båda i samma lagring, men de hålls isär så att de senare kan bli egna filer. */
 let S, E, IDX;
-const st = { page: 'tid', view: 'week', week: monday(today()), day: today(), sel: null, selDay: null, saved: null, saveErr: false };
+const st = { page: 'tid', view: 'week', week: monday(today()), day: today(), month: today().slice(0, 7), mproj: null, sel: null, selDay: null, saved: null, saveErr: false };
 
 function sampleBook() {
   const t = today(), mon = monday(t), now = new Date().toISOString();
@@ -1299,17 +1411,20 @@ const splitKey = k => k.split('|');
 function used(pId) { let s = 0; for (const e of E.values()) if (!e.deleted && e.projectId === pId && billable(e)) s += e.hours * e.rate; return s; }
 // Upparbetat, öppet och hanterat. Öppet = debiterbar tid i månader som inte är markerade som hanterade (inte fakturerade än).
 function pMoney(pId) {
-  const r = { h: 0, a: 0, oh: 0, oa: 0, hh: 0, ha: 0, last: null };
+  const r = { h: 0, a: 0, oh: 0, oa: 0, hh: 0, ha: 0, po: 0, poh: 0, last: null }, cm = ymOf(today()) + '-01';
   for (const e of E.values()) {
     if (e.deleted || e.projectId !== pId || !(e.hours > 0)) continue;
     if (!r.last || e.date > r.last) r.last = e.date;
     if (!billable(e)) continue;
     const a = e.hours * e.rate; r.h += e.hours; r.a += a;
-    if (R().handled[hKey(pId, e.date)]) { r.hh += e.hours; r.ha += a; } else { r.oh += e.hours; r.oa += a; }
+    if (R().handled[hKey(pId, e.date)]) { r.hh += e.hours; r.ha += a; } else { r.oh += e.hours; r.oa += a; if (e.date < cm) { r.poh += e.hours; r.po += a; } }
   }
   return r;
 }
-const sumMoney = list => list.reduce((s, m) => { for (const k of ['h', 'a', 'oh', 'oa', 'hh', 'ha']) s[k] += m[k]; if (m.last && (!s.last || m.last > s.last)) s.last = m.last; return s; }, { h: 0, a: 0, oh: 0, oa: 0, hh: 0, ha: 0, last: null });
+const sumMoney = list => list.reduce((s, m) => { for (const k of ['h', 'a', 'oh', 'oa', 'hh', 'ha', 'po', 'poh']) s[k] += m[k]; if (m.last && (!s.last || m.last > s.last)) s.last = m.last; return s; }, { h: 0, a: 0, oh: 0, oa: 0, hh: 0, ha: 0, po: 0, poh: 0, last: null });
+// Öppet: 'cur' (orange) = bara i innevarande månad, 'due' (röd) = äldre månader väntar på att hanteras/faktureras
+const openCls = m => m.oa > 0.5 ? (m.po > 0.5 ? ' on due' : ' on cur') : '';
+const openTip = m => m.oa > 0.5 ? (m.po > 0.5 ? `Öppet från tidigare månader: ${fkr(m.po)}, ${fh(m.poh)} h – dags att fakturera och markera som hanterat.` : `Öppet bara i ${MONL[new Date().getMonth()]}: faktureras vid månadsskiftet.`) : 'Inget öppet';
 // Aktiv eller inaktiv. Ett aktivt kundprojekt blir inaktivt av sig självt när ingen tid lagts på det på N dagar
 // (anges per projekt, standard i boken). Vilande (paused) = inaktivt satt för hand, avslutat = closed.
 const IDLE = [[30, 'en månad'], [60, 'två månader'], [90, 'tre månader'], [180, 'ett halvår'], [365, 'ett år'], [0, 'aldrig']];
@@ -1461,35 +1576,258 @@ function moveCell(key, toRk) {
   }
 }
 
-/* ───────────── Lagring (autospar) ───────────── */
-let saveT;
-function save() {
-  clearTimeout(saveT);
-  saveT = setTimeout(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(S)); st.saved = new Date(); st.saveErr = false; }
-    catch (e) { st.saveErr = true; }
-    renderSave();
-  }, 250);
+/* ───────────── Lagring (autospar) ─────────────
+   0.7: IndexedDB är huvudlagret. localStorage hålls som spegel i samma format som 0.6 (nyckeln sisyfos.bok),
+   så att boken finns kvar även om det ena lagret rensas. Vid start väljs det senast sparade.
+   Dessutom: ögonblicksbilder som kan återställas, beständig lagring, påminnelse om säkerhetskopia
+   och autospar till en vald mapp på datorn (Chrome/Edge på dator). Inget lämnar datorn. */
+const DB_NAME = 'sisyfos', SNAP_DAILY = 14, SNAP_EVENT = 12;
+let db = null, saveT, dirT, lastRaw = null;
+const bc = 'BroadcastChannel' in window ? new BroadcastChannel('sisyfos') : null;
+const tabId = uid();
+function idbOpen() {
+  return new Promise((res, rej) => {
+    if (!window.indexedDB) return rej(new Error('IndexedDB saknas'));
+    let r; try { r = indexedDB.open(DB_NAME, 1); } catch (e) { return rej(e); }
+    r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains('kv')) d.createObjectStore('kv'); if (!d.objectStoreNames.contains('snaps')) d.createObjectStore('snaps', { keyPath: 'id' }); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error || new Error('IndexedDB kunde inte öppnas'));
+    r.onblocked = () => rej(new Error('IndexedDB är blockerad av en annan flik'));
+  });
 }
-function load() {
-  let d = null;
-  let migrated = false;
-  let raw = null;
-  try { raw = localStorage.getItem(KEY); if (raw) { const j = JSON.parse(raw); migrated = j.version !== FORMAT_VERSION; d = migrate(j); } }
-  catch (e) {
-    // Boken kunde inte öppnas – spara undan originalet så att inget går förlorat
-    d = null; st.loadErr = e.message;
-    try { if (raw) localStorage.setItem(KEY + '.reserv', raw); } catch (_) {}
+function idb(store, mode, fn) {
+  return new Promise((res, rej) => {
+    if (!db) return rej(new Error('Ingen databas'));
+    let tx; try { tx = db.transaction(store, mode); } catch (e) { return rej(e); }
+    let out; const rq = fn(tx.objectStore(store)); if (rq) rq.onsuccess = () => { out = rq.result; };
+    tx.oncomplete = () => res(out); tx.onerror = tx.onabort = () => rej(tx.error || new Error('Skrivningen avbröts'));
+  });
+}
+const kvGet = k => idb('kv', 'readonly', os => os.get(k));
+const kvSet = (k, v) => idb('kv', 'readwrite', os => os.put(v, k));
+const kvDel = k => idb('kv', 'readwrite', os => os.delete(k));
+// Metadata om lagringen (inte en del av boken): senaste säkerhetskopia, påminnelser, mapp
+st.meta = {};
+function metaSet(patch) {
+  Object.assign(st.meta, patch);
+  if (db) kvSet('meta', st.meta).catch(() => {});
+  else try { localStorage.setItem(KEY + '.meta', JSON.stringify(st.meta)); } catch (_) {}
+}
+const isExample = () => !!R()?.book?.example;
+
+function save() {
+  if (st.noSave) { renderSave(); return; }
+  clearTimeout(saveT);
+  saveT = setTimeout(() => { saveT = null; writeNow(); }, 250);
+}
+// Skriver direkt (även vid pagehide). localStorage synkront, IndexedDB asynkront.
+function writeNow() {
+  if (st.noSave) return;
+  const raw = JSON.stringify(S), at = new Date().toISOString();
+  if (raw === lastRaw && !st.saveErr) { st.saved = new Date(); renderSave(); return; }
+  const prev = lastRaw; lastRaw = raw;
+  let lsOk = true;
+  try { localStorage.setItem(KEY, raw); localStorage.setItem(KEY + '.at', at); } catch (e) { lsOk = false; }
+  st.mirrorErr = !lsOk;
+  // Dagens första ändring: spara läget före ändringen som ögonblicksbild
+  if (db && prev && !isExample() && st.meta.lastSnapDay !== today()) { metaSet({ lastSnapDay: today() }); snapshot('Dagens första ändring', prev, 'daily'); }
+  if (db) {
+    kvSet('bok', { at, raw }).then(() => { st.saved = new Date(); st.saveErr = false; renderSave(); bc?.postMessage({ t: 'saved', at, from: tabId }); })
+      .catch(() => { st.saveErr = !lsOk; st.saved = lsOk ? new Date() : st.saved; renderSave(); });
+  } else { st.saveErr = !lsOk; if (lsOk) st.saved = new Date(); renderSave(); }
+  queueDirWrite();
+}
+// Spara direkt när fliken göms eller stängs – inget ska hänga i en timer
+const flush = () => { if (saveT) { clearTimeout(saveT); saveT = null; writeNow(); } };
+addEventListener('pagehide', flush);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
+
+// En annan flik sparade – läs in den senaste boken i stället för att skriva över den
+bc && (bc.onmessage = async ev => {
+  if (ev.data?.t !== 'saved' || ev.data.from === tabId || !db) return;
+  try {
+    const v = await kvGet('bok'); if (!v?.raw || v.raw === lastRaw) return;
+    flush(); S = migrate(JSON.parse(v.raw)); lastRaw = v.raw; derive(); render();
+    toast('Boken ändrades i en annan flik – visar det senaste');
+  } catch (_) {}
+});
+
+async function load() {
+  const cand = [];
+  try {
+    db = await idbOpen();
+    const v = await kvGet('bok'); if (v?.raw) cand.push({ src: 'idb', at: v.at || '', raw: v.raw });
+    st.meta = (await kvGet('meta')) || {};
+  } catch (e) { db = null; st.idbErr = e.message; try { st.meta = JSON.parse(localStorage.getItem(KEY + '.meta') || '{}'); } catch (_) { st.meta = {}; } }
+  try { const raw = localStorage.getItem(KEY); if (raw) cand.push({ src: 'ls', at: localStorage.getItem(KEY + '.at') || '', raw }); } catch (_) {}
+  // Senast sparade först. Spegeln från 0.6 saknar tid och hamnar sist.
+  cand.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  let d = null, used = null, errs = [];
+  for (const c of cand) {
+    try { const j = JSON.parse(c.raw); const m = migrate(j); d = m; used = c; used.migrated = j.version !== FORMAT_VERSION; used.from = j.version; break; }
+    catch (e) {
+      errs.push(e.message);
+      // En bok från en nyare version får aldrig ersättas av något äldre
+      if (/nyare version/.test(e.message)) { st.newer = true; break; }
+    }
+  }
+  if (!d && cand.length) {
+    // Boken kunde inte öppnas: visa exempelboken men skriv INTE över något förrän du själv väljer
+    st.loadErr = errs[0] || 'okänt fel'; st.noSave = true; st.badRaw = cand[0].raw;
+    try { localStorage.setItem(KEY + '.reserv', cand[0].raw); } catch (_) {}
   }
   S = d || migrate(sampleBook());
   derive();
-  if (migrated) save();
+  lastRaw = used && !used.migrated && used.src === 'idb' ? used.raw : null;
+  if (used && db && used.migrated && !isExample()) await snapshot(`Före uppgradering från format ${used.from}`, used.raw, 'event');
+  // Första start med 0.7: flytta boken från localStorage till IndexedDB
+  if (used && (used.migrated || used.src !== 'idb')) writeNow();
+  else if (used) { st.saved = null; }
+  if (db && used && !isExample() && st.meta.lastSnapDay !== today()) { metaSet({ lastSnapDay: today() }); await snapshot('Dagens början', used.raw, 'daily'); }
+  await storageInfo();
+  await dirRestore();
 }
+
 function renderSave() {
-  const el = $('#saveState');
-  el.classList.toggle('err', st.saveErr);
-  $('.t', el).textContent = st.saveErr ? 'Kunde inte spara – exportera boken' : st.saved ? `Sparat ${pad(st.saved.getHours())}:${pad(st.saved.getMinutes())} i den här webbläsaren` : 'Sparas i den här webbläsaren';
+  const el = $('#saveState'); if (!el) return;
+  const dir = st.dir, dirBad = dir && !dir.ok;
+  el.classList.toggle('err', !!st.saveErr || !!st.noSave);
+  el.classList.toggle('warn', !st.saveErr && !!dirBad);
+  el.dataset.act = dirBad ? 'dirReconnect' : 'storageInfo';
+  const t = st.noSave ? 'Sparar inte – boken kunde inte öppnas'
+    : st.saveErr ? 'Kunde inte spara – exportera boken'
+    : dirBad ? `Mappen ”${dir.name}” behöver godkännas – klicka`
+    : st.saved ? `Sparat ${pad(st.saved.getHours())}:${pad(st.saved.getMinutes())}${dir?.ok ? ` · även i ”${dir.name}”` : ' i webbläsaren'}`
+    : dir?.ok ? `Sparas i webbläsaren och i ”${dir.name}”` : 'Sparas i den här webbläsaren';
+  $('.t', el).textContent = t; el.title = 'Var boken sparas och säkerhetskopior';
   renderStatus();
+}
+
+/* ── Ögonblicksbilder: läget före stora ändringar och vid dagens första ändring ── */
+async function snapshot(reason, raw = JSON.stringify(S), kind = 'event') {
+  if (!db) return;
+  try {
+    let name = '', posts = 0, hours = 0;
+    try { const j = JSON.parse(raw); name = j.register?.book?.name || ''; for (const p in j.logs || {}) { const ids = new Set(); for (const ev of j.logs[p].events || []) { ids.add(ev.entryId); } posts += ids.size; } hours = null; } catch (_) {}
+    const at = new Date().toISOString();
+    await idb('snaps', 'readwrite', os => os.put({ id: at + '-' + uid(), at, reason, kind, raw, name, posts, size: raw.length }));
+    await snapPrune();
+  } catch (_) {}
+}
+async function snapList() { if (!db) return []; try { const all = await idb('snaps', 'readonly', os => os.getAll()); return (all || []).sort((a, b) => b.at.localeCompare(a.at)); } catch (_) { return []; } }
+async function snapPrune() {
+  const all = await snapList(), daily = all.filter(x => x.kind === 'daily'), ev = all.filter(x => x.kind !== 'daily');
+  const drop = [...daily.slice(SNAP_DAILY), ...ev.slice(SNAP_EVENT)];
+  if (drop.length) await idb('snaps', 'readwrite', os => { drop.forEach(x => os.delete(x.id)); return null; });
+}
+
+/* ── Beständig lagring: be webbläsaren att inte rensa boken när utrymmet tryter ── */
+async function storageInfo(ask = false) {
+  const s = navigator.storage;
+  try { st.persisted = s?.persisted ? await s.persisted() : null; } catch (_) { st.persisted = null; }
+  if (s?.persist && st.persisted === false && (ask || (!isExample() && !st.meta.persistAsked))) {
+    try { st.persisted = await s.persist(); } catch (_) {}
+    metaSet({ persistAsked: today() });
+  }
+  try { const e = s?.estimate ? await s.estimate() : null; st.usage = e ? { used: e.usage, quota: e.quota } : null; } catch (_) { st.usage = null; }
+}
+
+/* ── Säkerhetskopia som fil och påminnelse ── */
+const backupDays = () => S.prefs.backupDays ?? 7;
+const daysSince = iso => iso ? Math.floor((pd(today()) - pd(iso.slice(0, 10))) / 864e5) : null;
+function backedUp(how) { metaSet({ lastBackup: new Date().toISOString(), lastBackupHow: how }); if (st.page === 'tid') { const a = $('#alerts'); if (a) a.innerHTML = alertsHtml(); } }
+function backupDue() {
+  if (isExample() || st.noSave || !(backupDays() > 0) || !log().length) return false;
+  if (st.meta.remindUntil && st.meta.remindUntil > today()) return false;
+  const n = daysSince(st.meta.lastBackup);
+  return n == null ? daysSince(st.meta.firstUse || today()) >= 1 || log().length > 20 : n >= backupDays();
+}
+function backupAlertHtml() {
+  if (!backupDue()) return '';
+  const n = daysSince(st.meta.lastBackup);
+  return `<div class="alert soft backup" role="status">${ic('export')}<div class="txt"><b>${n == null ? 'Boken är inte säkerhetskopierad än.' : `Senaste säkerhetskopian är ${n} dagar gammal.`}</b> Boken finns bara i den här webbläsaren – spara en kopia som fil${dirSupported() ? ' eller låt Sisyfos autospara till en mapp' : ''}.</div><button class="btn sm" data-act="backupFile">${ic('export')}Spara kopia som fil</button>${dirSupported() && !st.dir ? `<button class="btn sm" data-act="dirPick">${ic('folder')}Autospara till mapp …</button>` : ''}<button class="btn sm ghost" data-act="backupSnooze">Påminn om en vecka</button></div>`;
+}
+async function backupFile() {
+  const name = fileSafe(`${R().book.name} ${today()}.sisyfos.json`);
+  if (await offerFile(name, new TextEncoder().encode(JSON.stringify(S, null, 1)), 'application/json')) { backedUp('fil'); toast('En kopia av boken är sparad som fil'); return true; }
+  return false;
+}
+
+/* ── Autospar till mapp (File System Access API – Chrome och Edge på dator) ── */
+const dirSupported = () => 'showDirectoryPicker' in window && window.isSecureContext && !narrow();
+async function dirRestore() {
+  if (!db || !('showDirectoryPicker' in window)) return;
+  try {
+    const handle = await kvGet('dirHandle'); if (!handle) return;
+    const perm = await handle.queryPermission({ mode: 'readwrite' });
+    st.dir = { handle, name: handle.name, ok: perm === 'granted' };
+  } catch (_) { st.dir = null; }
+}
+async function dirPick() {
+  try {
+    const handle = await window.showDirectoryPicker({ id: 'sisyfos', mode: 'readwrite', startIn: 'documents' });
+    await kvSet('dirHandle', handle);
+    st.dir = { handle, name: handle.name, ok: true };
+    await dirWrite(true);
+    toast(`Sisyfos sparar nu boken även i mappen ”${handle.name}”`);
+  } catch (e) { if (e?.name !== 'AbortError') toast('Mappen kunde inte väljas: ' + e.message); }
+  renderSave(); if (st.page === 'installningar') renderMain(); else if (st.page === 'tid') { const a = $('#alerts'); if (a) a.innerHTML = alertsHtml(); }
+}
+async function dirReconnect() {
+  if (!st.dir?.handle) return;
+  try { const p = await st.dir.handle.requestPermission({ mode: 'readwrite' }); st.dir.ok = p === 'granted'; if (st.dir.ok) await dirWrite(true); } catch (_) { st.dir.ok = false; }
+  renderSave(); if (st.page === 'installningar') renderMain();
+}
+async function dirStop() { if (db) await kvDel('dirHandle').catch(() => {}); st.dir = null; renderSave(); renderMain(); toast('Autosparet till mappen är avstängt'); }
+function queueDirWrite() { if (!st.dir?.ok) return; clearTimeout(dirT); dirT = setTimeout(() => dirWrite(), 2500); }
+// Skriver boken som <boknamn>.sisyfos.json (skrivs över) och en kopia per dag i undermappen Säkerhetskopior
+async function dirWrite(force) {
+  const d = st.dir; if (!d?.ok || st.noSave || (isExample() && !force)) return;
+  const raw = JSON.stringify(S, null, 1), base = fileSafe(R().book.name || 'Sisyfos');
+  const put = async (dir, name) => { const fh = await dir.getFileHandle(name, { create: true }), w = await fh.createWritable(); await w.write(raw); await w.close(); };
+  try {
+    await put(d.handle, `${base}.sisyfos.json`);
+    const sub = await d.handle.getDirectoryHandle('Säkerhetskopior', { create: true });
+    await put(sub, `${base} ${today()}.sisyfos.json`);
+    d.err = null; d.last = new Date(); backedUp('mapp');
+  } catch (e) {
+    d.err = e.message; if (e?.name === 'NotAllowedError' || e?.name === 'SecurityError') d.ok = false;
+  }
+  renderSave();
+}
+
+/* ── Inställningar: var boken finns och hur den skyddas ── */
+const fsize = n => n == null ? '–' : n < 1024 * 1024 ? Math.max(1, Math.round(n / 1024)) + ' kB' : (n / 1024 / 1024).toFixed(1).replace('.', ',') + ' MB';
+const fwhen = iso => { const d = new Date(iso); return `${sdate(ymd(d))}${ymd(d).slice(0, 4) !== today().slice(0, 4) ? ' ' + ymd(d).slice(0, 4) : ''} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+async function safetyRender() {
+  const box = $('#safeBox'); if (!box) return;
+  await storageInfo();
+  const snaps = await snapList(), m = st.meta, n = daysSince(m.lastBackup), dir = st.dir;
+  const row = (k, v, extra = '') => `<div class="sf-row"><span class="k">${k}</span><span class="v">${v}</span>${extra}</div>`;
+  let h = `<div class="sf-grid">`;
+  h += row('Lagras i', db ? `Webbläsarens databas (IndexedDB) med en spegel i localStorage${st.mirrorErr ? ' – <span class="neg">spegeln fick inte plats</span>' : ''}` : `Bara localStorage – ${esc(st.idbErr || 'IndexedDB saknas')}. Ögonblicksbilder fungerar inte här.`);
+  h += row('Beständig lagring', st.persisted ? `${ic('check')} Ja – webbläsaren rensar inte boken när utrymmet tryter` : st.persisted === false ? `Nej – webbläsaren kan rensa boken om utrymmet tryter. Installera Sisyfos som app eller tillåt beständig lagring.` : 'Okänt i den här webbläsaren', st.persisted === false ? `<button class="btn sm" data-act="askPersist">Be om beständig lagring</button>` : '');
+  if (st.usage) h += row('Utrymme', `${fsize(st.usage.used)} använt av ${fsize(st.usage.quota)}`);
+  h += row('Senaste säkerhetskopia', m.lastBackup ? `${fwhen(m.lastBackup)} · ${m.lastBackupHow === 'mapp' ? 'autospar till mapp' : 'sparad som fil'}${n >= backupDays() && backupDays() > 0 ? ' · <span class="neg">dags igen</span>' : ''}` : '<span class="neg">Ingen än</span>', `<button class="btn sm" data-act="backupFile">${ic('export')}Spara kopia som fil</button>`);
+  h += `<div class="sf-row"><label class="k" for="bkDays">Påminn om säkerhetskopia</label><span class="v"><select id="bkDays">${[[7, 'efter en vecka'], [14, 'efter två veckor'], [30, 'efter en månad'], [0, 'aldrig']].map(([v, l]) => `<option value="${v}" ${backupDays() === v ? 'selected' : ''}>${l}</option>`).join('')}</select></span></div>`;
+  if (dirSupported() || st.dir) {
+    h += row('Autospar till mapp', dir ? `${dir.ok ? ic('check') : ic('alert')} ”${esc(dir.name)}”${dir.ok ? (dir.last ? ` · senast ${fwhen(dir.last.toISOString())}` : '') : ' – behöver godkännas igen'}${dir.err ? ` · <span class="neg">${esc(dir.err)}</span>` : ''}` : 'Av. Välj en mapp som säkerhetskopieras (t.ex. i Dokument eller en molnmapp) så sparar Sisyfos boken där vid varje ändring, plus en kopia per dag.',
+      dir ? `${dir.ok ? '' : `<button class="btn sm" data-act="dirReconnect">Godkänn mappen</button>`}<button class="btn sm ghost" data-act="dirPick">Byt mapp …</button><button class="btn sm ghost" data-act="dirStop">Stäng av</button>` : `<button class="btn sm" data-act="dirPick">${ic('folder')}Välj mapp …</button>`);
+  } else h += row('Autospar till mapp', 'Finns i Chrome och Edge på dator. Här: spara kopia som fil regelbundet.');
+  h += row('Som app', standalone() ? `${ic('check')} Installerad – startar utan nät` : isIOS() ? 'Lägg till på hemskärmen via Dela. Hemskärmsappen har en egen lagring – flytta boken med en fil.' : 'Kan installeras och startar då utan nät.', standalone() ? '' : `<button class="btn sm" data-act="installApp">Så gör du …</button>`);
+  h += `</div>`;
+  h += `<h3 class="dsub">Ögonblicksbilder</h3><p class="muted small">Sisyfos sparar läget automatiskt före varje dags första ändring (${SNAP_DAILY} dagar bakåt) och före stora ändringar som import, ny bok och uppgradering (${SNAP_EVENT} st). De ligger bara i den här webbläsaren – de ersätter inte en kopia som fil.</p>`;
+  h += snaps.length ? `<ul class="snaps">${snaps.map(x => `<li><span class="sn-w">${fwhen(x.at)}</span><span class="sn-r">${esc(x.reason)}${x.name ? ` <span class="muted">· ${esc(x.name)}</span>` : ''}</span><span class="sn-s mono muted">${x.posts} poster · ${fsize(x.size)}</span><button class="btn sm ghost" data-act="snapDl" data-id="${esc(x.id)}" title="Ladda ner som fil">${ic('export')}</button><button class="btn sm" data-act="snapAsk" data-id="${esc(x.id)}">Återställ …</button></li>`).join('')}</ul>` : `<p class="muted small">${db ? 'Inga ögonblicksbilder än – den första tas när du ändrar något en ny dag.' : 'Inte tillgängligt i den här webbläsaren.'}</p>`;
+  box.innerHTML = h;
+  if (st.toBook) { st.toBook = false; $('#set-book')?.scrollIntoView({ block: 'start' }); }
+}
+async function snapGet(id) { return idb('snaps', 'readonly', os => os.get(id)); }
+async function snapRestore(id) {
+  const x = await snapGet(id); if (!x) return;
+  const before = JSON.stringify(S);
+  await snapshot('Före återställning', before, 'event');
+  try { replaceBook(JSON.parse(x.raw), null); } catch (e) { toast('Ögonblicksbilden kunde inte öppnas: ' + e.message); return; }
+  st.page = 'installningar'; render(); setTimeout(() => $('#set-book')?.scrollIntoView(), 0);
+  toast(`Återställd till ${fwhen(x.at)}`, { label: 'Ångra', fn: () => { replaceBook(JSON.parse(before), null); toast('Återställningen är ångrad'); } });
 }
 
 /* ───────────── Rader och vyer ───────────── */
@@ -1529,16 +1867,17 @@ function renderRail() {
 }
 function renderMain() {
   const m = $('#main');
-  if (st.page === 'tid') m.innerHTML = st.view === 'week' ? weekHtml() : dayHtml();
+  if (st.page === 'tid') m.innerHTML = st.view === 'week' ? weekHtml() : st.view === 'month' ? mviewHtml() : dayHtml();
   else if (st.page === 'projekt') m.innerHTML = projectsHtml();
   else if (st.page === 'kunder') m.innerHTML = customersHtml();
   else if (st.page === 'rapporter') m.innerHTML = reportsHtml();
   else m.innerHTML = settingsHtml();
   if (st.focus) { const el = m.querySelector(`[data-focus="${CSS.escape(st.focus)}"]`); st.focus = null; if (el) requestAnimationFrame(() => el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })); }
   if (st.page === 'tid') refreshQuickHint();
+  if (st.page === 'installningar') safetyRender();
   if (st.page === 'rapporter') { const w = $('.mo-wrap'), c = $('.mo thead th.cur'); if (w && c && w.scrollWidth > w.clientWidth) w.scrollLeft = Math.max(0, c.offsetLeft - w.clientWidth / 2); }
 }
-const viewSeg = () => `<div class="seg" role="group" aria-label="Visning"><button data-act="view" data-view="week" aria-pressed="${st.view === 'week'}" title="Vecka">${ic('week')}<span class="opt">Vecka</span></button><button data-act="view" data-view="day" aria-pressed="${st.view === 'day'}" title="Dag">${ic('day')}<span class="opt">Dag</span></button></div>`;
+const viewSeg = () => `<div class="seg" role="group" aria-label="Visning"><button data-act="view" data-view="week" aria-pressed="${st.view === 'week'}" title="Vecka">${ic('week')}<span class="opt">Vecka</span></button><button data-act="view" data-view="day" aria-pressed="${st.view === 'day'}" title="Dag">${ic('day')}<span class="opt">Dag</span></button><button data-act="view" data-view="month" aria-pressed="${st.view === 'month'}" title="Månad">${ic('month')}<span class="opt">Månad</span></button></div>`;
 const quickHtml = () => `<div class="quick"><div class="quick-top">${ic('bolt')}<label for="quickIn">Smartanteckning</label><button class="q-help" data-act="quickHelp" title="Så skriver du – och dina egna förkortningar">${ic('help')}<span class="hide-narrow">Hjälp och förkortningar</span></button><kbd class="hide-narrow">Enter</kbd></div><div class="quick-row"><input id="quickIn" autocomplete="off" spellcheck="false" placeholder="3,5 strand ritade fasad · tor 8 strand · v43 fl"></div><div class="quick-hint" id="quickHint" aria-live="polite"></div></div>`;
 
 function weekHtml() {
@@ -1671,7 +2010,7 @@ function alertOn(p) {
   return true;
 }
 function alertsHtml() {
-  return R().projects.filter(alertOn).map(p => {
+  return backupAlertHtml() + R().projects.filter(alertOn).map(p => {
     const x = budgetPct(p), over = alertLevel(p) === '100';
     return `<div class="alert" role="alert">${ic('alert')}<div class="txt"><b>${esc(p.name)}</b> ${over ? 'har passerat budgeten' : 'har nått ' + fpct(x) + ' av budgeten'}, ${fkr(used(p.id))} av ${fkr(p.budgetKr)}. ${over ? 'Stäm av med kunden om fortsatt arbete.' : 'Underrätta kunden innan budgeten tar slut.'}</div><button class="btn sm" data-act="snoozeMenu" data-p="${p.id}" aria-haspopup="menu">${ic('snooze')}Skjut upp</button><button class="btn sm" data-act="notify" data-p="${p.id}">${ic('bell')}Markera som underrättad</button></div>`;
   }).join('');
@@ -1715,6 +2054,90 @@ function daySumHtml(d) {
   return `<span>Dagen <b>${fh(tt)}</b> av ${fh(nm)} h</span><span>Saldo <b>${sgn(tt - nm - dayKomp(d))}</b></span><span>Kompsaldo <b>${sgn(cb)}</b></span>${db}`;
 }
 
+/* ───────────── Månadsvy ─────────────
+   Hela månaden som kalender: tid per dag i projektfärger, veckornas status (avcheckad/signerad) och
+   månadens summering per projekt. Klick på en dag visar den i panelen (på telefon: dagvyn), klick på
+   veckonumret öppnar veckan. Kan markera ett projekt (från projektsidans "Gå till tidboken"). */
+const mWeeks = ym => { const f = `${ym}-01`, l = ymLast(ym), out = []; for (let w = monday(f); w <= l; w = addD(w, 7)) out.push(w); return out; };
+const mFocusDay = () => { const t = today(); return st.selDay && ymOf(st.selDay) === st.month ? st.selDay : ymOf(t) === st.month ? t : `${st.month}-01`; };
+function monthIdx(ym) {
+  // Poster per dag för månadens kalenderveckor (inklusive dagar i grannmånaderna som syns i rutnätet)
+  const ws = mWeeks(ym), from = ws[0], to = addD(ws[ws.length - 1], 6), by = new Map();
+  for (const e of live()) if (e.date >= from && e.date <= to && e.hours > 0) { if (!by.has(e.date)) by.set(e.date, []); by.get(e.date).push(e); }
+  return by;
+}
+function mviewHtml() {
+  const ym = st.month || (st.month = ymOf(today())), t = today(), mp = st.mproj && proj(st.mproj) ? proj(st.mproj) : (st.mproj = null);
+  const ws = mWeeks(ym), { w: w0 } = isoWeek(ws[0]), { w: w1 } = isoWeek(ws[ws.length - 1]);
+  let h = `<div class="view mov">${quickHtml()}<div class="wk-head"><div class="wk-nav"><button class="icon-btn" data-act="monthStep" data-d="-1" aria-label="Föregående månad">${ic('left')}</button><h1>${ymLabel(ym)}</h1><button class="icon-btn" data-act="monthStep" data-d="1" aria-label="Nästa månad">${ic('right')}</button></div><span class="range">vecka ${w0}–${w1}</span>${ymOf(t) !== ym ? `<button class="btn ghost" data-act="today">Till i dag</button>` : ''}<span class="spacer"></span>`
+    + `<button class="btn" data-act="weekend" aria-pressed="${!!S.prefs.showWeekend}" title="Visa lördag och söndag">${ic('weekend')}<span class="opt">Helg</span></button>${viewSeg()}</div>`;
+  if (mp) {
+    const hd = R().handled[mp.id + '|' + ym];
+    h += `<div class="mfocus" style="--pc:${pc(mp)}"><span class="dot"></span><span class="txt">Markerar <button class="lnk" data-act="openProject" data-p="${mp.id}"><b>${esc(mp.number)} ${esc(mp.name)}</b></button>${hd ? ` · <span class="st-done">${ic('lock')}hanterad</span>` : ''}</span><span class="spacer"></span><button class="btn sm" data-act="moCell" data-p="${mp.id}" data-ym="${ym}" aria-haspopup="menu">${ic('report')}Dagbok och hantering</button><button class="icon-btn" data-act="mprojOff" title="Sluta markera" aria-label="Sluta markera projektet">${ic('x')}</button></div>`;
+  }
+  h += `<div class="alerts" id="alerts">${alertsHtml()}</div><div id="mBody">${monthBodyHtml()}</div>`;
+  return h + `</div>`;
+}
+function monthBodyHtml() {
+  const ym = st.month, t = today(), ws = mWeeks(ym), by = monthIdx(ym), mp = st.mproj && proj(st.mproj);
+  const weUsed = [...by.keys()].some(d => ymOf(d) === ym && dow(d) % 6 === 0), we = S.prefs.showWeekend || weUsed, n = we ? 7 : 5, nh = hasNorm();
+  const sel = st.selDay && ymOf(st.selDay) === ym ? st.selDay : null;
+  let h = `<div class="mcal${mp ? ' focus' : ''}" style="--n:${n}${mp ? ';--pc:' + pc(mp) : ''}" role="grid" aria-label="${ymLabel(ym)}"><div class="mrow mhead" role="row"><span class="mw-h" role="columnheader">v</span>${[1, 2, 3, 4, 5, 6, 0].slice(0, n).map(i => `<span role="columnheader" class="${i % 6 === 0 ? 'we' : ''}"><span class="dn-l">${cap(DOWL[i])}</span><span class="dn-s">${cap(DOW[i])}</span></span>`).join('')}</div>`;
+  for (const wk of ws) {
+    const days = weekDays(wk).slice(0, n), ws2 = weekState(wk), { w } = isoWeek(wk);
+    const wt = weekDays(wk).reduce((s, d) => s + (by.get(d) || []).reduce((x, e) => x + e.hours, 0), 0), wn = weekDays(wk).reduce((s, d) => s + norm(d), 0);
+    const past = addD(wk, 6) < t, stc = ws2.signed ? 'signed' : ws2.checked ? 'checked' : past && wt > 0 ? 'open' : '';
+    h += `<div class="mrow" role="row"><button class="mw ${stc}" data-act="gotoWeek" data-wk="${wk}" title="Vecka ${w}${ws2.signed ? ' · signerad' : ws2.checked ? ' · avcheckad' : past ? ' · inte avcheckad' : ''} – öppna veckan"><b>${w}</b>${ws2.signed ? ic('lock') : ws2.checked ? ic('check') : past && wt > 0 ? '<i class="mw-dot"></i>' : ''}<span class="mono">${wt ? fh(wt) : '–'}</span>${nh && wn ? `<span class="mw-n mono">/${fh(wn)}</span>` : ''}</button>`;
+    for (const d of days) {
+      const es = (by.get(d) || []).slice().sort((a, b) => (pRank(proj(a.projectId)) - pRank(proj(b.projectId))) || (a.projectId < b.projectId ? -1 : 1));
+      const tot = es.reduce((s, e) => s + e.hours, 0), nm = norm(d), out = ymOf(d) !== ym, hol = holidays(+d.slice(0, 4))[d];
+      const miss = es.some(needsNote), mine = mp ? es.filter(e => e.projectId === mp.id).reduce((s, e) => s + e.hours, 0) : 0, lk = locked(d);
+      const scale = Math.max(nm || 8, tot, 1);
+      const segs = es.map(e => { const P = proj(e.projectId), on = !mp || P.id === mp.id; return `<i class="${on ? '' : 'dim'}" style="width:${(e.hours / scale * 100).toFixed(2)}%;--pc:${pc(P)}" title="${esc(P.name)} ${fh(e.hours)} h"></i>`; }).join('');
+      const bal = nh && !out ? dayBal(d, tot) : 0, showBal = nh && !out && d <= t && (nm > 0 || tot > 0) && !(d === t && bal === 0);
+      const lab = `${ldate(d)}${hol ? ', ' + hol.name : ''}: ${fh(tot)} timmar${nh ? ' av ' + fh(nm) : ''}${miss ? ', anteckning saknas' : ''}`;
+      h += `<button class="mc${out ? ' out' : ''}${d === t ? ' today' : ''}${d === sel ? ' sel' : ''}${hol && !hol.eve ? ' red' : ''}${dow(d) % 6 === 0 ? ' we' : ''}${tot > 0 ? ' has' : ''}${lk ? ' lk' : ''}${mp && mine > 0 ? ' mine' : ''}" data-act="mPick" data-day="${d}" aria-pressed="${d === sel}" aria-label="${esc(lab)}" role="gridcell">`
+        + `<span class="mc-top"><span class="mc-d">${pd(d).getDate()}${out ? ` <small>${MON[pd(d).getMonth()]}</small>` : ''}</span>${hol ? `<span class="mc-hol">${esc(hol.name)}</span>` : ''}${miss ? '<i class="mc-nn" title="Anteckning saknas"></i>' : ''}</span>`
+        + `<span class="mc-h mono">${mp ? (mine ? fh(mine) + (tot > mine ? `<small> / ${fh(tot)}</small>` : '') : tot ? `<small>${fh(tot)}</small>` : '') : tot ? fh(tot) : ''}</span>`
+        + `<span class="mc-bar">${segs}${nh && nm > 0 && tot > 0 ? `<b class="mc-norm" style="left:${Math.min(nm / scale * 100, 100).toFixed(2)}%"></b>` : ''}</span>`
+        + `${showBal ? `<span class="mc-bal mono ${bal < 0 ? 'neg' : bal > 0 ? 'pos' : ''}">${sgn(bal)}</span>` : ''}</button>`;
+    }
+    h += `</div>`;
+  }
+  h += `</div>`;
+  return h + monthSumHtml(ym);
+}
+// Summering av månaden: nyckeltal och tid per projekt (bara dagarna i månaden)
+function monthSumHtml(ym) {
+  const f = `${ym}-01`, l = ymLast(ym), t = today(), es = live().filter(e => e.date >= f && e.date <= l && e.hours > 0), nh = hasNorm();
+  const tot = es.reduce((s, e) => s + e.hours, 0), bill = es.filter(billable).reduce((s, e) => s + e.hours, 0), abs = es.filter(absKind).reduce((s, e) => s + e.hours, 0), work = tot - abs;
+  let nm = 0, nmSoFar = 0, sal = 0; for (let d = f; d <= l; d = addD(d, 1)) { const x = norm(d); nm += x; if (d <= t) { nmSoFar += x; sal += dayBal(d); } }
+  const k = billKpi(bill, work, nmSoFar), amt = es.reduce((s, e) => s + amountOf(e), 0), miss = es.filter(needsNote).length;
+  const stat = (k, v, cls = '', tt = '') => `<span class="stat"${tt ? ` title="${tt}"` : ''}><span class="k">${k}</span><span class="v ${cls}">${v}</span></span>`;
+  let h = `<div class="summary msum"><div class="s-head"><h2>Månaden</h2><div class="stats">${stat('Totalt', fh(tot) + ' h')}${abs > 0 ? stat('Frånvaro', fh(abs) + ' h') : ''}`;
+  if (nh) h += stat('Normtid', fh(nm) + ' h') + stat('Månadssaldo', sgn(sal) + ' h', sal < 0 ? 'neg' : sal > 0 ? 'pos' : '', nmSoFar < nm ? 'Hittills i månaden' : '') + stat('Debiteringsgrad', k.grad != null ? fpct(k.grad) : '–', '', `Debiterbar tid ${fh(bill)} h av normtiden ${fh(nmSoFar)} h`);
+  h += stat('Debiterbar närvaro', k.pres != null ? fpct(k.pres) : '–', '', `Debiterbar tid ${fh(bill)} h av arbetad tid ${fh(work)} h`) + (amt > 0 ? stat('Upparbetat', fkr(amt)) : '') + (miss ? stat('Utan anteckning', miss + ' st', 'neg') : '') + `</div></div>`;
+  // Per projekt
+  const per = new Map(); for (const e of es) { const o = per.get(e.projectId) || { h: 0, a: 0, miss: 0 }; o.h += e.hours; o.a += amountOf(e); if (needsNote(e)) o.miss++; per.set(e.projectId, o); }
+  const rows = [...per].map(([pid, o]) => ({ P: proj(pid), ...o })).filter(x => x.P).sort((a, b) => (pRank(a.P) - pRank(b.P)) || b.h - a.h);
+  if (rows.length) {
+    h += `<table class="dtab mtab"><thead><tr><th>Projekt</th><th class="r">Timmar</th><th class="r hide-narrow">Belopp</th><th>Status</th></tr></thead><tbody>${rows.map(({ P, h: hh, a, miss: mi }) => {
+      const hd = R().handled[P.id + '|' + ym], cust2 = !P.internal && P.kind !== 'absence';
+      const status = !cust2 ? '<span class="muted">–</span>' : hd ? `<span class="st-done">${ic('lock')}Hanterad</span>` : ym >= ymOf(t) ? '<span class="muted">Pågår</span>' : '<span class="st-open">Öppen</span>';
+      return `<tr class="${st.mproj === P.id ? 'on' : ''}" style="--pc:${pc(P)}"><td><button class="lnk mp-b" data-act="mproj" data-p="${P.id}" title="Markera ${esc(P.name)} i kalendern"><span class="dot"></span>${P.number && P.number !== '–' ? `<span class="r-num">${esc(P.number)}</span>` : ''}${esc(P.name)}</button>${mi ? ` <i class="mo-w" title="${mi} utan anteckning"></i>` : ''}</td><td class="r mono">${fh(hh)}</td><td class="r mono hide-narrow">${a ? fkr(a) : '–'}</td><td>${cust2 ? `<button class="lnk st-b" data-act="moCell" data-p="${P.id}" data-ym="${ym}" aria-haspopup="menu">${status}</button>` : status}</td></tr>`;
+    }).join('')}</tbody></table>`;
+  } else h += `<p class="muted small" style="margin:8px 2px 0">Ingen tid registrerad i ${MONL[+ym.slice(5, 7) - 1]}.</p>`;
+  // Veckor som inte är avcheckade (i månaden, som är slut)
+  const open = mWeeks(ym).filter(wk => addD(wk, 6) < t && !weekState(wk).checked && !weekState(wk).signed && weekDays(wk).some(d => dayTotal(d) > 0));
+  if (open.length) h += `<p class="small m-open-w">${ic('alert')}Inte avcheckade: ${open.map(wk => `<button class="lnk" data-act="gotoWeek" data-wk="${wk}">vecka ${isoWeek(wk).w}</button>`).join(', ')}</p>`;
+  return h + `</div>`;
+}
+function monthOverviewHtml() {
+  const ym = st.month, f = `${ym}-01`, l = ymLast(ym), ps = [...new Set(live().filter(e => e.date >= f && e.date <= l && e.hours > 0).map(e => e.projectId))].map(proj).filter(p => p && !p.internal && p.kind !== 'absence');
+  return `<section class="psec"><h3>Projekt i ${MONL[+ym.slice(5, 7) - 1]}</h3>${ps.length ? `<ul class="plist">${ps.map(p => `<li style="--pc:${pc(p)}"><span class="dot"></span><span class="r-text"><span class="r-name">${esc(p.name)}</span><span class="r-sub mono">${fkr(used(p.id))}${running(p) ? ' · löpande' : ' av ' + fkr(p.budgetKr)}</span></span>${ring(p, 34, true)}</li>`).join('')}</ul>` : '<p class="small muted" style="margin:0">Inga kundprojekt den här månaden.</p>'}</section>
+  <section class="psec"><h3>Månadsvyn</h3><ul class="tips"><li>Klicka på en <b>dag</b> för att se dess poster här.</li><li>Klicka på <b>veckonumret</b> för att öppna veckan. En bock betyder avcheckad, ett lås signerad och en orange prick att veckan inte är avcheckad.</li><li>Klicka på ett <b>projekt</b> i tabellen för att markera det i kalendern.</li><li>Smartanteckningen lägger tiden på markerad dag.</li></ul></section>`;
+}
+
 /* ───────────── Egenskapspanel ─────────────
    Komplement till smartmenyn vid pekaren. Minimeras automatiskt när tidboken inte ryms bredvid,
    kan minimeras/visas och breddändras för hand. På telefon blir den ett bottenark. */
@@ -1722,7 +2145,7 @@ const panelChrome = () => `<div class="p-resize" data-resize title="Dra för att
 const pTools = x => `<span class="p-tools"><button class="icon-btn" data-act="panelMin" title="Minimera panelen" aria-label="Minimera panelen">${ic('pmin')}</button>${x ? `<button class="icon-btn" data-act="closePanel" title="Avmarkera" aria-label="Avmarkera">${ic('x')}</button>` : ''}</span>`;
 function renderPanel() {
   const el = $('#panel');
-  if (st.page !== 'tid' || (!st.sel && !st.selDay)) { el.innerHTML = panelChrome() + `<div class="p-head"><div><h2>Översikt</h2><p>Markera en dag eller en ruta för detaljer.</p></div>${pTools(false)}</div><div class="p-body">${overviewHtml()}</div>`; return; }
+  if (st.page !== 'tid' || (!st.sel && !st.selDay)) { el.innerHTML = panelChrome() + `<div class="p-head"><div><h2>Översikt</h2><p>Markera en dag eller en ruta för detaljer.</p></div>${pTools(false)}</div><div class="p-body">${st.view === 'month' ? monthOverviewHtml() : overviewHtml()}</div>`; return; }
   if (!st.sel) { el.innerHTML = panelChrome() + dayPanelHtml(st.selDay); return; }
   const [rk, d] = splitKey(st.sel), { P, T, color } = rowInfo(rk), e = cell(rk, d), key = st.sel, lk = lockedK(rk, d), ro = lk ? 'readonly' : '';
   const r = role(e?.roleId || roleFor(P.id)), rate = e ? e.rate : rateFor(P.id, r?.id, me());
@@ -1743,7 +2166,7 @@ function dayPanelHtml(d) {
   const tt = dayTotal(d), lk = locked(d);
   const list = es.length ? `<ul class="dlist">${es.map(e => { const P = proj(e.projectId), T = taskOf(P, e.taskId), nn = needsNote(e); return `<li><button style="--pc:${pc(P)}" data-act="openCell" data-key="${e.projectId}~${e.taskId}|${d}"><span class="dot"></span><span class="r-text"><span class="r-name">${esc(P.name)} <span class="r-sub" style="display:inline">· ${esc(T?.name || '')}</span></span><span class="nt${nn ? ' miss-n' : ''}">${nn ? 'Anteckning saknas' : esc(e.note)}</span></span><span class="hv">${fh(e.hours)}</span></button></li>`; }).join('')}</ul>` : `<p class="small muted" style="margin:0">Ingen tid registrerad den här dagen.</p>`;
   return `<div class="p-head"><div><h2>${ldate(d)}</h2><p>${hasNorm() ? `${fh(tt)} av ${fh(norm(d))} h · saldo ${sgn(dayBal(d, tt))}` : `${fh(tt)} h`}${lk ? ' · låst' : ''}</p></div>${pTools(true)}</div>
-  <div class="p-body"><section class="psec"><h3>Dagens poster</h3>${list}</section>${lk ? '' : `<section class="psec"><p class="small muted" style="margin:0">Smartanteckningen lägger tiden på den här dagen.</p></section>`}</div>`;
+  <div class="p-body">${st.view === 'month' ? `<section class="psec"><div class="p-nav"><button class="btn sm" data-act="gotoDay" data-day="${d}">${ic('day')}Öppna dagen</button><button class="btn sm" data-act="gotoWeek" data-day="${d}">${ic('week')}Vecka ${isoWeek(d).w}</button></div></section>` : ''}<section class="psec"><h3>Dagens poster</h3>${list}</section>${lk ? '' : `<section class="psec"><p class="small muted" style="margin:0">Smartanteckningen lägger tiden på den här dagen.</p></section>`}</div>`;
 }
 // Avräkning för en frånvarouppgift (visas i panelen och smartmenyn)
 function acctHtml(T) {
@@ -1779,6 +2202,12 @@ function overviewHtml() {
 }
 
 function renderStatus() {
+  if (st.view === 'month' && st.page === 'tid') {
+    const f = `${st.month}-01`, l = ymLast(st.month); let tot = 0, nm = 0; for (const e of live()) if (e.date >= f && e.date <= l) tot += e.hours; for (let d = f; d <= l; d = addD(d, 1)) nm += norm(d);
+    const cb = compBalance();
+    $('#status').innerHTML = `<span><span class="label">${cap(MONL[+st.month.slice(5, 7) - 1])}</span><span class="value">${fh(tot)}</span>${hasNorm() ? ` / ${fh(nm)}` : ''} h</span>${cb != null ? `<span><span class="label">Komp</span><span class="value">${sgn(cb)}</span> h</span>` : ''}${(vi => vi ? `<span><span class="label">Sem<span class="hide-narrow">ester</span></span><span class="value">${fdays(vi.left)}</span> d</span>` : '')(vacInfo())}<span class="end hide-narrow">format ${FORMAT_VERSION} · lokalt</span>`;
+    return;
+  }
   const wk = st.view === 'day' ? monday(st.day) : st.week, days = visDays(wk), { w } = isoWeek(wk);
   const tot = days.reduce((s, d) => s + dayTotal(d), 0), nm = days.reduce((s, d) => s + norm(d), 0);
   const cb = compBalance(), ws = weekState(wk);
@@ -1944,6 +2373,7 @@ function whenText(days) {
 }
 function quickDate() {
   if (st.view === 'day') return st.day;
+  if (st.view === 'month') return mFocusDay();
   if (st.sel) return splitKey(st.sel)[1];
   if (st.selDay && weekDays(st.week).includes(st.selDay)) return st.selDay;
   const t = today(); return weekDays(st.week).includes(t) ? t : st.week;
@@ -2036,10 +2466,11 @@ function patch() {
     const sm = $('#daySum'); if (sm) sm.innerHTML = daySumHtml(st.day);
     $$('.dcard').forEach(c => c.classList.toggle('empty', !(c.dataset.rows || c.dataset.row).split(' ').some(rk => cell(rk, st.day))));
   }
+  if (st.view === 'month' && st.page === 'tid') { const mb = $('#mBody'); if (mb && !mb.contains(act)) mb.innerHTML = monthBodyHtml(); }
   $$('svg.ring[data-ring]').forEach(svg => { const P = proj(svg.dataset.ring); const tmp = document.createElement('div'); tmp.innerHTML = ring(P, svg.getAttribute('width'), !!svg.querySelector('text')); svg.replaceWith(tmp.firstElementChild); });
   const al = $('#alerts'); if (al) al.innerHTML = alertsHtml();
   if (st.sel) { const pdz = $('#pDay'); if (pdz) pdz.innerHTML = pDayHtml(splitKey(st.sel)[1]); const pb = $('#pBudget'); if (pb) pb.innerHTML = pBudgetHtml(proj(splitRow(splitKey(st.sel)[0])[0])); }
-  if (!st.sel && st.page === 'tid') { const pBody = $('#panel .p-body'); if (pBody && !pBody.contains(act)) { if (st.selDay) renderPanel(); else pBody.innerHTML = overviewHtml(); } }
+  if (!st.sel && st.page === 'tid') { const pBody = $('#panel .p-body'); if (pBody && !pBody.contains(act)) { if (st.selDay) renderPanel(); else pBody.innerHTML = st.view === 'month' ? monthOverviewHtml() : overviewHtml(); } }
   for (const id of ['pAcct', 'cpAcct']) { const a = document.getElementById(id), k = id === 'pAcct' ? st.sel : cpKey; if (a && k) a.innerHTML = acctHtml(rowInfo(splitKey(k)[0]).T); }
   const cp = $('#cpop'); if (!cp.hidden) { const ch = $('#cpHours'); if (ch && ch !== act) { const e = cell(...splitKey(ch.dataset.key)); ch.value = e && e.hours > 0 ? fh(e.hours) : ''; } }
   renderStatus();
@@ -2348,6 +2779,7 @@ function newProjectDlg(pre) {
    <div class="fld"><label for="npBud">Budget, kr exkl. moms</label><input id="npBud" inputmode="numeric" placeholder="120 000"><span class="fld-hint">Tomt eller 0 = löpande utan budget</span></div>
    <div class="fld"><label for="npTasks">Uppgifter, kommaseparerade</label><input id="npTasks" value="Skiss, Bygglov"></div>
    <div class="fld" data-ext><label for="npIdle">Blir inaktivt efter</label>${idleSel('npIdle', R().book.idleDays ?? 90)}<span class="fld-hint">utan registrerad tid</span></div>
+   <div class="fld full" data-ext><span class="lbl">Färg</span>${swatchesHtml(nextColor())}</div>
    <div class="form fld full fmt-box" id="npFmtBox" hidden>${fmtEditorHtml('npFmt', fmt)}<p class="small muted fld full" style="margin:0">Det nya formatet sparas för kommande projekt när du skapar projektet.</p></div>
    <label class="chk fld full"><input type="checkbox" id="npInt" data-sync="np"> Internt projekt (ej debiterbart)</label>
    <div class="err fld full" id="npErr"></div>
@@ -2364,8 +2796,8 @@ function createProject() {
   let cn = $('#npCust').value.trim(), c = R().customers.find(x => x.name.toLowerCase() === cn.toLowerCase());
   if (cn && !c) { c = { id: 'k' + uid(), name: cn, archived: false, notes: [], created: new Date().toISOString() }; R().customers.push(c); }
   const tasks = ($('#npTasks').value || 'Uppdrag').split(',').map(s => s.trim()).filter(Boolean).map(n => ({ id: 'u' + uid(), name: n, billable: !internal }));
-  const used3 = R().projects.map(p => p.color);
-  const color = internal ? -1 : [0, 1, 2, 3, 4, 5, 6, 7].find(i => !used3.includes(i)) ?? R().projects.length % 8;
+  const cv = $('input[name=pjColor]:checked')?.value;
+  const color = internal ? -1 : cv === 'free' ? $('#pjColorFree').value.toLowerCase() : cv != null ? +cv : nextColor();
   const idle = +$('#npIdle').value, now = new Date().toISOString();
   const P = { id: 'p' + uid(), number: num || '–', name, customerId: c?.id || null, property: $('#npProp').value.trim(), budgetKr: internal ? 0 : budget, internal, color, status: 'active', tasks: tasks.length ? tasks : [{ id: 'u' + uid(), name: 'Uppdrag', billable: !internal }], roleRates: {}, personRates: {}, memberRoles: {}, notices: {}, notes: [], created: now, ...(idle !== (R().book.idleDays ?? 90) ? { idleDays: idle } : {}) };
   R().projects.push(P); closeDlg();
@@ -2451,7 +2883,7 @@ function createFromWizard() {
   reg.roles[0].name = d.roleName.trim() || 'Konsult'; reg.roles[0].rate = d.rate;
   const nm = d.person.trim() || 'Jag';
   Object.assign(P0, { name: nm, initials: (d.initials.trim() || initialsFrom(nm)).toUpperCase().slice(0, 4), employment: d.emp, pct: d.emp === 'part' ? d.pct : 100, vacation: { perYear: d.vac, yearStart: d.vacStart, carried: 0 } });
-  st.wiz = null; replaceBook(b);
+  st.wiz = null; replaceBook(b, 'Före ny bok');
   toast(`${B.name} är skapad – lägg till ditt första projekt med + Lägg till rad`);
 }
 /* ───────────── Smartanteckning: hjälp och egna förkortningar ───────────── */
@@ -2505,9 +2937,9 @@ function saveAbbr() {
 /* ───────────── Om Sisyfos och synpunkter ───────────── */
 const LOGO = '<svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path class="slope" d="M2.5 20.5 21.5 7.2"/><circle class="stone" cx="10.9" cy="10.2" r="3.7"/></svg>';
 function aboutDlg() {
-  openDlg(`<div class="about"><div class="about-head">${LOGO}<div><h2 id="dlgTitle">Sisyfos</h2><div class="ver">version ${APP_VERSION} · beta · filformat ${FORMAT_VERSION}</div></div></div>
+  openDlg(`<div class="about"><div class="about-head">${LOGO}<div><h2 id="dlgTitle">Sisyfos</h2><div class="ver">version ${APP_VERSION} · alfa · filformat ${FORMAT_VERSION}</div></div></div>
   <p>Tidrapport och projektdagbok för en- och fåmansföretag: kunder, projekt och tid per dag med anteckning.</p>
-  <ul><li>Allt sparas lokalt i den här webbläsaren. Ingen server, inget konto, inget moln, ingen AI.</li><li>Inget bokförings- eller faktureringssystem – projektdagböcker och sammanställningar blir PDF-filer att bifoga i dina egna system.</li><li>Gamla böcker går alltid att öppna: filformatet är versionerat och uppgraderas automatiskt.</li><li>Öppen källkod under GPL.</li></ul>
+  <ul><li>Allt sparas lokalt i den här webbläsaren. Ingen server, inget konto, inget moln, ingen AI. Fungerar utan nät och kan installeras som app.</li><li>Inget bokförings- eller faktureringssystem – projektdagböcker och sammanställningar blir PDF-filer att bifoga i dina egna system.</li><li>Gamla böcker går alltid att öppna: filformatet är versionerat och uppgraderas automatiskt.</li><li>Öppen källkod under GPL.</li></ul>
   <h3>Integritet</h3>
   <ul><li><b>Din bok stannar hos dig.</b> Tider, anteckningar, kunder och projekt sparas bara i den här webbläsaren. Sisyfos har ingen statistik, ingen spårning och inga kakor.</li>
   <li><b>Synpunkter är det enda som skickas</b> – och bara när du själv trycker på Skicka. Med följer det du skrivit i formuläret, och version och skärmstorlek om du kryssat i det. Ingenting ur din bok.</li>
@@ -2519,7 +2951,7 @@ function aboutDlg() {
 let fbOpened = 0;
 function feedbackDlg() {
   fbOpened = Date.now();
-  openDlg(`<h2 id="dlgTitle">Skicka synpunkter</h2><p>Sisyfos är en betaversion. Berätta vad som fungerar, vad som saknas och vad som blir fel – allt läses.</p><form class="form" id="fbForm" novalidate>
+  openDlg(`<h2 id="dlgTitle">Skicka synpunkter</h2><p>Sisyfos är en alfaversion – den fungerar, men ändras fortfarande. Berätta vad som fungerar, vad som saknas och vad som blir fel – allt läses.</p><form class="form" id="fbForm" novalidate>
    <fieldset class="fld full" style="border:0;padding:0;margin:0"><legend class="lbl" style="font-size:12px;color:var(--muted);font-weight:550;margin-bottom:4px">Det gäller</legend><div class="fb-kind">${['Fel', 'Förslag', 'Fråga', 'Övrigt'].map((k, i) => `<label><input type="radio" name="fbKind" value="${k}" ${i === 1 ? 'checked' : ''}>${k}</label>`).join('')}</div></fieldset>
    <div class="fld full"><label for="fbSubj">Rubrik</label><input id="fbSubj" placeholder="Kort om vad det gäller" maxlength="120"></div>
    <div class="fld full"><label for="fbMsg">Synpunkt</label><textarea id="fbMsg" rows="7" maxlength="5000" style="font-family:var(--font-ui);font-size:14px" placeholder="T.ex. vad du försökte göra och vad som hände"></textarea></div>
@@ -2575,7 +3007,11 @@ function confirmDlg(title, text, okLabel, act) {
 function confirmPlain(title, text, okLabel, act) {
   openDlg(`<h2 id="dlgTitle">${title}</h2><p>${text}</p><div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="${act}">${okLabel}</button></div>`);
 }
-function replaceBook(b) { S = migrate(b); derive(); st.sel = null; st.week = monday(today()); st.day = today(); st.page = 'tid'; closeDlg(); save(); render(); }
+function replaceBook(b, reason = 'Före byte av bok') {
+  const prev = JSON.stringify(S), wasEx = isExample() || st.noSave;
+  S = migrate(b); derive();
+  if (reason && !wasEx) snapshot(reason, prev, 'event');
+  st.noSave = false; st.loadErr = null; st.newer = false; lastRaw = null; st.sel = null; st.week = monday(today()); st.day = today(); st.month = ymOf(today()); st.page = 'tid'; closeDlg(); save(); if (!isExample()) storageInfo(); render(); }
 
 /* ───────────── Toast ───────────── */
 let toastT, toastFns = [];
@@ -2593,7 +3029,7 @@ function openOrg() {
 }
 function brandMenu(btn) {
   const m = $('#menu');
-  m.innerHTML = `<div class="mh">${esc(R().book.name)}</div><hr><button role="menuitem" data-act="page" data-page="installningar">${ic('settings')}Inställningar …</button><button role="menuitem" data-act="personDlg">${ic('person')}Anställning, saldo och semester …</button><button role="menuitem" data-act="numbering">${ic('hash')}Projektnummer …</button><button role="menuitem" data-act="quickHelp">${ic('bolt')}Smartanteckning och förkortningar …</button><hr><button role="menuitem" data-act="exportBook">${ic('export')}Exportera boken …</button><button role="menuitem" data-act="importBook">${ic('import')}Importera bok …</button><hr><button role="menuitem" data-act="askNew">${ic('newbook')}Ny tom bok</button><button role="menuitem" data-act="askSample">${ic('sample')}Ladda exempelboken</button><hr><button role="menuitem" data-act="about">${ic('info')}Om Sisyfos</button><button role="menuitem" data-act="feedback">${ic('mail')}Skicka synpunkter …</button><hr><div class="mh">Allt sparas bara i den här webbläsaren. Ingen server, inget moln.</div>`;
+  m.innerHTML = `<div class="mh">${esc(R().book.name)}</div><hr><button role="menuitem" data-act="page" data-page="installningar">${ic('settings')}Inställningar …</button><button role="menuitem" data-act="personDlg">${ic('person')}Anställning, saldo och semester …</button><button role="menuitem" data-act="numbering">${ic('hash')}Projektnummer …</button><button role="menuitem" data-act="quickHelp">${ic('bolt')}Smartanteckning och förkortningar …</button><hr><button role="menuitem" data-act="storageInfo">${ic('lock')}Säkerhetskopior …</button><button role="menuitem" data-act="exportBook">${ic('export')}Exportera boken …</button><button role="menuitem" data-act="importBook">${ic('import')}Importera bok …</button><hr><button role="menuitem" data-act="askNew">${ic('newbook')}Ny tom bok</button><button role="menuitem" data-act="askSample">${ic('sample')}Ladda exempelboken</button><hr><button role="menuitem" data-act="about">${ic('info')}Om Sisyfos</button><button role="menuitem" data-act="feedback">${ic('mail')}Skicka synpunkter …</button>${standalone() ? '' : `<button role="menuitem" data-act="installApp">${ic('import')}Installera som app …</button>`}<hr><div class="mh">Allt sparas bara på den här enheten. Ingen server, inget moln.</div>`;
   m.hidden = false; btn.setAttribute('aria-expanded', 'true');
   const r = btn.getBoundingClientRect(); m.style.left = Math.max(8, r.left) + 'px'; m.style.top = (r.bottom + 6) + 'px';
   $('button', m).focus();
@@ -2601,12 +3037,46 @@ function brandMenu(btn) {
 
 /* ───────────── Händelser ───────────── */
 const A = {
+  backupFile: () => { closeFloating(); backupFile().then(() => { if (st.page === 'installningar') safetyRender(); }); },
+  backupSnooze: () => { metaSet({ remindUntil: addD(today(), 7) }); const a = $('#alerts'); if (a) a.innerHTML = alertsHtml(); toast('Påminner om en vecka'); },
+  dirPick: () => dirPick(),
+  dirReconnect: () => dirReconnect(),
+  dirStop: () => dirStop(),
+  askPersist: async () => { await storageInfo(true); safetyRender(); toast(st.persisted ? 'Beständig lagring är på' : 'Webbläsaren sa nej – installera Sisyfos som app eller spara kopior som fil'); },
+  storageInfo: () => { closeFloating(); st.page = 'installningar'; st.pid = null; st.cid = null; st.toBook = true; render(); },
+  snapDl: async el => { const x = await snapGet(el.dataset.id); if (x) offerFile(fileSafe(`${x.name || 'Sisyfos'} ${x.at.slice(0, 16).replace('T', ' ').replace(':', '.')}.sisyfos.json`), new TextEncoder().encode(x.raw), 'application/json'); },
+  snapAsk: async el => { const x = await snapGet(el.dataset.id); if (!x) return; confirmPlain('Återställa ögonblicksbilden?', `Boken återställs till läget ${fwhen(x.at)} (${esc(x.reason.toLowerCase())}). Det nuvarande läget sparas först som en ny ögonblicksbild, så du kan ångra.`, 'Återställ', 'snapDo'); $('#dlg [data-act="snapDo"]').dataset.id = x.id; },
+  snapDo: el => { closeDlg(); snapRestore(el.dataset.id); },
+  badRawDl: () => { if (st.badRaw) offerFile(fileSafe(`Sisyfos – boken som inte kunde öppnas ${today()}.json`), new TextEncoder().encode(st.badRaw), 'application/json'); },
+  reloadApp: () => location.reload(),
+  installApp: () => { closeFloating(); installApp(); },
   page: el => { st.page = el.dataset.page; st.pid = null; st.cid = null; $('#org').hidden = true; if (st.page !== 'tid') { st.sel = null; st.selDay = null; } render(); $('#main').scrollTop = 0; },
-  view: el => { st.view = el.dataset.view; st.selDay = null; queueMicrotask(layoutPanel); if (st.view === 'day') { st.day = weekDays(st.week).includes(st.sel ? splitKey(st.sel)[1] : today()) ? (st.sel ? splitKey(st.sel)[1] : today()) : st.week; } else st.week = monday(st.day); st.sel = null; $('#app').classList.remove('sheet'); renderMain(); renderPanel(); renderStatus(); },
+  view: el => {
+    const to = el.dataset.view, from = st.view; if (to === from) return;
+    // Datumet man står på i nuvarande vy
+    const cur = from === 'month' ? mFocusDay() : from === 'day' ? st.day : (st.sel ? splitKey(st.sel)[1] : st.selDay || (weekDays(st.week).includes(today()) ? today() : st.week));
+    st.view = to; st.selDay = null; st.sel = null; queueMicrotask(layoutPanel);
+    if (to === 'day') { const wk = monday(cur); st.day = visDays(wk).includes(cur) ? cur : wk; st.week = wk; }
+    else if (to === 'week') { st.week = monday(cur); st.day = cur; }
+    else { st.month = ymOf(cur); st.day = cur; st.week = monday(cur); }
+    $('#app').classList.remove('sheet'); renderMain(); renderPanel(); renderStatus();
+  },
+  monthStep: el => { st.month = ymAdd(st.month, +el.dataset.d); st.selDay = null; st.sel = null; $('#app').classList.remove('sheet'); renderMain(); renderPanel(); renderStatus(); },
+  mPick: el => {
+    const d = el.dataset.day;
+    if (narrow()) { st.view = 'day'; st.day = d; st.week = monday(d); st.selDay = null; renderMain(); renderPanel(); renderStatus(); $('#main').scrollTop = 0; return; }
+    if (ymOf(d) !== st.month) st.month = ymOf(d);
+    st.sel = null; st.selDay = st.selDay === d ? null : d; renderMain(); renderPanel(); refreshQuickHint();
+  },
+  gotoWeek: el => { closeFloating(); const wk = el.dataset.wk || monday(el.dataset.day); st.page = 'tid'; st.view = narrow() ? 'day' : 'week'; st.week = wk; st.day = el.dataset.day || (weekDays(wk).includes(today()) ? today() : wk); st.sel = null; st.selDay = null; queueMicrotask(layoutPanel); render(); $('#main').scrollTop = 0; },
+  gotoDay: el => { const d = el.dataset.day; st.view = 'day'; st.day = d; st.week = monday(d); st.sel = null; st.selDay = null; queueMicrotask(layoutPanel); $('#app').classList.remove('sheet'); renderMain(); renderPanel(); renderStatus(); },
+  mproj: el => { st.mproj = st.mproj === el.dataset.p ? null : el.dataset.p; renderMain(); },
+  mprojOff: () => { st.mproj = null; renderMain(); },
+  gotoTidbok: el => { closeFloating(); closeDlg(); st.page = 'tid'; st.view = 'month'; st.month = el.dataset.ym; st.mproj = el.dataset.p || null; st.pid = null; st.cid = null; st.sel = null; st.selDay = null; queueMicrotask(layoutPanel); render(); $('#main').scrollTop = 0; },
   week: el => { st.week = addD(st.week, +el.dataset.d); st.sel = null; st.selDay = null; queueMicrotask(layoutPanel); $('#app').classList.remove('sheet'); renderMain(); renderPanel(); renderStatus(); },
   dayStep: el => { const n = addD(st.day, +el.dataset.d), wk = monday(n); st.day = visDays(wk).includes(n) ? n : wk; renderMain(); renderPanel(); renderStatus(); },
   pickDay: el => { st.day = el.dataset.day; renderMain(); },
-  today: () => { st.week = monday(today()); st.day = today(); st.sel = null; st.selDay = null; queueMicrotask(layoutPanel); renderMain(); renderPanel(); renderStatus(); },
+  today: () => { st.week = monday(today()); st.day = today(); st.month = ymOf(today()); st.sel = null; st.selDay = null; queueMicrotask(layoutPanel); renderMain(); renderPanel(); renderStatus(); },
   weekend: () => { S.prefs.showWeekend = !S.prefs.showWeekend; save(); renderMain(); renderStatus(); layoutPanel(); },
   pickCol: el => selectDay(el.dataset.day),
   gotoProject: el => A.openProject(el),
@@ -2668,6 +3138,7 @@ const A = {
   },
   openCell: el => {
     const key = el.dataset.key, [rk, d] = splitKey(key);
+    if (st.view === 'month') { st.view = 'day'; st.day = d; st.week = monday(d); st.selDay = null; renderMain(); renderStatus(); }
     if (st.view === 'day') { st.day = d; select(key, true); return; }
     const box = $(`.board [data-cellbox="${CSS.escape(key)}"]`);
     select(key, false); if (box) { const r = box.getBoundingClientRect(); openCellPop(key, r.left + 30, box); $('#cpNote')?.focus(); }
@@ -2738,23 +3209,23 @@ const A = {
   copyExport: () => {
     const ta = $('#exTxt');
     const fallback = () => { ta.focus(); ta.select(); toast('Markerade texten – kopiera med Ctrl+C'); };
-    try { navigator.clipboard.writeText(ta.value).then(() => toast('Boken är kopierad'), fallback); } catch (e) { fallback(); }
+    try { navigator.clipboard.writeText(ta.value).then(() => { toast('Boken är kopierad – klistra in den i en fil och spara'); }, fallback); } catch (e) { fallback(); }
   },
   doImport: async () => {
     const err = $('#imErr'); err.textContent = '';
     try {
       const f = $('#imFile').files[0]; const txt = f ? await f.text() : $('#imTxt').value;
       if (!txt.trim()) { err.textContent = 'Välj en fil eller klistra in en exporterad bok.'; return; }
-      replaceBook(JSON.parse(txt)); toast('Boken är importerad');
+      replaceBook(JSON.parse(txt), 'Före import'); toast('Boken är importerad');
     } catch (e) { err.textContent = e instanceof SyntaxError ? 'Texten är inte giltig JSON. Kontrollera att hela exporten kom med.' : e.message; }
   },
   askNew: () => { closeFloating(); newBookWizard(); },
   wzStep: el => wizNext(+el.dataset.d),
-  wzExport: async () => { if (await offerFile(fileSafe(`${R().book.name} ${today()}.sisyfos.json`), new TextEncoder().encode(JSON.stringify(S, null, 1)), 'application/json')) toast('En kopia av boken är sparad som fil'); },
+  wzExport: () => backupFile(),
   wzLogoX: () => { wizCollect(); st.wiz.d.logo = null; wizRender(); },
   askSample: () => { closeFloating(); confirmDlg('Ladda exempelboken?', 'Exempelboken ersätter den nuvarande boken i den här webbläsaren. Exportera först om du vill behålla den.', 'Ladda exempel', 'doSample'); },
-  doNew: () => { replaceBook(emptyBook()); toast('Ny tom bok skapad'); },
-  doSample: () => { replaceBook(sampleBook()); toast('Exempelboken är laddad'); },
+  doNew: () => { replaceBook(emptyBook(), 'Före ny bok'); toast('Ny tom bok skapad'); },
+  doSample: () => { replaceBook(sampleBook(), 'Före exempelboken'); toast('Exempelboken är laddad'); },
   closeDlg: () => closeDlg(),
   insTag: el => {
     const inp = document.getElementById(el.dataset.target); if (!inp) return;
@@ -2967,7 +3438,7 @@ function calSave() {
 
 /* ───────────── Inställningar ───────────── */
 const ROUND = [[0, 'Ingen avrundning'], [0.1, '0,1 h (6 min)'], [0.25, '0,25 h (15 min)'], [0.5, '0,5 h (30 min)'], [1, '1 h']];
-const SET_NAV = [['set-company', 'Företaget'], ['set-time', 'Arbetstid'], ['set-cal', 'Årsarbetstid'], ['set-roles', 'Roller och priser'], ['set-person', 'Du'], ['set-num', 'Projektnummer'], ['set-book', 'Boken']];
+const SET_NAV = [['set-company', 'Företaget'], ['set-time', 'Arbetstid'], ['set-cal', 'Årsarbetstid'], ['set-roles', 'Roller och priser'], ['set-person', 'Du'], ['set-num', 'Projektnummer'], ['set-book', 'Säkerhetskopior']];
 function roleUse(id) {
   let n = 0; for (const e of E.values()) if (!e.deleted && e.roleId === id) n++;
   const ppl = R().people.filter(p => p.defaultRoleId === id).length;
@@ -3003,7 +3474,7 @@ function settingsHtml() {
   h += `<section class="sset" id="set-num"><h2>Projektnummer och smartanteckning</h2><div class="form">${fmtEditorHtml('setFmt', b.numberFormat || DEF_NUMFMT)}
     ${nf.serial && !nf.err ? `<div class="fld"><label for="setStart">Nästa löpnummer</label><input id="setStart" class="mono" inputmode="numeric" value="${nf.n}"><span class="fld-hint" id="setStartHint">Lägst ${nf.minN}. Höj det om du har projektnummer från tiden före Sisyfos.</span></div>` : ''}
     <div class="fld"><label for="s_idle">Nya projekt blir inaktiva efter</label>${idleSel('s_idle', b.idleDays ?? 90)}<span class="fld-hint">Kan ändras per projekt</span></div><div class="fld full"><div><button class="btn sm" data-act="quickHelp">${ic('bolt')}Smartanteckning och förkortningar …</button></div></div></div></section>`;
-  h += `<section class="sset" id="set-book"><h2>Boken</h2><p class="muted small">Allt sparas bara i den här webbläsaren. Exportera regelbundet så har du en kopia.</p><div class="btn-row"><button class="btn" data-act="exportBook">${ic('export')}Exportera boken …</button><button class="btn" data-act="importBook">${ic('import')}Importera bok …</button><button class="btn ghost" data-act="askNew">${ic('newbook')}Ny tom bok</button><button class="btn ghost" data-act="askSample">${ic('sample')}Ladda exempelboken</button></div></section>`;
+  h += `<section class="sset" id="set-book"><h2>Boken och säkerhetskopior</h2><p class="muted small">Boken sparas bara på den här enheten, i den här webbläsaren. Ingenting skickas någonstans. Rensar du webbplatsdata försvinner den – därför: spara kopior.</p><div id="safeBox" class="safe-box"><p class="muted small">Läser in …</p></div><h3 class="dsub">Hela boken</h3><div class="btn-row"><button class="btn" data-act="exportBook">${ic('export')}Exportera boken …</button><button class="btn" data-act="importBook">${ic('import')}Importera bok …</button><button class="btn ghost" data-act="askNew">${ic('newbook')}Ny tom bok</button><button class="btn ghost" data-act="askSample">${ic('sample')}Ladda exempelboken</button></div></section>`;
   return h + `</div>`;
 }
 function setSetting(key, raw, el) {
@@ -3099,8 +3570,8 @@ function projectsHtml() {
   const all = R().projects.map(p => { const m = pMoney(p.id); return { p, m, s: pState(p, m) }; });
   const cls = x => x.s === 'active' ? 'active' : x.s === 'closed' ? 'closed' : 'inactive';
   const counts = { active: 0, inactive: 0, closed: 0 }; all.forEach(x => counts[cls(x)]++);
-  const open = all.filter(x => !x.p.internal && x.p.kind !== 'absence').reduce((s, x) => s + x.m.oa, 0);
-  return `<div class="view"><div class="wk-head"><h1>Projekt</h1><span class="range">${counts.active} aktiva${open > 0 ? ` · <b class="open-t">${fkr(open)} öppet</b>` : ''}</span><span class="spacer"></span><button class="btn" data-act="newProject">${ic('plus')}Nytt projekt</button></div>
+  const om = sumMoney(all.filter(x => !x.p.internal && x.p.kind !== 'absence').map(x => x.m)), open = om.oa;
+  return `<div class="view"><div class="wk-head"><h1>Projekt</h1><span class="range">${counts.active} aktiva${open > 0 ? ` · <b class="open-t${om.po > 0.5 ? ' due' : ''}" title="${openTip(om)}">${fkr(open)} öppet</b>` : ''}</span><span class="spacer"></span><button class="btn" data-act="newProject">${ic('plus')}Nytt projekt</button></div>
   ${listBar('p', counts, 'Sök namn, nummer, kund eller fastighet')}<div id="lsBody">${projListBody(all, cls)}</div>
   <p class="muted small">Ett aktivt projekt blir inaktivt av sig självt när ingen tid har lagts på det på en tid (anges per projekt). Inaktiva visas sist i radväljaren. Avslutade syns inte där eller i smartanteckningen men finns kvar i rapporterna.</p></div>`;
 }
@@ -3120,7 +3591,7 @@ function projListBody(all, cls) {
 function moneyHtml(P, m) {
   if (P.kind === 'absence') return '';
   if (P.internal) return `<div class="money int"><div><span class="k">Timmar totalt</span><b>${fh(m.h + intHours(P.id))} h</b></div><div><span class="k">I år</span><b>${fh(intHours(P.id, today().slice(0, 4)))} h</b></div></div>`;
-  return `<div class="money"><div class="m-open${m.oa > 0.5 ? ' on' : ''}" title="Upparbetat i månader som inte är markerade som hanterade: ${fkr(m.oa)}, ${fh(m.oh)} h"><span class="k">Öppet</span><b>${nk(m.oa)}</b><small>kr · ${fh(m.oh)} h</small></div>
+  return `<div class="money"><div class="m-open${openCls(m)}" title="Upparbetat i månader som inte är markerade som hanterade: ${fkr(m.oa)}, ${fh(m.oh)} h. ${openTip(m)}"><span class="k">Öppet</span><b>${nk(m.oa)}</b><small>kr · ${fh(m.oh)} h</small></div>
     <div class="m-done" title="Upparbetat i hanterade månader: ${fkr(m.ha)}, ${fh(m.hh)} h"><span class="k">Hanterat</span><b>${nk(m.ha)}</b><small>kr · ${fh(m.hh)} h</small></div>
     ${running(P) ? `<div class="m-run" title="Löpande räkning utan budget"><span class="k">Löpande</span><b>${nk(m.a)}</b><small>kr upparbetat</small></div>` : `<div title="Kvar av budgeten ${fkr(P.budgetKr)}"><span class="k">Kvar</span><b class="${m.a > P.budgetKr ? 'neg' : ''}">${nk(P.budgetKr - m.a)}</b><small>av ${nk(P.budgetKr)}</small></div>`}</div>`;
 }
@@ -3145,7 +3616,7 @@ function projPageHtml(P) {
   <div class="dp-head"><span class="dot big"></span><div class="r-text"><h1><span class="r-num">${esc(P.number)}</span>${esc(P.name)}</h1><div class="dp-sub">${abs ? 'Semester och ledighet' : P.internal ? 'Intern tid' : c ? `<button class="lnk" data-act="openCustomer" data-c="${c.id}">${esc(c.name)}</button>` : 'Ingen kund'}${P.property ? ` · ${esc(P.property)}` : ''}${lab ? ` · <span class="ptag">${esc(lab)}</span>` : ''}${running(P) ? ' <span class="ptag run">löpande</span>' : ''}</div></div>
   <span class="spacer"></span><div class="dp-acts">${!abs && P.status !== 'closed' ? `<button class="btn" data-act="reportTime" data-p="${P.id}">${ic('clock')}Rapportera tid</button>` : ''}${abs ? '' : `<button class="btn" data-act="showDiary" data-p="${P.id}" data-ym="${ymOf(today())}">${ic('report')}Projektdagbok</button>`}<button class="btn" data-act="projEdit" data-p="${P.id}">${ic('note')}Redigera</button></div></div>`;
   if (!abs) {
-    h += `<div class="dp-kpi">${P.internal ? `<div><span class="k">Timmar totalt</span><b>${fh(es.reduce((x, e) => x + e.hours, 0))} h</b></div>` : `<div class="k-open${m.oa > 0.5 ? ' on' : ''}"><span class="k">Öppet – inte hanterat</span><b>${fkr(m.oa)}</b><small>${fh(m.oh)} h</small></div><div class="k-done"><span class="k">Hanterat</span><b>${fkr(m.ha)}</b><small>${fh(m.hh)} h</small></div><div><span class="k">Upparbetat totalt</span><b>${fkr(m.a)}</b><small>${fh(m.h)} h debiterbart</small></div>${running(P) ? '' : `<div><span class="k">Kvar av budget</span><b class="${m.a > P.budgetKr ? 'neg' : ''}">${fkr(P.budgetKr - m.a)}</b><small>av ${fkr(P.budgetKr)} · ${fpct(budgetPct(P))}</small></div>`}`}<div><span class="k">Senast tid</span><b>${m.last ? sdate(m.last) : '–'}</b><small>${m.last ? m.last.slice(0, 4) : 'ingen tid än'}</small></div></div>`;
+    h += `<div class="dp-kpi">${P.internal ? `<div><span class="k">Timmar totalt</span><b>${fh(es.reduce((x, e) => x + e.hours, 0))} h</b></div>` : `<div class="k-open${openCls(m)}" title="${openTip(m)}"><span class="k">Öppet – inte hanterat</span><b>${fkr(m.oa)}</b><small>${fh(m.oh)} h</small></div><div class="k-done"><span class="k">Hanterat</span><b>${fkr(m.ha)}</b><small>${fh(m.hh)} h</small></div><div><span class="k">Upparbetat totalt</span><b>${fkr(m.a)}</b><small>${fh(m.h)} h debiterbart</small></div>${running(P) ? '' : `<div><span class="k">Kvar av budget</span><b class="${m.a > P.budgetKr ? 'neg' : ''}">${fkr(P.budgetKr - m.a)}</b><small>av ${fkr(P.budgetKr)} · ${fpct(budgetPct(P))}</small></div>`}`}<div><span class="k">Senast tid</span><b>${m.last ? sdate(m.last) : '–'}</b><small>${m.last ? m.last.slice(0, 4) : 'ingen tid än'}</small></div></div>`;
     if (running(P)) h += runningHtml(P, true);
     else if (!P.internal) h += `<div class="dp-bud">${pBudgetHtml(P).replace('<h3>Budget</h3>', '')}</div>`;
   }
@@ -3153,7 +3624,7 @@ function projPageHtml(P) {
   // Månader: öppna och hanterade
   const months = new Map(); for (const e of es) { const ym = ymOf(e.date), o = months.get(ym) || { h: 0, a: 0, miss: 0 }; o.h += e.hours; o.a += amountOf(e); if (needsNote(e)) o.miss++; months.set(ym, o); }
   const ml = [...months].sort((a, b) => b[0].localeCompare(a[0])), cur = ymOf(today());
-  if (!abs) h += `<section class="dsec"><h2>Månader</h2>${ml.length ? `<table class="dtab"><thead><tr><th>Månad</th><th class="r">Timmar</th>${P.internal ? '' : '<th class="r">Belopp</th>'}<th>Status</th></tr></thead><tbody>${ml.map(([ym, o]) => { const hd = R().handled[P.id + '|' + ym]; return `<tr><td><button class="lnk" data-act="moCell" data-p="${P.id}" data-ym="${ym}">${ymLabel(ym)}</button></td><td class="r mono">${fh(o.h)}</td>${P.internal ? '' : `<td class="r mono">${o.a ? fkr(o.a) : '–'}</td>`}<td>${hd ? `<span class="st-done">${ic('lock')}Hanterad ${sdate(hd.at.slice(0, 10))}</span>` : ym >= cur ? '<span class="muted">Pågår</span>' : P.internal ? '<span class="muted">–</span>' : `<span class="st-open">Öppen</span>`}${o.miss ? ` <i class="mo-w" title="${o.miss} utan anteckning"></i>` : ''}</td></tr>`; }).join('')}</tbody></table><p class="small muted" style="margin:6px 0 0">Klicka på en månad för att ladda ner dagboken eller markera den som hanterad.</p>` : '<p class="muted small">Ingen tid registrerad än.</p>'}</section>`;
+  if (!abs) h += `<section class="dsec"><h2>Månader</h2>${ml.length ? `<table class="dtab"><thead><tr><th>Månad</th><th class="r">Timmar</th>${P.internal ? '' : '<th class="r">Belopp</th>'}<th>Status</th></tr></thead><tbody>${ml.map(([ym, o]) => { const hd = R().handled[P.id + '|' + ym]; return `<tr><td><button class="lnk" data-act="moCell" data-p="${P.id}" data-ym="${ym}">${ymLabel(ym)}</button></td><td class="r mono">${fh(o.h)}</td>${P.internal ? '' : `<td class="r mono">${o.a ? fkr(o.a) : '–'}</td>`}<td>${hd ? `<span class="st-done">${ic('lock')}Hanterad ${sdate(hd.at.slice(0, 10))}</span>` : ym >= cur ? '<span class="muted">Pågår</span>' : P.internal ? '<span class="muted">–</span>' : `<span class="st-open">Öppen</span>`}${o.miss ? ` <i class="mo-w" title="${o.miss} utan anteckning"></i>` : ''}</td></tr>`; }).join('')}</tbody></table><p class="small muted" style="margin:6px 0 0">Klicka på en månad för att gå till tidboken, ladda ner dagboken eller markera den som hanterad.</p>` : '<p class="muted small">Ingen tid registrerad än.</p>'}</section>`;
   // Uppgifter
   const tsum = new Map(); for (const e of es) { const o = tsum.get(e.taskId) || { h: 0, a: 0 }; o.h += e.hours; o.a += amountOf(e); tsum.set(e.taskId, o); }
   h += `<section class="dsec"><h2>Uppgifter</h2><table class="dtab"><tbody>${P.tasks.filter(t => !taskHidden(P, t) || t.archived).map(t => { const o = tsum.get(t.id) || { h: 0, a: 0 }; return `<tr class="${t.archived ? 'arch' : ''}"><td>${esc(t.name)}${t.archived ? ' <span class="ptag">arkiverad</span>' : ''}${t.abbr ? ` <span class="mono muted small">${esc(t.abbr)}</span>` : ''}</td><td class="muted small">${abs ? ABS_INFO[t.absence] || '' : P.internal || !t.billable ? 'ej debiterbar' : 'debiterbar'}</td><td class="r mono">${o.h ? fh(o.h) + ' h' : '–'}</td>${P.internal || abs ? '' : `<td class="r mono">${o.a ? fkr(o.a) : ''}</td>`}</tr>`; }).join('')}</tbody></table></section>`;
@@ -3186,8 +3657,8 @@ function customersHtml() {
   if (st.cid && cust(st.cid)) return custPageHtml(cust(st.cid));
   st.cid = null;
   const all = custRows(), counts = { active: all.filter(x => x.s === 'active').length, inactive: all.filter(x => x.s !== 'active').length };
-  const open = all.reduce((s, x) => s + x.m.oa, 0);
-  return `<div class="view"><div class="wk-head"><h1>Kunder</h1><span class="range">${counts.active} aktiva${open > 0 ? ` · <b class="open-t">${fkr(open)} öppet</b>` : ''}</span><span class="spacer"></span><button class="btn" data-act="custEdit">${ic('plus')}Ny kund</button></div>
+  const om = sumMoney(all.map(x => x.m)), open = om.oa;
+  return `<div class="view"><div class="wk-head"><h1>Kunder</h1><span class="range">${counts.active} aktiva${open > 0 ? ` · <b class="open-t${om.po > 0.5 ? ' due' : ''}" title="${openTip(om)}">${fkr(open)} öppet</b>` : ''}</span><span class="spacer"></span><button class="btn" data-act="custEdit">${ic('plus')}Ny kund</button></div>
   ${listBar('c', counts, 'Sök kund, kontakt, ort eller projekt')}<div id="lsBody">${custListBody(all)}</div>
   <p class="muted small">En kund är aktiv så länge något av dess projekt är aktivt. Du kan också sätta en kund som inaktiv själv.</p></div>`;
 }
@@ -3210,7 +3681,7 @@ function ccardHtml({ c, ps, m, s, act }) {
   const pb = p => { const pm = pMoney(p.id); return `<button class="pbtn" data-act="openProject" data-p="${p.id}" style="--pc:${pc(p)}"><span class="dot"></span><span class="r-text"><span class="r-name"><span class="r-num">${esc(p.number)}</span>${esc(p.name)}</span><span class="r-sub">${pm.oa > 0.5 ? `<span class="open-t">${fkr(pm.oa)} öppet</span>` : 'inget öppet'}${running(p) ? ' · löpande' : ''}</span></span>${p.internal ? '' : ring(p, 28)}</button>`; };
   return `<article class="ccard click${st.focus === c.id ? ' hl' : ''}${s !== 'active' ? ' inact' : ''}" data-act="openCustomer" data-c="${c.id}" data-focus="${c.id}" tabindex="0" aria-label="Öppna ${esc(c.name)}"><div class="cc-head"><h2>${esc(c.name)}</h2>${s !== 'active' ? `<span class="ptag">${c.archived ? 'inaktiv' : 'inaktiv – ingen aktiv tid'}</span>` : ''}<button class="icon-btn" data-act="custEdit" data-c="${c.id}" title="Redigera kunden" aria-label="Redigera ${esc(c.name)}">${ic('note')}</button></div>
   ${info.length ? `<div class="cinfo">${info.map(x => `<span>${x}</span>`).join('')}</div>` : ''}
-  ${ps.length ? `<div class="money"><div class="m-open${m.oa > 0.5 ? ' on' : ''}"><span class="k">Öppet</span><b>${nk(m.oa)}</b><small>kr · ${fh(m.oh)} h</small></div><div class="m-done"><span class="k">Hanterat</span><b>${nk(m.ha)}</b><small>kr · ${fh(m.hh)} h</small></div><div><span class="k">Upparbetat</span><b>${nk(m.a)}</b><small>kr · ${ps.length} projekt</small></div></div>` : ''}
+  ${ps.length ? `<div class="money"><div class="m-open${openCls(m)}" title="${openTip(m)}"><span class="k">Öppet</span><b>${nk(m.oa)}</b><small>kr · ${fh(m.oh)} h</small></div><div class="m-done"><span class="k">Hanterat</span><b>${nk(m.ha)}</b><small>kr · ${fh(m.hh)} h</small></div><div><span class="k">Upparbetat</span><b>${nk(m.a)}</b><small>kr · ${ps.length} projekt</small></div></div>` : ''}
   ${act.length ? `<div class="pbtns">${act.map((p, i) => i < CC_MAX || more ? pb(p) : '').join('')}${act.length > CC_MAX ? `<button class="linkish cc-more" data-act="ccMore" data-c="${c.id}">${more ? 'Visa färre' : `Visa alla ${act.length} aktiva projekt`}</button>` : ''}</div>` : `<p class="small muted" style="margin:0">Inga aktiva projekt.</p>`}
   ${inact ? `<p class="small muted" style="margin:0">${inact} inaktiv${inact > 1 ? 'a' : 't'} eller avslutad${inact > 1 ? 'e' : 't'} – öppna kunden för att se ${inact > 1 ? 'dem' : 'det'}</p>` : ''}</article>`;
 }
@@ -3220,7 +3691,7 @@ function custPageHtml(C) {
   const facts = [['Org.- eller personnummer', C.orgNr], ['Kundens referens', C.ref], ['Kontaktperson', C.contact], ['E-post', C.email && `<a class="lnk" href="mailto:${esc(C.email)}">${esc(C.email)}</a>`, true], ['Telefon', C.phone], ['Adress', C.address], ['Fakturaadress', C.invoiceAddress]].filter(x => x[1]);
   let h = `<div class="view dpage"><div class="dp-top"><button class="btn ghost sm" data-act="backList" data-page="kunder">${ic('left')}Kunder</button></div>
   <div class="dp-head"><span class="av big">${esc(C.name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase())}</span><div class="r-text"><h1>${esc(C.name)}</h1><div class="dp-sub">${ps.length} projekt · ${act.length} aktiva${s !== 'active' ? ` · <span class="ptag">${C.archived ? 'inaktiv' : 'inaktiv – ingen aktiv tid'}</span>` : ''}</div></div><span class="spacer"></span><div class="dp-acts"><button class="btn" data-act="newProjectFor" data-c="${C.id}">${ic('plus')}Nytt projekt</button><button class="btn" data-act="custEdit" data-c="${C.id}">${ic('note')}Redigera</button></div></div>
-  <div class="dp-kpi"><div class="k-open${m.oa > 0.5 ? ' on' : ''}"><span class="k">Öppet – inte hanterat</span><b>${fkr(m.oa)}</b><small>${fh(m.oh)} h</small></div><div class="k-done"><span class="k">Hanterat</span><b>${fkr(m.ha)}</b><small>${fh(m.hh)} h</small></div><div><span class="k">Upparbetat totalt</span><b>${fkr(m.a)}</b><small>${fh(m.h)} h debiterbart</small></div><div><span class="k">Senast tid</span><b>${m.last ? sdate(m.last) : '–'}</b><small>${m.last ? m.last.slice(0, 4) : 'ingen tid än'}</small></div></div>
+  <div class="dp-kpi"><div class="k-open${openCls(m)}" title="${openTip(m)}"><span class="k">Öppet – inte hanterat</span><b>${fkr(m.oa)}</b><small>${fh(m.oh)} h</small></div><div class="k-done"><span class="k">Hanterat</span><b>${fkr(m.ha)}</b><small>${fh(m.hh)} h</small></div><div><span class="k">Upparbetat totalt</span><b>${fkr(m.a)}</b><small>${fh(m.h)} h debiterbart</small></div><div><span class="k">Senast tid</span><b>${m.last ? sdate(m.last) : '–'}</b><small>${m.last ? m.last.slice(0, 4) : 'ingen tid än'}</small></div></div>
   <div class="dp-cols"><div class="dp-col"><section class="dsec"><h2>Aktiva projekt</h2>${act.length ? `<div class="pgrid one">${act.map(pcardHtml).join('')}</div>` : '<p class="muted small">Inga aktiva projekt.</p>'}</section>
   ${rest.length ? `<section class="dsec"><h2>Inaktiva och avslutade</h2><div class="pgrid one">${rest.map(pcardHtml).join('')}</div></section>` : ''}</div>
   <div class="dp-col"><section class="dsec"><h2>Kontaktuppgifter</h2>${facts.length ? `<dl class="dfacts">${facts.map(([k, v, raw]) => `<dt>${k}</dt><dd class="pre">${raw ? v : esc(v)}</dd>`).join('')}</dl>` : '<p class="muted small">Inga uppgifter än. <button class="linkish" data-act="custEdit" data-c="' + C.id + '">Lägg till</button></p>'}</section>${notesHtml('c', C)}</div></div></div>`;
@@ -3233,6 +3704,12 @@ function taskRowHtml(P, t) {
    <input class="tk-abbr mono" value="${esc(t.abbr || '')}" placeholder="förk." aria-label="Förkortning">
    <button type="button" class="icon-btn" data-act="pjTaskX" data-ht="${ht ? 1 : ''}" title="${ht ? (t.archived ? 'Återställ uppgiften' : 'Arkivera – uppgiften har tid och tas inte bort') : 'Ta bort uppgiften'}">${ic(ht ? (t.archived ? 'sample' : 'hide') : 'trash')}</button></li>`;
 }
+// Färgväljare: åtta temafärger (följer ljust/mörkt) och en fri färg. Används i Nytt projekt och Redigera projekt.
+function swatchesHtml(cur) {
+  const hex = isHex(cur);
+  return `<div class="swatches">${[0, 1, 2, 3, 4, 5, 6, 7].map(i => `<label style="--pc:var(--p${i})" title="Temafärg ${i + 1} – anpassas till ljust och mörkt läge"><input type="radio" name="pjColor" value="${i}" ${!hex && cur % 8 === i ? 'checked' : ''}><span></span></label>`).join('')}<label class="sw-free${hex ? ' on' : ''}" style="--free:${hex ? cur : '#3d6fb6'}" title="Välj valfri färg"><input type="radio" name="pjColor" value="free" ${hex ? 'checked' : ''}><span></span><input type="color" id="pjColorFree" value="${hex ? cur : '#3d6fb6'}" aria-label="Välj valfri färg"></label></div>`;
+}
+const nextColor = () => { const used3 = R().projects.map(p => p.color); return [0, 1, 2, 3, 4, 5, 6, 7].find(i => !used3.includes(i)) ?? R().projects.length % 8; };
 function projDlg(id) {
   const P = proj(id); if (!P) return; st.editProj = id;
   const abs = P.kind === 'absence', c = cust(P.customerId), myRole = P.memberRoles?.[me()] || '', canDel = !abs && !hasTime(P.id);
@@ -3246,7 +3723,7 @@ function projDlg(id) {
    <div class="fld"><label for="pjProp">Fastighetsbeteckning</label><input id="pjProp" value="${esc(P.property)}"></div>
    <div class="fld" data-ext><label for="pjBud">Budget, kr exkl. moms</label><input id="pjBud" class="mono" inputmode="numeric" value="${P.budgetKr ? nfKr.format(P.budgetKr) : ''}" placeholder="0 = löpande"><span class="fld-hint">Tomt eller 0 = löpande utan budget</span></div>
    <div class="fld"><label for="pjAbbr">Förkortningar i smartanteckningen</label><input id="pjAbbr" class="mono" value="${esc(P.abbr || '')}" placeholder="t.ex. vs, strand" autocapitalize="off"></div>
-   <div class="fld full" data-ext><span class="lbl">Färg</span><div class="swatches">${colors.map(i => `<label style="--pc:var(--p${i})" title="Temafärg ${i + 1} – anpassas till ljust och mörkt läge"><input type="radio" name="pjColor" value="${i}" ${P.color % 8 === i ? 'checked' : ''}><span></span></label>`).join('')}<label class="sw-free${isHex(P.color) ? ' on' : ''}" style="--free:${isHex(P.color) ? P.color : '#3d6fb6'}" title="Välj valfri färg"><input type="radio" name="pjColor" value="free" ${isHex(P.color) ? 'checked' : ''}><span></span><input type="color" id="pjColorFree" value="${isHex(P.color) ? P.color : '#3d6fb6'}" aria-label="Välj valfri färg"></label></div></div>
+   <div class="fld full" data-ext><span class="lbl">Färg</span>${swatchesHtml(P.color)}</div>
    <label class="chk fld full"><input type="checkbox" id="pjInt" ${P.internal ? 'checked' : ''}> Internt projekt (ingen kund, ingen budget, räknas inte som debiterbart)</label>`;
   h += `<h3 class="fld full dsub">Uppgifter</h3><ul class="tk-list fld full" id="pjTasks">${P.tasks.map(t => taskRowHtml(P, t)).join('')}</ul>
    <div class="fld full"><div><button type="button" class="btn sm" data-act="pjAddTask">${ic('plus')}${abs ? 'Ny frånvarotyp' : 'Ny uppgift'}</button></div><p class="small muted" style="margin:4px 0 0">Uppgifter med registrerad tid kan inte tas bort, bara arkiveras. Arkiverade syns inte i radväljaren.</p></div>`;
@@ -3453,10 +3930,6 @@ function pdfBudget(doc, bd) {
 // Ladda ner: i claude.ai via downloads-förmågan, annars som vanlig nedladdning
 async function offerFile(name, bytes, mime = 'application/pdf') {
   const blob = new Blob([bytes], { type: mime });
-  try {
-    const dl = window.claude?.use ? await claude.use('downloads') : null;
-    if (dl) { await dl.save({ filename: name, data: blob }); return true; }
-  } catch (e) { if (e?.code === 'declined') return false; if (e?.code === 'rate_limited') { toast('Vänta ett ögonblick och försök igen'); return false; } }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.append(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 5000); return true;
 }
@@ -3519,7 +3992,7 @@ function moMenu(btn) {
   const P = proj(btn.dataset.p), ym = btn.dataset.ym, hd = R().handled[P.id + '|' + ym], d = diaryData(P.id, `${ym}-01`, ymLast(ym), 'ex'), miss = d.miss;
   const m = $('#menu');
   m.innerHTML = `<div class="mh" style="--pc:${pc(P)}"><span class="dot"></span><b style="color:var(--ink)">${esc(P.name)}</b> · ${ymLabel(ym)}</div><div class="mh">${fh(d.hours)} h${d.amount > 0 ? ' · ' + fkr(d.amount) + ' exkl. moms' : ''}${miss ? ` · <span style="color:var(--warn-ink)">${miss} utan anteckning</span>` : ''}</div><hr>
-  <button role="menuitem" data-act="dlDiary" data-p="${P.id}" data-ym="${ym}">${ic('export')}Ladda ner projektdagbok (PDF)</button><button role="menuitem" data-act="showDiary" data-p="${P.id}" data-ym="${ym}">${ic('report')}Visa projektdagboken</button><hr>
+  ${st.page === 'tid' && st.view === 'month' && st.month === ym ? '' : `<button role="menuitem" data-act="gotoTidbok" data-p="${P.id}" data-ym="${ym}">${ic('month')}Gå till tidboken – ${MONL[+ym.slice(5, 7) - 1]}</button>`}<button role="menuitem" data-act="dlDiary" data-p="${P.id}" data-ym="${ym}">${ic('export')}Ladda ner projektdagbok (PDF)</button><button role="menuitem" data-act="showDiary" data-p="${P.id}" data-ym="${ym}">${ic('report')}Visa projektdagboken</button><hr>
   ${hd ? `<div class="mh">${ic('lock')}Hanterad ${sdate(hd.at.slice(0, 10))} – låst</div><button role="menuitem" data-act="unhandle" data-p="${P.id}" data-ym="${ym}">${ic('unlock')}Häv hanterad och lås upp</button>` : `<button role="menuitem" data-act="handle" data-p="${P.id}" data-ym="${ym}">${ic('lock')}Markera som hanterad och lås</button>`}`;
   const b = btn.getBoundingClientRect(); placeMenu(m, b.left, b.bottom + 4); $('button', m)?.focus();
 }
@@ -3790,17 +4263,43 @@ document.addEventListener('input', ev => {
 });
 // Listornas sökning och sortering ritar bara om listan, så att sökfältet behåller fokus
 document.addEventListener('input', ev => { const t = ev.target; if (t.id === 'lsQ') { (st.lq = st.lq || {})[t.dataset.ls] = t.value; const b = $('#lsBody'); if (b) b.innerHTML = t.dataset.ls === 'p' ? projListBody() : custListBody(); } });
+document.addEventListener('change', ev => { if (ev.target.id === 'bkDays') { S.prefs.backupDays = +ev.target.value; save(); safetyRender(); } });
 document.addEventListener('change', ev => { const t = ev.target; if (t.id === 'lsSort') { lsPref(t.dataset.k).sort = t.value; save(); const b = $('#lsBody'); if (b) b.innerHTML = t.dataset.k === 'p' ? projListBody() : custListBody(); } if (t.id === 'npInt') $$('#npForm [data-ext]').forEach(x => x.hidden = t.checked); });
 document.addEventListener('toggle', ev => { const d = ev.target; if (d.matches?.('details.lgrp')) (st.lopen = st.lopen || {})[d.dataset.g] = d.open; }, true);
 document.addEventListener('keydown', ev => { const t = ev.target; if ((ev.key === 'Enter' || ev.key === ' ') && t.matches?.('article.click')) { ev.preventDefault(); A[t.dataset.act]?.(t); } });
 
+/* ───────────── App och offline (service worker) ─────────────
+   Sidan hämtas från servern när nätet finns och sparas för att kunna starta utan nät.
+   Registreras bara över https (eller localhost). */
+let installEv = null;
+const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+addEventListener('beforeinstallprompt', ev => { ev.preventDefault(); installEv = ev; });
+addEventListener('appinstalled', () => { installEv = null; toast('Sisyfos är installerad som app'); storageInfo(true); });
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(location.hostname))) {
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js').then(r => { st.sw = r; }).catch(e => { st.swErr = e.message; }));
+}
+async function installApp() {
+  if (installEv) { installEv.prompt(); const r = await installEv.userChoice.catch(() => null); installEv = null; if (r?.outcome === 'accepted') storageInfo(true); return; }
+  openDlg(`<h2 id="dlgTitle">Installera Sisyfos som app</h2>${appHowHtml()}<div class="dlg-foot"><button class="btn primary" data-act="closeDlg">Stäng</button></div>`);
+}
+function appHowHtml() {
+  if (standalone()) return `<p>Sisyfos körs redan som installerad app.</p>`;
+  if (isIOS()) return `<p>Tryck på <b>Dela</b> i webbläsaren och välj <b>Lägg till på hemskärmen</b>. Då startar Sisyfos som en egen app, även utan nät.</p><p><b>Obs!</b> På iPhone och iPad får hemskärmsappen en <b>egen lagring</b>, skild från webbläsaren. Spara en kopia av boken som fil i webbläsaren först och importera den i appen – och använd sedan bara appen.</p>`;
+  return `<p>Klicka på installera-ikonen i adressfältet, eller i webbläsarens meny: <b>Spara och dela → Installera sidan som app</b> (Chrome) eller <b>Appar → Installera</b> (Edge). Sisyfos får då ett eget fönster, startar utan nät och webbläsaren rensar inte boken lika lätt.</p><p>Appen och webbläsaren delar samma bok på datorn.</p>`;
+}
+
 /* ───────────── Start ───────────── */
 I.more = '<circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18" cy="12" r="1.3"/>';
-load();
-if (S.prefs.theme && !document.documentElement.dataset.theme) document.documentElement.dataset.theme = S.prefs.theme;
-if (narrow()) st.view = 'day';
-render();
-if (st.loadErr) toast(`Den sparade boken kunde inte öppnas (${st.loadErr}). En kopia finns sparad som reserv – exempelboken visas.`);
+(async () => {
+  await load();
+  if (!st.meta.firstUse) metaSet({ firstUse: today() });
+  if (S.prefs.theme && !document.documentElement.dataset.theme) document.documentElement.dataset.theme = S.prefs.theme;
+  if (narrow()) st.view = 'day';
+  render();
+  if (st.newer) openDlg(`<h2 id="dlgTitle">Boken är sparad i en nyare version</h2><p>${esc(st.loadErr)}</p><p>Den här versionen (${APP_VERSION}) skriver <b>inte</b> över den. Ladda om sidan så hämtas den nya versionen – exempelboken visas så länge.</p><div class="dlg-foot"><button class="btn ghost" data-act="badRawDl">${ic('export')}Spara boken som fil</button><button class="btn primary" data-act="reloadApp">Ladda om</button></div>`);
+  else if (st.loadErr) openDlg(`<h2 id="dlgTitle">Boken kunde inte öppnas</h2><p>${esc(st.loadErr)}</p><p>Ingenting har skrivits över. Spara den oöppnade boken som fil och skicka gärna en synpunkt – eller återställ en ögonblicksbild under Inställningar → Säkerhetskopior. Exempelboken visas, men sparas inte förrän du väljer en annan bok.</p><div class="dlg-foot"><button class="btn ghost" data-act="storageInfo">Ögonblicksbilder</button><button class="btn primary" data-act="badRawDl">${ic('export')}Spara boken som fil</button></div>`);
+})();
 })();
 </script>
 </body>

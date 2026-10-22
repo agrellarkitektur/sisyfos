@@ -1,0 +1,3052 @@
+{
+ "format": "sisyfos",
+ "version": 6,
+ "register": {
+  "book": {
+   "name": "Testbok format 6",
+   "company": "[FÖRETAGSNAMN]",
+   "address": "Gatan 1\n123 45 Orten",
+   "orgNr": "000000-0000",
+   "email": "info@exempel.se",
+   "phone": "012-345 67 89",
+   "calendar": {},
+   "rounding": 0.25,
+   "vatRate": 25,
+   "numberFormat": "{år}-{löpnummer2}",
+   "norm": {
+    "0": 0,
+    "1": 8,
+    "2": 8,
+    "3": 8,
+    "4": 8,
+    "5": 8,
+    "6": 0
+   },
+   "created": "2026-10-22T16:31:58.354Z",
+   "idleDays": 90
+  },
+  "customers": [
+   {
+    "id": "kund1",
+    "name": "Familjen Strand",
+    "contact": "Eva Strand",
+    "email": "eva.strand@exempel.se",
+    "phone": "070-123 45 67",
+    "address": "Strandvägen 12\n123 45 Exempelby",
+    "archived": false,
+    "notes": [],
+    "created": "2026-10-22T16:31:58.354Z"
+   },
+   {
+    "id": "kund2",
+    "name": "Brf Smeden",
+    "orgNr": "769600-0000",
+    "contact": "Lars Holm, ordförande",
+    "ref": "Lars Holm",
+    "email": "styrelsen@brfsmeden.exempel",
+    "address": "Smedjegatan 4\n123 46 Exempelby",
+    "invoiceAddress": "Brf Smeden\nc/o Förvaltarbolaget\nBox 100\n123 00 Exempelby",
+    "archived": false,
+    "notes": [],
+    "created": "2026-10-22T16:31:58.354Z"
+   },
+   {
+    "id": "kund3",
+    "name": "Kommunens lokalförvaltning",
+    "orgNr": "212000-0000",
+    "ref": "Projekt 4711",
+    "contact": "Anna Berg",
+    "phone": "0123-45 67 00",
+    "archived": false,
+    "notes": [],
+    "created": "2026-10-22T16:31:58.354Z"
+   }
+  ],
+  "roles": [
+   {
+    "id": "roll1",
+    "name": "Arkitekt",
+    "rate": 950
+   },
+   {
+    "id": "roll2",
+    "name": "Uppdragsansvarig",
+    "rate": 1150
+   }
+  ],
+  "people": [
+   {
+    "id": "pers1",
+    "name": "Du",
+    "initials": "DU",
+    "defaultRoleId": "roll1",
+    "admin": true,
+    "employment": "full",
+    "pct": 100,
+    "balanceStart": "2026-07-27",
+    "balanceIn": 6,
+    "vacation": {
+     "perYear": 25,
+     "yearStart": "04-01",
+     "carried": 3
+    }
+   }
+  ],
+  "projects": [
+   {
+    "id": "proj1",
+    "number": "2026-07",
+    "name": "Villa Strand",
+    "customerId": "kund1",
+    "property": "Strand 1:12",
+    "budgetKr": 150000,
+    "internal": false,
+    "color": 0,
+    "status": "active",
+    "tasks": [
+     {
+      "id": "upg1",
+      "name": "Bygglov",
+      "billable": true
+     },
+     {
+      "id": "upg2",
+      "name": "Skiss",
+      "billable": true
+     }
+    ],
+    "roleRates": {},
+    "personRates": {},
+    "memberRoles": {},
+    "notices": {},
+    "notes": [],
+    "created": "2026-10-22T16:31:58.354Z"
+   },
+   {
+    "id": "proj2",
+    "number": "2026-03",
+    "name": "Kv. Smeden",
+    "customerId": "kund2",
+    "property": "Smeden 4",
+    "budgetKr": 220000,
+    "internal": false,
+    "color": 3,
+    "status": "active",
+    "tasks": [
+     {
+      "id": "upg3",
+      "name": "Systemhandling",
+      "billable": true
+     }
+    ],
+    "roleRates": {
+     "roll1": 1000
+    },
+    "personRates": {},
+    "memberRoles": {},
+    "notices": {},
+    "notes": [],
+    "created": "2026-10-22T16:31:58.354Z"
+   },
+   {
+    "id": "proj3",
+    "number": "2026-09",
+    "name": "Förskolan Lärkan",
+    "customerId": "kund3",
+    "property": "Lärkan 2",
+    "budgetKr": 300000,
+    "internal": false,
+    "color": 1,
+    "status": "active",
+    "tasks": [
+     {
+      "id": "upg4",
+      "name": "Programhandling",
+      "billable": true
+     }
+    ],
+    "roleRates": {},
+    "personRates": {},
+    "memberRoles": {
+     "pers1": "roll2"
+    },
+    "notices": {},
+    "notes": [],
+    "created": "2026-10-22T16:31:58.354Z"
+   },
+   {
+    "id": "proj4",
+    "number": "Intern",
+    "name": "Företaget",
+    "customerId": null,
+    "property": "",
+    "budgetKr": 0,
+    "internal": true,
+    "color": -1,
+    "status": "active",
+    "tasks": [
+     {
+      "id": "upg5",
+      "name": "Administration",
+      "billable": false
+     },
+     {
+      "id": "upg6",
+      "name": "Utbildning",
+      "billable": false
+     },
+     {
+      "id": "upg7",
+      "name": "Anbud",
+      "billable": false
+     }
+    ],
+    "roleRates": {},
+    "personRates": {},
+    "memberRoles": {},
+    "notices": {},
+    "notes": [],
+    "created": "2026-10-22T16:31:58.354Z"
+   },
+   {
+    "id": "proj5",
+    "number": "",
+    "name": "Frånvaro",
+    "customerId": null,
+    "property": "",
+    "budgetKr": 0,
+    "internal": true,
+    "kind": "absence",
+    "color": -2,
+    "status": "active",
+    "tasks": [
+     {
+      "id": "upg8",
+      "name": "Kompledig",
+      "billable": false,
+      "absence": "comp",
+      "abbr": "komp"
+     },
+     {
+      "id": "upg9",
+      "name": "Föräldraledig",
+      "billable": false,
+      "absence": "parental",
+      "abbr": "fl"
+     },
+     {
+      "id": "upg10",
+      "name": "Semester",
+      "billable": false,
+      "absence": "vacation",
+      "abbr": "sem"
+     },
+     {
+      "id": "upg11",
+      "name": "Annan ledighet",
+      "billable": false,
+      "absence": "other",
+      "abbr": "led"
+     },
+     {
+      "id": "umvjrdwnn2a73mc",
+      "name": "Sjuk",
+      "billable": false,
+      "absence": "sick",
+      "abbr": "sjuk"
+     },
+     {
+      "id": "umvjrdwnnl7yrwm",
+      "name": "VAB",
+      "billable": false,
+      "absence": "vab",
+      "abbr": "vab"
+     }
+    ],
+    "roleRates": {},
+    "personRates": {},
+    "memberRoles": {},
+    "notices": {},
+    "notes": [],
+    "created": "2026-10-22T16:31:58.354Z"
+   }
+  ],
+  "handled": {
+   "proj2|2026-08": {
+    "at": "2026-10-22T16:31:58.379Z",
+    "by": "pers1"
+   }
+  },
+  "signed": {
+   "pers1|2026-10-05": {
+    "at": "2026-10-12T15:30:00.000Z",
+    "by": "pers1"
+   }
+  }
+ },
+ "logs": {
+  "pers1": {
+   "events": [
+    {
+     "id": "mvjrdwoauly80z",
+     "entryId": "mvjrdwoavow7m4",
+     "type": "create",
+     "at": "2026-07-27T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-07-27",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4.5,
+      "note": "Projekteringsmöte. Rumsbeskrivning",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwoa5tcr16",
+     "entryId": "mvjrdwoa2pgd0u",
+     "type": "create",
+     "at": "2026-07-27T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-07-27",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Anbud ramavtal",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwoaa2q5b0",
+     "entryId": "mvjrdwoalwx157",
+     "type": "create",
+     "at": "2026-07-28T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-07-28",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 5,
+      "note": "Brandskyddsbeskrivning, genomgång med brandkonsult. Uppdaterade planer efter projekteringsmöte. Projekteringsmöte. Samordningsmöte med konstruktör",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwoa74bfgb",
+     "entryId": "mvjrdwobitfh94",
+     "type": "create",
+     "at": "2026-07-28T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-07-28",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "Kurs i BEAst",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobh8zco1",
+     "entryId": "mvjrdwobbf6tzf",
+     "type": "create",
+     "at": "2026-07-29T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-07-29",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Samordning installationer, schakt. Samordningsmöte med konstruktör",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobjovlx1",
+     "entryId": "mvjrdwobb1x0rf",
+     "type": "create",
+     "at": "2026-07-29T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-07-29",
+      "projectId": "proj4",
+      "taskId": "upg7",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Kurs i BEAst",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob94trk2",
+     "entryId": "mvjrdwobnoxah2",
+     "type": "create",
+     "at": "2026-07-30T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-07-30",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4.5,
+      "note": "Rumsbeskrivning. Projekteringsmöte. Uppdaterade planer efter projekteringsmöte",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobmpfs4p",
+     "entryId": "mvjrdwobd1017v",
+     "type": "create",
+     "at": "2026-07-30T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-07-30",
+      "projectId": "proj4",
+      "taskId": "upg7",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Bokföring och fakturaunderlag. Uppdatering av hemsidan",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobbbvlca",
+     "entryId": "mvjrdwob0pqxue",
+     "type": "create",
+     "at": "2026-07-31T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-07-31",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4.5,
+      "note": "Systemhandling: planer plan 2–4. Dörrförteckning",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwob9iyfiy",
+     "entryId": "mvjrdwobx7icud",
+     "type": "create",
+     "at": "2026-07-31T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-07-31",
+      "projectId": "proj4",
+      "taskId": "upg6",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Anbud ramavtal",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob8uzgdr",
+     "entryId": "mvjrdwobk20dgf",
+     "type": "create",
+     "at": "2026-08-03T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-03",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4.5,
+      "note": "Projekteringsmöte. Brandskyddsbeskrivning, genomgång med brandkonsult. Rumsbeskrivning. Projekteringsmöte. Systemhandling: planer plan 2–4",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwoba8i21l",
+     "entryId": "mvjrdwobqha9xt",
+     "type": "create",
+     "at": "2026-08-03T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-03",
+      "projectId": "proj4",
+      "taskId": "upg7",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Anbud ramavtal",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwoba0zot8",
+     "entryId": "mvjrdwoby38xpl",
+     "type": "create",
+     "at": "2026-08-04T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-04",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4.5,
+      "note": "Rumsbeskrivning. Projekteringsmöte. Brandskyddsbeskrivning, genomgång med brandkonsult. Rumsbeskrivning",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobu12lb4",
+     "entryId": "mvjrdwobbww5m5",
+     "type": "create",
+     "at": "2026-08-04T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-04",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 4.5,
+      "note": "Kurs i BEAst",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobepcbxr",
+     "entryId": "mvjrdwobqfeezt",
+     "type": "create",
+     "at": "2026-08-05T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-05",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 5,
+      "note": "Projekteringsmöte. Samordning installationer, schakt. Uppdaterade planer efter projekteringsmöte. Samordningsmöte med konstruktör. Fasadstudier, tegelval",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobqn0chw",
+     "entryId": "mvjrdwobofzv8z",
+     "type": "create",
+     "at": "2026-08-05T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-05",
+      "projectId": "proj4",
+      "taskId": "upg7",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Kurs i BEAst",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob6ziuvv",
+     "entryId": "mvjrdwobfvpqvk",
+     "type": "create",
+     "at": "2026-08-06T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-06",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Fasadstudier, tegelval",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobhmi2ps",
+     "entryId": "mvjrdwob2fh2aa",
+     "type": "create",
+     "at": "2026-08-06T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-06",
+      "projectId": "proj4",
+      "taskId": "upg6",
+      "roleId": "roll1",
+      "hours": 4.5,
+      "note": "Bokföring och fakturaunderlag. Uppdatering av hemsidan",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobujze7u",
+     "entryId": "mvjrdwobmfgurm",
+     "type": "create",
+     "at": "2026-08-07T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-07",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Fasadstudier, tegelval",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwob7cjc65",
+     "entryId": "mvjrdwobsa5c4s",
+     "type": "create",
+     "at": "2026-08-07T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-07",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 4.5,
+      "note": "Uppdatering av hemsidan",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobd7etuj",
+     "entryId": "mvjrdwobcs3chp",
+     "type": "create",
+     "at": "2026-08-10T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-10",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Fasadstudier, tegelval",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobgi74ug",
+     "entryId": "mvjrdwobdz1fkf",
+     "type": "create",
+     "at": "2026-08-10T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-10",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Ritade fasad mot öster. Skisser planlösning, alternativ B",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobbhqatf",
+     "entryId": "mvjrdwoboww445",
+     "type": "create",
+     "at": "2026-08-10T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-10",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 2.5,
+      "note": "Kurs i BEAst",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobgaatxe",
+     "entryId": "mvjrdwob1h2lqf",
+     "type": "create",
+     "at": "2026-08-11T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-11",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Samordning installationer, schakt. Projekteringsmöte",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwob96habe",
+     "entryId": "mvjrdwobt3ykjb",
+     "type": "create",
+     "at": "2026-08-11T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-11",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Situationsplan och höjdsättning mot gata",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobbdtr88",
+     "entryId": "mvjrdwob0hc2v1",
+     "type": "create",
+     "at": "2026-08-11T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-11",
+      "projectId": "proj4",
+      "taskId": "upg6",
+      "roleId": "roll1",
+      "hours": 2.5,
+      "note": "Anbud ramavtal. Bokföring och fakturaunderlag",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobrolmh7",
+     "entryId": "mvjrdwobymdzpx",
+     "type": "create",
+     "at": "2026-08-12T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-12",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Projekteringsmöte. Rumsbeskrivning",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwob4do7id",
+     "entryId": "mvjrdwobhkk8y9",
+     "type": "create",
+     "at": "2026-08-12T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-12",
+      "projectId": "proj1",
+      "taskId": "upg2",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Möte med beställaren, protokoll skickat",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobz9jt22",
+     "entryId": "mvjrdwobdstolm",
+     "type": "create",
+     "at": "2026-08-12T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-12",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 0.5,
+      "note": "Uppdatering av hemsidan. Anbud ramavtal",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobjo45ac",
+     "entryId": "mvjrdwobexv1b7",
+     "type": "create",
+     "at": "2026-08-13T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-13",
+      "projectId": "proj1",
+      "taskId": "upg2",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Situationsplan och höjdsättning mot gata",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobsnh1d7",
+     "entryId": "mvjrdwob75khuz",
+     "type": "create",
+     "at": "2026-08-13T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-13",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Möte med beställaren, protokoll skickat. Ritade fasad mot öster",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobsg7dpb",
+     "entryId": "mvjrdwobbz04jn",
+     "type": "create",
+     "at": "2026-08-13T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-13",
+      "projectId": "proj4",
+      "taskId": "upg7",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Anbud ramavtal. Bokföring och fakturaunderlag",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobre4lxa",
+     "entryId": "mvjrdwobpac138",
+     "type": "create",
+     "at": "2026-08-14T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-14",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Samordningsmöte med konstruktör. Rumsbeskrivning",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobzffo8y",
+     "entryId": "mvjrdwobed8hoz",
+     "type": "create",
+     "at": "2026-08-14T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-14",
+      "projectId": "proj1",
+      "taskId": "upg2",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "Skisser planlösning, alternativ B",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob9y8h7p",
+     "entryId": "mvjrdwobymm0kp",
+     "type": "create",
+     "at": "2026-08-14T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-14",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Situationsplan och höjdsättning mot gata. Genomgång av föreläggande om komplettering",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobxiyipx",
+     "entryId": "mvjrdwobxe3rji",
+     "type": "create",
+     "at": "2026-08-14T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-14",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 2,
+      "note": "Uppdatering av hemsidan",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob59cy80",
+     "entryId": "mvjrdwobvl159h",
+     "type": "create",
+     "at": "2026-08-17T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-17",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Projekteringsmöte. Fasadstudier, tegelval",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobbltugy",
+     "entryId": "mvjrdwob4lfg4k",
+     "type": "create",
+     "at": "2026-08-17T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-17",
+      "projectId": "proj1",
+      "taskId": "upg2",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Situationsplan och höjdsättning mot gata. Telefonmöte om fönstersättning och kulörval",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobyxx991",
+     "entryId": "mvjrdwobugcgyl",
+     "type": "create",
+     "at": "2026-08-17T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-17",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 0.5,
+      "note": "Bokföring och fakturaunderlag",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwoboke821",
+     "entryId": "mvjrdwobaycco3",
+     "type": "create",
+     "at": "2026-08-18T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-18",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 2.5,
+      "note": "Dörrförteckning",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobdc4grb",
+     "entryId": "mvjrdwob4wv8dd",
+     "type": "create",
+     "at": "2026-08-18T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-18",
+      "projectId": "proj1",
+      "taskId": "upg2",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobx4tbw0",
+     "entryId": "mvjrdwobng7doo",
+     "type": "create",
+     "at": "2026-08-18T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-18",
+      "projectId": "proj4",
+      "taskId": "upg7",
+      "roleId": "roll1",
+      "hours": 2,
+      "note": "Bokföring och fakturaunderlag",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobf6bt7o",
+     "entryId": "mvjrdwobunttij",
+     "type": "create",
+     "at": "2026-08-19T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-19",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 2,
+      "note": "Brandskyddsbeskrivning, genomgång med brandkonsult. Projekteringsmöte",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobct96ev",
+     "entryId": "mvjrdwobaj51yj",
+     "type": "create",
+     "at": "2026-08-19T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-19",
+      "projectId": "proj1",
+      "taskId": "upg2",
+      "roleId": "roll1",
+      "hours": 2.5,
+      "note": "Skisser planlösning, alternativ B",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob9m29be",
+     "entryId": "mvjrdwobon1fc4",
+     "type": "create",
+     "at": "2026-08-19T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-19",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Telefonmöte om fönstersättning och kulörval. Ritade fasad mot öster",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobanw8oc",
+     "entryId": "mvjrdwob903vaa",
+     "type": "create",
+     "at": "2026-08-19T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-19",
+      "projectId": "proj4",
+      "taskId": "upg6",
+      "roleId": "roll1",
+      "hours": 2,
+      "note": "Anbud ramavtal. Kurs i BEAst",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob0pausn",
+     "entryId": "mvjrdwobwa9s92",
+     "type": "create",
+     "at": "2026-08-20T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-20",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Systemhandling: planer plan 2–4",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobj5gu3h",
+     "entryId": "mvjrdwobma3j8n",
+     "type": "create",
+     "at": "2026-08-20T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-20",
+      "projectId": "proj1",
+      "taskId": "upg2",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Genomgång av föreläggande om komplettering",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob63edjs",
+     "entryId": "mvjrdwobu9cu7x",
+     "type": "create",
+     "at": "2026-08-20T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-20",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "Uppdatering av hemsidan",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob7vw7bv",
+     "entryId": "mvjrdwob97wfvw",
+     "type": "create",
+     "at": "2026-08-21T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-21",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Uppdaterade planer efter projekteringsmöte",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobwqo50c",
+     "entryId": "mvjrdwobov0jhl",
+     "type": "create",
+     "at": "2026-08-21T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-21",
+      "projectId": "proj1",
+      "taskId": "upg2",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Ritade fasad mot öster",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwoblawdre",
+     "entryId": "mvjrdwobqls9xy",
+     "type": "create",
+     "at": "2026-08-24T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-24",
+      "projectId": "proj1",
+      "taskId": "upg2",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Ritade fasad mot öster",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobeoq9id",
+     "entryId": "mvjrdwobx5g75c",
+     "type": "create",
+     "at": "2026-08-24T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-24",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Ritade fasad mot öster",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwoblgsvuj",
+     "entryId": "mvjrdwobh5rbeh",
+     "type": "create",
+     "at": "2026-08-24T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-24",
+      "projectId": "proj4",
+      "taskId": "upg6",
+      "roleId": "roll1",
+      "hours": 2.5,
+      "note": "Kurs i BEAst",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob6o0j73",
+     "entryId": "mvjrdwoba2lbmj",
+     "type": "create",
+     "at": "2026-08-25T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-25",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Samordningsmöte med konstruktör",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobevwljr",
+     "entryId": "mvjrdwobuun6un",
+     "type": "create",
+     "at": "2026-08-25T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-25",
+      "projectId": "proj1",
+      "taskId": "upg2",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "Möte med beställaren, protokoll skickat",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob7mex81",
+     "entryId": "mvjrdwobuph8yb",
+     "type": "create",
+     "at": "2026-08-25T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-25",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Kurs i BEAst",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob1bpgww",
+     "entryId": "mvjrdwob5kqjex",
+     "type": "create",
+     "at": "2026-08-26T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-26",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Uppdaterade planer efter projekteringsmöte. Samordningsmöte med konstruktör",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobh4gykx",
+     "entryId": "mvjrdwob0zfogs",
+     "type": "create",
+     "at": "2026-08-26T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-26",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Bygglovsritningar: planer och sektion",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob8lxohr",
+     "entryId": "mvjrdwoboc4q6m",
+     "type": "create",
+     "at": "2026-08-26T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-26",
+      "projectId": "proj4",
+      "taskId": "upg6",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Bokföring och fakturaunderlag. Uppdatering av hemsidan",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobimfr7o",
+     "entryId": "mvjrdwob6lvab0",
+     "type": "create",
+     "at": "2026-08-27T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-27",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4.5,
+      "note": "Samordningsmöte med konstruktör. Samordningsmöte med konstruktör. Fasadstudier, tegelval. Projekteringsmöte",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwob1sw9l9",
+     "entryId": "mvjrdwobnh7hkg",
+     "type": "create",
+     "at": "2026-08-27T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-27",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Möte med beställaren, protokoll skickat",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob7m1jwc",
+     "entryId": "mvjrdwobhrt1a4",
+     "type": "create",
+     "at": "2026-08-27T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-27",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 2,
+      "note": "Uppdatering av hemsidan",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobueq5gq",
+     "entryId": "mvjrdwobpnxb52",
+     "type": "create",
+     "at": "2026-08-28T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-28",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Uppdaterade planer efter projekteringsmöte",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobtrlwy5",
+     "entryId": "mvjrdwobhr7s6j",
+     "type": "create",
+     "at": "2026-08-28T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-28",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Bygglovsritningar: planer och sektion",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobglsade",
+     "entryId": "mvjrdwobicjo1p",
+     "type": "create",
+     "at": "2026-08-28T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-28",
+      "projectId": "proj4",
+      "taskId": "upg7",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "Kurs i BEAst. Anbud ramavtal",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobfezwrx",
+     "entryId": "mvjrdwob9fiumj",
+     "type": "create",
+     "at": "2026-08-31T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-31",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 2,
+      "note": "",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobjgxa38",
+     "entryId": "mvjrdwobkiu3g2",
+     "type": "create",
+     "at": "2026-08-31T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-31",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "Skisser planlösning, alternativ B",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobuvcrg5",
+     "entryId": "mvjrdwobuw9z5s",
+     "type": "create",
+     "at": "2026-08-31T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-08-31",
+      "projectId": "proj4",
+      "taskId": "upg7",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "Anbud ramavtal",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobsswf0y",
+     "entryId": "mvjrdwobzreu88",
+     "type": "create",
+     "at": "2026-09-01T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-01",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Rumsbeskrivning",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobnn8elc",
+     "entryId": "mvjrdwobj3u875",
+     "type": "create",
+     "at": "2026-09-01T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-01",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Bygglovsritningar: planer och sektion",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobdcf44q",
+     "entryId": "mvjrdwobiobmts",
+     "type": "create",
+     "at": "2026-09-01T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-01",
+      "projectId": "proj4",
+      "taskId": "upg7",
+      "roleId": "roll1",
+      "hours": 0.5,
+      "note": "Uppdatering av hemsidan. Anbud ramavtal",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob2qza8m",
+     "entryId": "mvjrdwobxmypsm",
+     "type": "create",
+     "at": "2026-09-02T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-02",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Rumsbeskrivning",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwob3cne52",
+     "entryId": "mvjrdwob1ig0km",
+     "type": "create",
+     "at": "2026-09-02T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-02",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Justerade fönstersättning. Genomgång av föreläggande om komplettering",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobo5edd9",
+     "entryId": "mvjrdwobupncur",
+     "type": "create",
+     "at": "2026-09-02T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-02",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "Anbud ramavtal. Uppdatering av hemsidan",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob9e9i38",
+     "entryId": "mvjrdwobp3iapt",
+     "type": "create",
+     "at": "2026-09-03T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-03",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Skisser planlösning, alternativ B. Möte med beställaren, protokoll skickat",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob8p0bhs",
+     "entryId": "mvjrdwobvh0uu3",
+     "type": "create",
+     "at": "2026-09-03T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-03",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Samordning installationer, schakt",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobf6svsc",
+     "entryId": "mvjrdwob69esew",
+     "type": "create",
+     "at": "2026-09-03T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-03",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "Bokföring och fakturaunderlag. Anbud ramavtal",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobwj8ld3",
+     "entryId": "mvjrdwobmrsdl9",
+     "type": "create",
+     "at": "2026-09-04T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-04",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4.5,
+      "note": "Fasadstudier, tegelval. Samordning installationer, schakt. Systemhandling: planer plan 2–4. Samordningsmöte med konstruktör",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobqk8qyo",
+     "entryId": "mvjrdwoby79pkg",
+     "type": "create",
+     "at": "2026-09-04T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-04",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Bygglovsritningar: planer och sektion",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobbfbguy",
+     "entryId": "mvjrdwobh1bmol",
+     "type": "create",
+     "at": "2026-09-04T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-04",
+      "projectId": "proj4",
+      "taskId": "upg7",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Anbud ramavtal",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobuwoq8i",
+     "entryId": "mvjrdwoba5dxoh",
+     "type": "create",
+     "at": "2026-09-07T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-07",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Samordningsmöte med konstruktör",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobyi12zo",
+     "entryId": "mvjrdwob518xgj",
+     "type": "create",
+     "at": "2026-09-07T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-07",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Genomgång av föreläggande om komplettering",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobn11txs",
+     "entryId": "mvjrdwobt3k6b6",
+     "type": "create",
+     "at": "2026-09-07T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-07",
+      "projectId": "proj4",
+      "taskId": "upg6",
+      "roleId": "roll1",
+      "hours": 2.5,
+      "note": "Kurs i BEAst",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob2ii7sj",
+     "entryId": "mvjrdwobdzla9e",
+     "type": "create",
+     "at": "2026-09-08T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-08",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4.5,
+      "note": "Dörrförteckning. Rumsbeskrivning. Samordning installationer, schakt",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwob6u76j0",
+     "entryId": "mvjrdwob0dhz72",
+     "type": "create",
+     "at": "2026-09-08T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-08",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 0.5,
+      "note": "Möte med beställaren, protokoll skickat",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobk2mpmy",
+     "entryId": "mvjrdwobn4hvbc",
+     "type": "create",
+     "at": "2026-09-08T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-08",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "Bokföring och fakturaunderlag",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobp04qva",
+     "entryId": "mvjrdwoba2k88b",
+     "type": "create",
+     "at": "2026-09-09T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-09",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 2.5,
+      "note": "Uppdaterade planer efter projekteringsmöte",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwob1arkrb",
+     "entryId": "mvjrdwobsumwpg",
+     "type": "create",
+     "at": "2026-09-09T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-09",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 2.5,
+      "note": "Situationsplan och höjdsättning mot gata",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob3e64y9",
+     "entryId": "mvjrdwob5mbsxr",
+     "type": "create",
+     "at": "2026-09-09T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-09",
+      "projectId": "proj4",
+      "taskId": "upg6",
+      "roleId": "roll1",
+      "hours": 2.5,
+      "note": "Anbud ramavtal. Bokföring och fakturaunderlag",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobwmo6f3",
+     "entryId": "mvjrdwobryeqwk",
+     "type": "create",
+     "at": "2026-09-10T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-10",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Systemhandling: planer plan 2–4",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwob7y4y2m",
+     "entryId": "mvjrdwobpa0mnq",
+     "type": "create",
+     "at": "2026-09-10T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-10",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Situationsplan och höjdsättning mot gata",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobdgij71",
+     "entryId": "mvjrdwob9x0j6x",
+     "type": "create",
+     "at": "2026-09-10T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-10",
+      "projectId": "proj4",
+      "taskId": "upg6",
+      "roleId": "roll1",
+      "hours": 2.5,
+      "note": "Kurs i BEAst",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob7q45ke",
+     "entryId": "mvjrdwobxnklih",
+     "type": "create",
+     "at": "2026-09-11T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-11",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Skisser planlösning, alternativ B. Möte med beställaren, protokoll skickat. Genomgång av föreläggande om komplettering",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob24o9n7",
+     "entryId": "mvjrdwob1ddfwv",
+     "type": "create",
+     "at": "2026-09-11T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-11",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Fasadstudier, tegelval",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwob89exsp",
+     "entryId": "mvjrdwobs7j713",
+     "type": "create",
+     "at": "2026-09-11T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-11",
+      "projectId": "proj4",
+      "taskId": "upg6",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Anbud ramavtal",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobe7nlmb",
+     "entryId": "mvjrdwobt2ypnk",
+     "type": "create",
+     "at": "2026-09-14T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-14",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Systemhandling: planer plan 2–4",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobhwnk2q",
+     "entryId": "mvjrdwobcb1ke0",
+     "type": "create",
+     "at": "2026-09-14T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-14",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Ritade fasad mot öster",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobwj1q46",
+     "entryId": "mvjrdwobr0dbmn",
+     "type": "create",
+     "at": "2026-09-14T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-14",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 2.5,
+      "note": "Anbud ramavtal",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobdk8hbn",
+     "entryId": "mvjrdwobsm7y6q",
+     "type": "create",
+     "at": "2026-09-15T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-15",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Rumsbeskrivning",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobslt5ks",
+     "entryId": "mvjrdwobttpm8o",
+     "type": "create",
+     "at": "2026-09-15T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-15",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob7zd8on",
+     "entryId": "mvjrdwobqtei7y",
+     "type": "create",
+     "at": "2026-09-15T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-15",
+      "projectId": "proj4",
+      "taskId": "upg6",
+      "roleId": "roll1",
+      "hours": 1,
+      "note": "Anbud ramavtal",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobb8iy9j",
+     "entryId": "mvjrdwobeuuiir",
+     "type": "create",
+     "at": "2026-09-16T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-16",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4.5,
+      "note": "Dörrförteckning. Rumsbeskrivning. Samordningsmöte med konstruktör. Rumsbeskrivning",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobiqoyy2",
+     "entryId": "mvjrdwobcbrf06",
+     "type": "create",
+     "at": "2026-09-16T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-16",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "Anbud ramavtal. Kurs i BEAst",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobqyf1rt",
+     "entryId": "mvjrdwobor74cv",
+     "type": "create",
+     "at": "2026-09-17T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-17",
+      "projectId": "proj5",
+      "taskId": "upg10",
+      "roleId": "roll1",
+      "hours": 8,
+      "note": "",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobvqxwnn",
+     "entryId": "mvjrdwobzifkgf",
+     "type": "create",
+     "at": "2026-09-18T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-18",
+      "projectId": "proj5",
+      "taskId": "upg10",
+      "roleId": "roll1",
+      "hours": 8,
+      "note": "",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob0c0adk",
+     "entryId": "mvjrdwob39tasl",
+     "type": "create",
+     "at": "2026-09-21T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-21",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4.5,
+      "note": "Samordningsmöte med konstruktör. Projekteringsmöte",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobgfoh5g",
+     "entryId": "mvjrdwobz9r5k0",
+     "type": "create",
+     "at": "2026-09-21T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-21",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "Bokföring och fakturaunderlag",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobt3jt31",
+     "entryId": "mvjrdwobcexns5",
+     "type": "create",
+     "at": "2026-09-22T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-22",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 5,
+      "note": "Ritade fasad mot öster. Genomgång av föreläggande om komplettering. Justerade fönstersättning",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob8ts1mz",
+     "entryId": "mvjrdwob3jc3tw",
+     "type": "create",
+     "at": "2026-09-22T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-22",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "Kurs i BEAst",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob51r9ol",
+     "entryId": "mvjrdwobpdmt71",
+     "type": "create",
+     "at": "2026-09-23T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-23",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4.5,
+      "note": "Fasadstudier, tegelval. Brandskyddsbeskrivning, genomgång med brandkonsult. Rumsbeskrivning",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobw9w89i",
+     "entryId": "mvjrdwobk5b2z6",
+     "type": "create",
+     "at": "2026-09-23T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-23",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 4.5,
+      "note": "Uppdatering av hemsidan",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobpz61q4",
+     "entryId": "mvjrdwobr2qhsj",
+     "type": "create",
+     "at": "2026-09-24T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-24",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4.5,
+      "note": "Dörrförteckning. Samordning installationer, schakt. Uppdaterade planer efter projekteringsmöte",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobfggn0h",
+     "entryId": "mvjrdwobz0xblh",
+     "type": "create",
+     "at": "2026-09-24T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-24",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "Anbud ramavtal",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobs81yv9",
+     "entryId": "mvjrdwobt67zql",
+     "type": "create",
+     "at": "2026-09-25T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-25",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 2,
+      "note": "Systemhandling: planer plan 2–4",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobfzd8q2",
+     "entryId": "mvjrdwobl7453j",
+     "type": "create",
+     "at": "2026-09-25T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-25",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "Bygglovsritningar: planer och sektion. Justerade fönstersättning",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobvghh8a",
+     "entryId": "mvjrdwob56cags",
+     "type": "create",
+     "at": "2026-09-25T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-25",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Kurs i BEAst",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob1tdrkb",
+     "entryId": "mvjrdwobnd84r6",
+     "type": "create",
+     "at": "2026-09-28T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-28",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwob4u7jcq",
+     "entryId": "mvjrdwob7q7kt2",
+     "type": "create",
+     "at": "2026-09-28T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-28",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "Situationsplan och höjdsättning mot gata",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob9ct7ld",
+     "entryId": "mvjrdwobwz8sjw",
+     "type": "create",
+     "at": "2026-09-28T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-28",
+      "projectId": "proj3",
+      "taskId": "upg4",
+      "roleId": "roll2",
+      "hours": 1.5,
+      "note": "Platsbesök, fotodokumentation",
+      "rate": 1150
+     }
+    },
+    {
+     "id": "mvjrdwob8nay5p",
+     "entryId": "mvjrdwobfhvyfb",
+     "type": "create",
+     "at": "2026-09-29T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-29",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Rumsbeskrivning",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobb6m5xq",
+     "entryId": "mvjrdwobv862mn",
+     "type": "create",
+     "at": "2026-09-29T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-29",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Möte med beställaren, protokoll skickat",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobytsqzq",
+     "entryId": "mvjrdwobr5p5b7",
+     "type": "create",
+     "at": "2026-09-29T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-29",
+      "projectId": "proj3",
+      "taskId": "upg4",
+      "roleId": "roll2",
+      "hours": 1.5,
+      "note": "Skiss gårdsytor. Volymstudier",
+      "rate": 1150
+     }
+    },
+    {
+     "id": "mvjrdwobcj7x8y",
+     "entryId": "mvjrdwobbvjnwz",
+     "type": "create",
+     "at": "2026-09-30T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-30",
+      "projectId": "proj3",
+      "taskId": "upg4",
+      "roleId": "roll2",
+      "hours": 5,
+      "note": "Volymstudier. Lokalprogram, genomgång med verksamheten. Lokalprogram, genomgång med verksamheten. Platsbesök, fotodokumentation. Skiss gårdsytor. Lokalprogram, genomgång med verksamheten",
+      "rate": 1150
+     }
+    },
+    {
+     "id": "mvjrdwob74zeaf",
+     "entryId": "mvjrdwob0zy9mm",
+     "type": "create",
+     "at": "2026-09-30T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-30",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Projekteringsmöte. Uppdaterade planer efter projekteringsmöte",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobxc7rcw",
+     "entryId": "mvjrdwobsz4h6x",
+     "type": "create",
+     "at": "2026-09-30T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-09-30",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Skisser planlösning, alternativ B",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobza6z1q",
+     "entryId": "mvjrdwobcg9w16",
+     "type": "create",
+     "at": "2026-10-01T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-01",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Samordningsmöte med konstruktör",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwob1kufds",
+     "entryId": "mvjrdwobps5up7",
+     "type": "create",
+     "at": "2026-10-01T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-01",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Skisser planlösning, alternativ B",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobnbliom",
+     "entryId": "mvjrdwobvtl5xc",
+     "type": "create",
+     "at": "2026-10-01T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-01",
+      "projectId": "proj3",
+      "taskId": "upg4",
+      "roleId": "roll2",
+      "hours": 1.5,
+      "note": "Skiss gårdsytor. Platsbesök, fotodokumentation",
+      "rate": 1150
+     }
+    },
+    {
+     "id": "mvjrdwobnrwion",
+     "entryId": "mvjrdwob836ewv",
+     "type": "create",
+     "at": "2026-10-02T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-02",
+      "projectId": "proj5",
+      "taskId": "upg8",
+      "roleId": "roll1",
+      "hours": 8,
+      "note": "",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobq0314r",
+     "entryId": "mvjrdwobz0zai6",
+     "type": "create",
+     "at": "2026-10-05T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-05",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Uppdaterade planer efter projekteringsmöte",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobdvfk9f",
+     "entryId": "mvjrdwob956hjj",
+     "type": "create",
+     "at": "2026-10-05T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-05",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Möte med beställaren, protokoll skickat",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob6dyxrk",
+     "entryId": "mvjrdwob64mg5b",
+     "type": "create",
+     "at": "2026-10-05T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-05",
+      "projectId": "proj3",
+      "taskId": "upg4",
+      "roleId": "roll2",
+      "hours": 1,
+      "note": "Lokalprogram, genomgång med verksamheten. Skiss gårdsytor",
+      "rate": 1150
+     }
+    },
+    {
+     "id": "mvjrdwobdum8is",
+     "entryId": "mvjrdwobmtrddh",
+     "type": "create",
+     "at": "2026-10-06T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-06",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Dörrförteckning",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobghhxoa",
+     "entryId": "mvjrdwob00i23n",
+     "type": "create",
+     "at": "2026-10-06T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-06",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 2.5,
+      "note": "Skisser planlösning, alternativ B. Situationsplan och höjdsättning mot gata",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobavh0vc",
+     "entryId": "mvjrdwobts1e5i",
+     "type": "create",
+     "at": "2026-10-06T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-06",
+      "projectId": "proj3",
+      "taskId": "upg4",
+      "roleId": "roll2",
+      "hours": 1.5,
+      "note": "Volymstudier",
+      "rate": 1150
+     }
+    },
+    {
+     "id": "mvjrdwobhnpeem",
+     "entryId": "mvjrdwobmng8kv",
+     "type": "create",
+     "at": "2026-10-06T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-06",
+      "projectId": "proj4",
+      "taskId": "upg6",
+      "roleId": "roll1",
+      "hours": 0.5,
+      "note": "Uppdatering av hemsidan",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobgrzbzo",
+     "entryId": "mvjrdwob00jacm",
+     "type": "create",
+     "at": "2026-10-07T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-07",
+      "projectId": "proj3",
+      "taskId": "upg4",
+      "roleId": "roll2",
+      "hours": 4.5,
+      "note": "Platsbesök, fotodokumentation. Skiss gårdsytor",
+      "rate": 1150
+     }
+    },
+    {
+     "id": "mvjrdwob1sfthm",
+     "entryId": "mvjrdwobnofqrd",
+     "type": "create",
+     "at": "2026-10-07T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-07",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "Systemhandling: planer plan 2–4. Uppdaterade planer efter projekteringsmöte. Projekteringsmöte",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobw61ge2",
+     "entryId": "mvjrdwob8i2tw3",
+     "type": "create",
+     "at": "2026-10-07T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-07",
+      "projectId": "proj4",
+      "taskId": "upg7",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Bokföring och fakturaunderlag",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobmmu5d5",
+     "entryId": "mvjrdwobqrnqu3",
+     "type": "create",
+     "at": "2026-10-08T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-08",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Systemhandling: planer plan 2–4",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobvc6zv3",
+     "entryId": "mvjrdwobdufkdi",
+     "type": "create",
+     "at": "2026-10-08T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-08",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 1.5,
+      "note": "Bygglovsritningar: planer och sektion. Ritade fasad mot öster",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob4cil3z",
+     "entryId": "mvjrdwobevwe5m",
+     "type": "create",
+     "at": "2026-10-08T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-08",
+      "projectId": "proj3",
+      "taskId": "upg4",
+      "roleId": "roll2",
+      "hours": 3,
+      "note": "Skiss gårdsytor. Lokalprogram, genomgång med verksamheten. Lokalprogram, genomgång med verksamheten. Skiss gårdsytor",
+      "rate": 1150
+     }
+    },
+    {
+     "id": "mvjrdwob0ux4oo",
+     "entryId": "mvjrdwobekyykl",
+     "type": "create",
+     "at": "2026-10-09T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-09",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Projekteringsmöte. Rumsbeskrivning",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwob4aci43",
+     "entryId": "mvjrdwob6p3ah6",
+     "type": "create",
+     "at": "2026-10-09T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-09",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Skisser planlösning, alternativ B. Justerade fönstersättning",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobnbyqwz",
+     "entryId": "mvjrdwobv2lby2",
+     "type": "create",
+     "at": "2026-10-09T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-09",
+      "projectId": "proj3",
+      "taskId": "upg4",
+      "roleId": "roll2",
+      "hours": 0.5,
+      "note": "Volymstudier",
+      "rate": 1150
+     }
+    },
+    {
+     "id": "mvjrdwobjt1svl",
+     "entryId": "mvjrdwobxf7caz",
+     "type": "create",
+     "at": "2026-10-12T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-12",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "Samordning installationer, schakt",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwoboh3hop",
+     "entryId": "mvjrdwobdaj3ay",
+     "type": "create",
+     "at": "2026-10-12T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-12",
+      "projectId": "proj3",
+      "taskId": "upg4",
+      "roleId": "roll2",
+      "hours": 4.5,
+      "note": "Skiss gårdsytor. Skiss gårdsytor. Volymstudier",
+      "rate": 1150
+     }
+    },
+    {
+     "id": "mvjrdwobk0syx4",
+     "entryId": "mvjrdwob80ezyu",
+     "type": "create",
+     "at": "2026-10-12T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-12",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 0.5,
+      "note": "Uppdatering av hemsidan",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobpkl5g9",
+     "entryId": "mvjrdwob84cq2y",
+     "type": "create",
+     "at": "2026-10-13T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-13",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 2.5,
+      "note": "Uppdaterade planer efter projekteringsmöte. Samordningsmöte med konstruktör",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobdpywu2",
+     "entryId": "mvjrdwobvrw000",
+     "type": "create",
+     "at": "2026-10-13T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-13",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobyjnc61",
+     "entryId": "mvjrdwobmcdxwj",
+     "type": "create",
+     "at": "2026-10-13T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-13",
+      "projectId": "proj3",
+      "taskId": "upg4",
+      "roleId": "roll2",
+      "hours": 3,
+      "note": "Lokalprogram, genomgång med verksamheten. Platsbesök, fotodokumentation",
+      "rate": 1150
+     }
+    },
+    {
+     "id": "mvjrdwob254o0r",
+     "entryId": "mvjrdwobulmtjn",
+     "type": "create",
+     "at": "2026-10-14T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-14",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Systemhandling: planer plan 2–4. Samordning installationer, schakt",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobhkew5e",
+     "entryId": "mvjrdwobsxfnry",
+     "type": "create",
+     "at": "2026-10-14T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-14",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Ritade fasad mot öster. Genomgång av föreläggande om komplettering",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob80iwup",
+     "entryId": "mvjrdwobefbn0w",
+     "type": "create",
+     "at": "2026-10-15T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-15",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 2.5,
+      "note": "Dörrförteckning",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwoblufbht",
+     "entryId": "mvjrdwobtxnwhf",
+     "type": "create",
+     "at": "2026-10-15T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-15",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Skisser planlösning, alternativ B",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobf153mq",
+     "entryId": "mvjrdwobifthdc",
+     "type": "create",
+     "at": "2026-10-15T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-15",
+      "projectId": "proj3",
+      "taskId": "upg4",
+      "roleId": "roll2",
+      "hours": 1,
+      "note": "Volymstudier",
+      "rate": 1150
+     }
+    },
+    {
+     "id": "mvjrdwobb1jnfn",
+     "entryId": "mvjrdwobrucgri",
+     "type": "create",
+     "at": "2026-10-15T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-15",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 0.5,
+      "note": "Bokföring och fakturaunderlag",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobha343y",
+     "entryId": "mvjrdwob1fk9us",
+     "type": "create",
+     "at": "2026-10-16T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-16",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 4,
+      "note": "Systemhandling: planer plan 2–4",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwobm5fxr0",
+     "entryId": "mvjrdwob5env2z",
+     "type": "create",
+     "at": "2026-10-16T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-16",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Telefonmöte om fönstersättning och kulörval",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobywrkaw",
+     "entryId": "mvjrdwobzbpm4i",
+     "type": "create",
+     "at": "2026-10-16T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-16",
+      "projectId": "proj4",
+      "taskId": "upg7",
+      "roleId": "roll1",
+      "hours": 0.5,
+      "note": "Bokföring och fakturaunderlag",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobmyctmt",
+     "entryId": "mvjrdwoburr5qk",
+     "type": "create",
+     "at": "2026-10-19T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-19",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 2,
+      "note": "Telefonmöte med beställaren om fönstersättning och kulörval",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobyadtfw",
+     "entryId": "mvjrdwobhvb209",
+     "type": "create",
+     "at": "2026-10-19T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-19",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 5,
+      "note": "",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwob737peh",
+     "entryId": "mvjrdwobllvu0s",
+     "type": "create",
+     "at": "2026-10-19T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-19",
+      "projectId": "proj4",
+      "taskId": "upg5",
+      "roleId": "roll1",
+      "hours": 1,
+      "note": "Bokföring och fakturaunderlag",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwob73rg6a",
+     "entryId": "mvjrdwobg5pbnu",
+     "type": "create",
+     "at": "2026-10-20T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-20",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 3,
+      "note": "Genomgång av föreläggande om komplettering. Ritade fasad mot öster",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobmdeuva",
+     "entryId": "mvjrdwobj1s53y",
+     "type": "create",
+     "at": "2026-10-20T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-20",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 2,
+      "note": "Samordningsmöte med konstruktör",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwob6gv6ff",
+     "entryId": "mvjrdwob4xkkva",
+     "type": "create",
+     "at": "2026-10-20T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-20",
+      "projectId": "proj3",
+      "taskId": "upg4",
+      "roleId": "roll2",
+      "hours": 1,
+      "note": "Lokalprogram, genomgång med verksamheten",
+      "rate": 1150
+     }
+    },
+    {
+     "id": "mvjrdwoby65b4z",
+     "entryId": "mvjrdwobsimlo7",
+     "type": "create",
+     "at": "2026-10-21T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-21",
+      "projectId": "proj1",
+      "taskId": "upg1",
+      "roleId": "roll1",
+      "hours": 3.5,
+      "note": "Bygglovskomplettering: ritade fasad mot väster, justerade fönstersättning",
+      "rate": 950
+     }
+    },
+    {
+     "id": "mvjrdwobhviw43",
+     "entryId": "mvjrdwobj31vx8",
+     "type": "create",
+     "at": "2026-10-21T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-21",
+      "projectId": "proj2",
+      "taskId": "upg3",
+      "roleId": "roll1",
+      "hours": 2.5,
+      "note": "Projekteringsmöte",
+      "rate": 1000
+     }
+    },
+    {
+     "id": "mvjrdwob1z7agz",
+     "entryId": "mvjrdwobb92599",
+     "type": "create",
+     "at": "2026-10-21T15:05:00.000Z",
+     "by": "pers1",
+     "data": {
+      "date": "2026-10-21",
+      "projectId": "proj3",
+      "taskId": "upg4",
+      "roleId": "roll2",
+      "hours": 2,
+      "note": "Platsbesök, fotodokumentation",
+      "rate": 1150
+     }
+    },
+    {
+     "id": "mvjrdwobgjlbmm",
+     "entryId": null,
+     "type": "week",
+     "at": "2026-10-16T15:30:00.000Z",
+     "by": "pers1",
+     "data": {
+      "week": "2026-10-12",
+      "checked": true
+     }
+    },
+    {
+     "id": "mvjrdwoboqvxcc",
+     "entryId": null,
+     "type": "week",
+     "at": "2026-10-09T15:30:00.000Z",
+     "by": "pers1",
+     "data": {
+      "week": "2026-10-05",
+      "checked": true
+     }
+    }
+   ]
+  }
+ },
+ "session": {
+  "personId": "pers1"
+ },
+ "prefs": {
+  "showWeekend": false,
+  "expanded": [],
+  "weekRows": {
+   "2026-10-19": [
+    "proj1~upg1",
+    "proj2~upg3",
+    "proj3~upg4",
+    "proj4~upg5"
+   ]
+  },
+  "hiddenRows": {},
+  "compact": false
+ }
+}

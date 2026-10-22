@@ -1,0 +1,36 @@
+# Skapar en release med en färdig zip för webbhotellet när en versionstagg (v0.7.0 …) pushas.
+# Taggen måste stämma med APP_VERSION i index.html.
+name: Release-zip
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Kontrollera versionen
+        run: |
+          APP=$(grep -oP "APP_VERSION = '\K[^']+" index.html)
+          TAG=${GITHUB_REF_NAME#v}
+          echo "APP_VERSION=$APP, tagg=$TAG"
+          if [ "$APP" != "$TAG" ]; then echo "::error::Taggen v$TAG stämmer inte med APP_VERSION $APP i index.html"; exit 1; fi
+          SW=$(grep -oP "const VERSION = '\K[^']+" sw.js)
+          if [ "$SW" != "$TAG" ]; then echo "::warning::sw.js har VERSION $SW – uppdatera den så att cachen byts"; fi
+      - name: Bygg zip
+        run: |
+          mkdir -p sisyfos
+          cp index.html feedback.php sw.js manifest.webmanifest icon.svg favicon-32.png icon-192.png icon-512.png icon-maskable-512.png apple-touch-icon.png README.md LICENSE sisyfos/
+          zip -r "sisyfos-${GITHUB_REF_NAME}.zip" sisyfos
+      - name: Ta fram releaseanteckningar
+        run: |
+          V=${GITHUB_REF_NAME#v}
+          awk -v v="## $V" 'index($0, v)==1{f=1; next} /^## /{if(f) exit} f' CHANGELOG.md > notes.md || true
+          [ -s notes.md ] || echo "Sisyfos $V" > notes.md
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Sisyfos ${{ github.ref_name }}
+          body_path: notes.md
+          files: sisyfos-${{ github.ref_name }}.zip

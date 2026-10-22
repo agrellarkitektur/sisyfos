@@ -9,10 +9,16 @@
  *
  * Installation: lägg filen på servern (t.ex. /sisyfos/feedback.php) och peka FEEDBACK_URL
  * i Sisyfos dit. Kräver att PHP:s mail() fungerar hos webbhotellet.
+ *
+ * 0.7.0: kuvertavsändaren (-f) sätts till en adress på den egna domänen och brevet får ett
+ * eget Message-ID och Date. Utan dem stoppar Gmail ofta brev som vidarebefordras från
+ * webbhotellets brevlåda (SPF/DMARC stämmer inte, eller Message-ID saknas).
  */
 
 const TO        = 'ca@agrellarkitektur.se';
 const FROM      = 'Sisyfos synpunkter <noreply@agrellarkitektur.se>';
+const ENVELOPE  = 'noreply@agrellarkitektur.se';  // kuvertavsändare (Return-Path) – måste ligga på domänen
+const DOMAIN    = 'agrellarkitektur.se';
 const MAX_HOUR  = 30;          // högst så många mejl per timme totalt
 const MAX_BYTES = 20000;       // största tillåtna begäran
 const KINDS     = ['Fel', 'Förslag', 'Fråga', 'Övrigt'];
@@ -86,6 +92,9 @@ $text = $message . "\n\n—\n"
 
 $huvud = [
   'From: ' . FROM,
+  'Sender: ' . ENVELOPE,
+  'Date: ' . date('r'),
+  'Message-ID: <' . bin2hex(random_bytes(12)) . '.sisyfos@' . DOMAIN . '>',
   'MIME-Version: 1.0',
   'Content-Type: text/plain; charset=UTF-8',
   'Content-Transfer-Encoding: 8bit',
@@ -94,6 +103,8 @@ $huvud = [
 if ($reply !== '') $huvud[] = 'Reply-To: ' . $reply;
 
 mb_internal_encoding('UTF-8');
-$ok = mail(TO, mb_encode_mimeheader($amne, 'UTF-8', 'B'), $text, implode("\r\n", $huvud));
+// Femte argumentet sätter kuvertavsändaren. Vissa webbhotell tillåter det inte – prova då utan.
+$ok = @mail(TO, mb_encode_mimeheader($amne, 'UTF-8', 'B'), $text, implode("\r\n", $huvud), '-f' . ENVELOPE);
+if (!$ok) $ok = mail(TO, mb_encode_mimeheader($amne, 'UTF-8', 'B'), $text, implode("\r\n", $huvud));
 if (!$ok) svar(500, ['ok' => false, 'error' => 'Servern kunde inte skicka e-post.']);
 svar(200, ['ok' => true]);
