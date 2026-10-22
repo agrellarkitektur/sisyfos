@@ -34,3 +34,17 @@ jobs:
           server-dir: ${{ secrets.FTP_DIR || '/sisyfos/' }}
           local-dir: ./publicera/
           dangerous-clean-slate: false
+      - name: Kontrollera att webbhotellet har den nya versionen
+        if: env.HAR_FTP == 'true'
+        run: |
+          WANT=$(grep -oP "const VERSION = '\K[^']+" sw.js)
+          URL="${{ vars.SITE_URL || 'https://agrellarkitektur.se/sisyfos/' }}"
+          sleep 5
+          GOT=$(curl -fsS -H 'Cache-Control: no-cache' "${URL}sw.js?t=$(date +%s)" | grep -oP "const VERSION = '\K[^']+" || echo "hittades inte")
+          STATE=$(curl -s -o /dev/null -w '%{http_code}' "${URL}.ftp-deploy-sync-state.json")
+          echo "Väntad version: $WANT · på ${URL}: $GOT · sync-state: HTTP $STATE"
+          if [ "$GOT" != "$WANT" ]; then
+            echo "::error::Webbhotellet visar version $GOT, väntad $WANT. sync-state på webbadressen: HTTP $STATE (404 = filerna laddas upp till en annan mapp än den som visas på ${URL} – kontrollera FTP_DIR)."
+            exit 1
+          fi
+          echo "::notice::Webbhotellet har version $GOT."
