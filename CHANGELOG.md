@@ -1,5 +1,14 @@
 # Ändringar i Sisyfos
 
+## 0.8.1
+
+Egenskapspanelen på alla sidor. Filformatet är oförändrat (7).
+
+- **Panelen finns på alla sidor**, så att innehållet inte hoppar när man byter sida. Utfällt eller infällt läge sparas och är detsamma överallt.
+- Utanför tidboken visar panelen läget på sidan och kort hjälp: projekt och kunder att fakturera (äldst först) och budgetar som snart tar slut i listorna, öppna månader med "redo"-status på projektsidan, innehållsförteckning i Inställningar.
+- **Projektdagboken**: panelen visar äldsta ohanterade tid och hur mycket öppen tid som ligger före, i och efter den valda perioden, med knappar för att börja perioden vid den äldsta öppna tiden eller ta med all öppen tid. Projektsidan har knappen *Dagbok för all öppen tid*.
+- **Redan hanterad tid i dagboken**: rader som ingår i en hanterad månad är gråa, på skärmen och i PDF:en, och sammanställningen visar "varav redan hanterat".
+
 ## 0.8.0
 
 Sparad semester per år. **Nytt filformat 7** – böcker från tidigare versioner uppgraderas när de öppnas (en ögonblicksbild tas först). En bok som sparats i 0.8 kan inte öppnas i 0.7.
