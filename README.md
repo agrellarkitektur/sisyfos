@@ -4,7 +4,19 @@ Tidrapport och projektdagbok för en- och fåmansföretag. Körs helt lokalt i w
 
 ## Om Sisyfos
 
-<!-- Inledningen skrivs av Carl August. -->
+<!--
+  OM SISYFOS – skriv själv utifrån stödorden och ta sedan bort kommentaren:
+  · tidrapport + projektdagbok, en- och fåmansföretag
+  · kunder, projekt, tid per dag med anteckning
+  · helt lokal: ingen server, inget konto, inget moln, ingen AI, ingen spårning
+  · inte bokföring/fakturering – PDF-underlag till egna system
+  · löpande mot budget, påminnelser 50/75/90 %, öppet vs hanterat
+  · smartanteckning, dag-, vecka- och månadsvy, mobil
+  · fungerar utan nät, kan installeras som app (nytt i 0.7)
+  · boken skyddas: ögonblicksbilder, påminnelse om kopia, autospar till mapp (nytt i 0.7)
+  · alfa, synpunkter välkomna
+  · namnet: Sisyfos och stenen
+-->
 
 ## Prova
 
