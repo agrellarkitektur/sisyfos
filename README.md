@@ -33,12 +33,12 @@ Fältet överst på alla sidor. Raden under fältet säger vad Enter gör innan 
 |---|---|
 | `3,5 strand ritade fasad` · `tor 8 strand` · `v43 fl` | tid – timmarna först, sedan projekt och anteckning |
 | `v43` · `okt` · `idag` | går dit i tidboken |
-| `ch` · `ch v43` · `öppna v43` · `sign v43` | checkar av, öppnar, signerar |
+| `ch` · `ch v43` · `öppna v43` · `sign v43` | checkar av, öppnar, signerar (bekräfta med `sign` eller `ok` + Enter, Esc avbryter) |
 | `db okt strand` · `db ner okt strand` · `db ner öppet strand` | visar eller laddar ner projektdagboken |
 | `pers fv` · `översikt 2025` | personsammanställning, månadsöversikt |
 | `fakt strand` · `fakt kund smeden` · `fakt ner fm strand` · `fakt csv öppet strand` | visar eller laddar ner fakturaunderlaget (PDF eller CSV) |
 | `hant fm strand` · `häv okt strand` | markerar som hanterad och låser, eller häver |
-| `proj strand` · `proj Kv. Lärkan 2 100000 Diamanten` | öppnar eller skapar projekt (budget och kund valfritt) |
+| `proj strand` · `proj Kv. Lärkan 2 100000 Diamanten` · `proj Tennis 100k 850` · `proj Golf 850/h` | öppnar eller skapar projekt (budget, timpris och kund valfritt – ett tal direkt efter budgeten är timpriset) |
 | `kund Diamanten Bygg` · `uppg strand Bygglov` · `ant strand …` · `budget strand 180k` · `avsluta strand` | kunder, uppgifter, anteckningar, budget, status |
 | `? strand` · `? öppet` · `? saldo` · `? v43` | frågor – svaret visas i panelen |
 
@@ -71,6 +71,18 @@ Varför ingen riktig faktura? En faktura behöver löpnummer i obruten serie som
 - **Kopia som fil**: *Spara kopia som fil* laddar ner hela boken som JSON. Sisyfos påminner om det efter en vecka (kan ändras).
 - **Autospar till mapp** (Chrome och Edge på dator): välj en mapp – gärna en som säkerhetskopieras eller ligger i en molnmapp – så skriver Sisyfos boken dit vid varje ändring, plus en kopia per dag i undermappen *Säkerhetskopior*.
 - Rensar du webbplatsdata för sidan försvinner boken ur webbläsaren. Då behövs en kopia.
+
+## Data och integritet
+
+Samma text finns i appen under *Sisyfos-menyn → Data och integritet*.
+
+**Vad boken innehåller.** Företagets uppgifter och logga. Kunder: namn, organisations- eller personnummer, referens, kontaktperson, e-post, telefon, adresser och anteckningar. Projekt: namn, nummer, fastighetsbeteckning, budget, timpriser, uppgifter och anteckningar. Tid: datum, timmar, pris och anteckning för varje tidpost, med historik över ändringar, avcheckning och signering. Om dig: namn, initialer, roll och timpris – i fullständigt läge även anställningsform, normtid, kompsaldo och semester. Personnummer, kontaktpersoner och anteckningar om människor är personuppgifter.
+
+**Var den sparas.** Bara i webbläsaren på enheten, tillsammans med automatiska ögonblicksbilder (se ovan). Filer du själv sparar – kopior, autospar till mapp, PDF och CSV – är vanliga, okrypterade filer. Ingen annan kan se boken, inte heller Agrell Arkitektur, och därför kan ingen heller återställa den åt dig.
+
+**Vad som skickas över nätet.** Appen hämtas från agrellarkitektur.se, och webbhotellet för som alla webbservrar tekniska loggar över anrop (IP-adress, tidpunkt, vilken fil) – inget ur boken följer med. Synpunkter skickas bara när du trycker på Skicka: det du skrivit, din e-postadress om du anger den och, om du vill, version och skärmstorlek. `feedback.php` skickar det vidare som e-post och sparar ingenting. Inget annat: ingen statistik, spårning, reklam, AI eller tjänster från andra företag, och typsnitten är inbyggda.
+
+**Ditt ansvar.** Du ansvarar för personuppgifterna du för in, som för ett eget kalkylark. Eftersom inget ur boken når Agrell Arkitektur behandlar vi inga personuppgifter åt dig. Skriv inte mer om människor än uppdraget kräver. Sisyfos är en alfaversion och fri programvara under GPL, utan garanti – kontrollera underlagen och spara kopior.
 
 ## Installera som app
 

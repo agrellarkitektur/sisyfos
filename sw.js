@@ -4,7 +4,7 @@
  * direkt) och sparas då i cachen; utan nät används den senast sparade. Boken ligger aldrig här –
  * den finns i webbläsarens databas. Inget skickas någonstans.
  */
-const VERSION = '0.11.0';
+const VERSION = '0.11.1';
 const CACHE = 'sisyfos-' + VERSION;
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg', './favicon-32.png', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'];
 

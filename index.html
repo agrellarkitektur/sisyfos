@@ -196,6 +196,13 @@ button{cursor:pointer}
 .hamb{display:none}
 /* Temaknappen visar läget man byter till: måne i ljust läge, sol i mörkt */
 .th-btn .th-sun{display:none}
+/* Lägesknappen visar båda lägena, det aktuella markerat */
+.mode-btn{display:inline-flex;align-items:center;gap:2px;height:30px;padding:2px;border:1px solid var(--rule);border-radius:8px;background:transparent;font-family:var(--font-ui);font-size:11.5px;font-weight:600;color:var(--muted);cursor:pointer}
+.mode-btn span{padding:3px 7px;border-radius:6px;line-height:1.2}
+.mode-btn[data-cur="simple"] [data-m="simple"],.mode-btn[data-cur="full"] [data-m="full"]{background:var(--accent-soft);color:var(--accent-ink)}
+.mode-btn:hover{border-color:var(--muted)}
+.cf-type{margin:4px 0 2px}.cf-type label{font-size:12.5px;color:var(--muted);display:block;margin-bottom:4px}.cf-type input{width:100%;max-width:220px}
+@media (width <= 560px){.topbar{gap:6px}.mode-btn{font-size:10.5px;height:28px}.mode-btn span{padding:3px 6px}.mode-btn[data-cur="simple"] [data-m="full"],.mode-btn[data-cur="full"] [data-m="simple"]{display:none}}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .th-btn .th-sun{display:block}:root:not([data-theme="light"]) .th-btn .th-moon{display:none}}
 :root[data-theme="dark"] .th-btn .th-sun{display:block}
 :root[data-theme="dark"] .th-btn .th-moon{display:none}
@@ -796,6 +803,16 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 .rep .seg .sm{display:none}
 @media (width <= 560px){.rep .seg .lg{display:none}.rep .seg .sm{display:inline}.mo th.p{min-width:150px;max-width:170px}}
 .mo .pcell{display:flex;align-items:center;gap:8px;min-width:0}
+.rep-sug{display:flex;align-items:flex-start;gap:10px;margin:0 0 14px;flex-wrap:wrap}
+.rep-sug>.lbl{font-size:12px;color:var(--muted);font-weight:600;padding-top:7px;white-space:nowrap}
+.sug-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:0;flex:1}
+.sug{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border:1px solid var(--rule);border-radius:999px;background:var(--paper);font:500 12.5px var(--font-ui);cursor:pointer;max-width:100%}
+.sug b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
+.sug .mono{font-size:12px}.sug small{font-size:11px;color:var(--muted)}.sug small.due{color:var(--due-ink)}
+.sug .dot{width:8px;height:8px;border-radius:50%;background:var(--pc);flex:none}
+.sug:hover{border-color:var(--muted)}.sug.on{border-color:var(--accent);background:var(--accent-soft)}
+.mo-row{cursor:pointer}.mo-row:hover th.p,.mo-row:hover td{background:color-mix(in srgb,var(--pc) 6%,transparent)}.mo-row:hover th.p{background:color-mix(in srgb,var(--pc) 6%,var(--chrome))}
+.mo-lnk{all:unset;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mo-lnk:hover{text-decoration:underline;color:var(--accent-ink)}.mo-lnk:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-radius:2px}.mo .r-name.mo-lnk{display:block}
 .mo .r-text{min-width:0}
 .mo .r-name{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mo .r-sub{display:block;font-size:11px;color:var(--muted);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1100,6 +1117,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
     <div class="bookname" id="bookName"></div>
     <div class="spacer"></div>
     <div class="save" id="saveState" role="status"><span class="d"></span><span class="t">Sparas i den här webbläsaren</span></div>
+    <button class="mode-btn" id="modeBtn" data-act="modeToggle" aria-label="Byt mellan enkelt och fullständigt läge"><span data-m="simple">Enkelt</span><span data-m="full">Fullt</span></button>
     <button class="icon-btn th-btn" data-act="theme" aria-label="Byt mellan ljust och mörkt tema"><svg class="ic th-moon" viewBox="0 0 24 24" aria-hidden="true"><title>Byt till mörkt läge</title><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><svg class="ic th-sun" viewBox="0 0 24 24" aria-hidden="true"><title>Byt till ljust läge</title><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg></button>
     <button class="badge beta-btn" data-act="feedback" id="alfaBtn" title="Sisyfos är en alfaversion – skicka synpunkter"><b>Alfa <span class="v-num">0.7.1</span></b><small>Skicka synpunkter</small></button>
   </header>
@@ -1123,7 +1141,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 
 /* ───────────── Hjälpfunktioner ───────────── */
 const FORMAT = 'sisyfos', FORMAT_VERSION = 7, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.11.0', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const APP_VERSION = '0.11.1', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 { const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
@@ -1980,6 +1998,7 @@ function render() { $('#app').classList.toggle('compact', !!S.prefs.compact); if
 function renderBook() {
   const b = R().book;
   $('#bookName').innerHTML = `<strong>${esc(b.name)}</strong>${b.example ? ' <span class="badge">Exempel</span>' : ''}`;
+  const mb = $('#modeBtn'); if (mb) { mb.dataset.cur = simple() ? 'simple' : 'full'; mb.title = simple() ? 'Enkelt läge – klicka för fullständigt läge' : 'Fullständigt läge – klicka för enkelt läge'; }
 }
 const PAGES = [['tid', 'clock', 'Tid'], ['projekt', 'folder', 'Projekt'], ['kunder', 'users', 'Kunder'], ['rapporter', 'report', 'Rapporter'], ['installningar', 'settings', 'Inställ­ningar']];
 function renderRail() {
@@ -2893,8 +2912,9 @@ function picked(rk) {
 }
 
 /* ───────────── Dialoger ───────────── */
-function openDlg(html, cls = '') { const d = $('#dlg'); d.className = 'dlg' + (cls ? ' ' + cls : ''); d.innerHTML = html; d.hidden = false; $('#scrim').hidden = false; $('input,textarea,select,button', d)?.focus(); }
-function closeDlg() { acClose(); $('#dlg').hidden = true; $('#scrim').hidden = true; if ($('#org').hidden === false) return; }
+let dlgFrom = null;
+function openDlg(html, cls = '') { const d = $('#dlg'); if (d.hidden) dlgFrom = document.activeElement; d.className = 'dlg' + (cls ? ' ' + cls : ''); d.innerHTML = html; d.hidden = false; $('#scrim').hidden = false; $('input,textarea,select,button', d)?.focus(); }
+function closeDlg() { acClose(); const wasOpen = !$('#dlg').hidden; $('#dlg').hidden = true; $('#scrim').hidden = true; if (wasOpen && dlgFrom?.id === 'quickIn' && dlgFrom.isConnected) { const q = dlgFrom; dlgFrom = null; setTimeout(() => q.focus(), 0); } if ($('#org').hidden === false) return; }
 /* ───────────── Projektnummer med smarta taggar ─────────────
    {år} 2026 · {år2} 26 · {månad} 10 · {löpnummerN} löpnummer med N siffror ({löpnummer} utan utfyllnad).
    Löpnumret räknas per "familj": nästa nummer = högsta befintliga nummer med samma fasta delar + 1,
@@ -2993,7 +3013,7 @@ function newProjectDlg(pre) {
    <div class="fld"><label for="npProp">Fastighetsbeteckning</label><input id="npProp" placeholder="Exempel 1:23"></div>
    ${simple() ? `<div class="fld"><label for="npRate">Timpris, kr exkl. moms</label><input id="npRate" class="mono" inputmode="numeric" placeholder="${nfKr.format(role(person().defaultRoleId)?.rate || 0)}"><span class="fld-hint">Tomt = ditt vanliga pris</span></div>` : `<div class="fld"><label for="npCust">Kund</label>${custAcHtml('npCust', pre?.customer || '')}</div>`}
    <div class="fld"><label for="npBud">Budget, kr exkl. moms</label><input id="npBud" inputmode="numeric" placeholder="120 000"><span class="fld-hint">Tomt eller 0 = löpande utan budget</span></div>
-   <div class="fld"><label for="npTasks">Uppgifter, kommaseparerade</label><input id="npTasks" value="Skiss, Bygglov"></div>
+   <div class="fld"><label for="npTasks">Uppgifter, kommaseparerade</label><input id="npTasks" value="${esc(defTasks().join(', '))}"></div>
    <div class="fld" data-ext><label for="npIdle">Blir inaktivt efter</label>${idleSel('npIdle', R().book.idleDays ?? 90)}<span class="fld-hint">utan registrerad tid</span></div>
    <div class="fld full" data-ext><span class="lbl">Färg</span>${swatchesHtml(nextColor())}</div>
    <div class="form fld full fmt-box" id="npFmtBox" hidden>${fmtEditorHtml('npFmt', fmt)}<p class="small muted fld full" style="margin:0">Det nya formatet sparas för kommande projekt när du skapar projektet.</p></div>
@@ -3012,11 +3032,11 @@ function createProject() {
   const sRate = simple() ? parseKr($('#npRate').value) : null; if (sRate != null && !(sRate >= 0)) { $('#npErr').textContent = 'Timpriset ska vara ett tal i kronor.'; return; }
   let cn = $('#npCust')?.value.trim() || '', c = cn && R().customers.find(x => x.name.toLowerCase() === cn.toLowerCase());
   if (cn && !c) { c = { id: 'k' + uid(), name: cn, archived: false, notes: [], created: new Date().toISOString() }; R().customers.push(c); }
-  const tasks = ($('#npTasks').value || 'Uppdrag').split(',').map(s => s.trim()).filter(Boolean).map(n => ({ id: 'u' + uid(), name: n, billable: !internal }));
+  const tasks = ($('#npTasks').value || defTasks().join(',')).split(',').map(s => s.trim()).filter(Boolean).map(n => ({ id: 'u' + uid(), name: n, billable: !internal }));
   const cv = $('input[name=pjColor]:checked')?.value;
   const color = internal ? -1 : cv === 'free' ? $('#pjColorFree').value.toLowerCase() : cv != null ? +cv : nextColor();
   const idle = +$('#npIdle').value, now = new Date().toISOString();
-  const P = { id: 'p' + uid(), number: num || '–', name, customerId: c?.id || null, property: $('#npProp').value.trim(), budgetKr: internal ? 0 : budget, internal, color, status: 'active', tasks: tasks.length ? tasks : [{ id: 'u' + uid(), name: 'Uppdrag', billable: !internal }], roleRates: {}, personRates: {}, memberRoles: {}, notices: {}, notes: [], created: now, ...(idle !== (R().book.idleDays ?? 90) ? { idleDays: idle } : {}) };
+  const P = { id: 'p' + uid(), number: num || '–', name, customerId: c?.id || null, property: $('#npProp').value.trim(), budgetKr: internal ? 0 : budget, internal, color, status: 'active', tasks: tasks.length ? tasks : [{ id: 'u' + uid(), name: defTasks()[0], billable: !internal }], roleRates: {}, personRates: {}, memberRoles: {}, notices: {}, notes: [], created: now, ...(idle !== (R().book.idleDays ?? 90) ? { idleDays: idle } : {}) };
   if (sRate != null && !internal) P.personRates = { [me()]: { [person().defaultRoleId]: sRate } };
   R().projects.push(P); closeDlg();
   if (pickMode?.mode === 'move') picked(P.id + '~' + P.tasks[0].id);
@@ -3027,7 +3047,10 @@ function createProject() {
 /* ───────────── Ny bok: guide i fyra steg ─────────────
    Företaget → personal och arbetstid → projektnummer → klart. Inget sparas förrän man trycker Skapa boken. */
 const WIZ = ['Företaget', 'Personal och arbetstid', 'Projektnummer', 'Klart'];
-const wizDefaults = () => ({ mode: 'full', company: '', name: '', orgNr: '', email: '', phone: '', web: '', address: '', logo: null, team: 'solo', emp: 'full', pct: 100, person: '', initials: '', dayH: 8, vac: 25, vacStart: '04-01', savedVac: 'no', sv1: 0, sv2: 0, sv3: 0, sv4: 0, sv5: 0, roleName: 'Konsult', rate: 900, vat: 25, fmt: DEF_NUMFMT, start: 1, idle: 90 });
+const DEF_TASKS = 'Utredning';
+// Uppgifterna som nya projekt får (book.defaultTasks, kommaseparerat; saknas = Utredning)
+const defTasks = () => { const l = String(R().book.defaultTasks ?? DEF_TASKS).split(',').map(s => s.trim()).filter(Boolean); return l.length ? l : [DEF_TASKS]; };
+const wizDefaults = () => ({ mode: 'full', tasks: DEF_TASKS, company: '', name: '', orgNr: '', email: '', phone: '', web: '', address: '', logo: null, team: 'solo', emp: 'full', pct: 100, person: '', initials: '', dayH: 8, vac: 25, vacStart: '04-01', savedVac: 'no', sv1: 0, sv2: 0, sv3: 0, sv4: 0, sv5: 0, roleName: 'Konsult', rate: 900, vat: 25, fmt: DEF_NUMFMT, start: 1, idle: 90 });
 function newBookWizard() { st.wiz = { step: 0, d: wizDefaults() }; wizRender(); }
 const REQ = '<span class="req" title="Krävs" aria-hidden="true">*</span>', REQNOTE = `<p class="req-note fld full">${REQ} krävs – resten kan lämnas tomt eller fyllas i senare.</p>`;
 const wf = (key, label, o = {}) => { const v = st.wiz.d[key]; return `<div class="fld${o.full ? ' full' : ''}"${o.hide ? ' data-hide="' + o.hide + '"' : ''}${o.fm ? ' data-fm' : ''}><label for="w_${key}">${label}${o.req ? REQ : ''}</label>${o.ta ? `<textarea id="w_${key}" class="ta" data-w="${key}" rows="3" placeholder="${o.ph || ''}">${esc(v)}</textarea>` : `<input id="w_${key}" data-w="${key}" value="${esc(v)}" ${o.req ? 'aria-required="true"' : ''} ${o.num ? 'inputmode="decimal" data-num="1" class="mono"' : ''} ${o.type ? `type="${o.type}"` : ''} placeholder="${o.ph || ''}" autocomplete="off">`}${o.hint ? `<span class="fld-hint">${o.hint}</span>` : ''}</div>`; };
@@ -3059,10 +3082,11 @@ function wizRender() {
       + `<div class="fld full"><label for="wzFmt">Format för projektnummer${REQ}</label><input id="wzFmt" class="mono" data-w="fmt" data-numfmt value="${esc(d.fmt)}" autocomplete="off" spellcheck="false"></div><div class="fld full"><div class="tagrow">${NUM_TAGS.map(([t, k, ex]) => `<button type="button" class="chip tag" data-act="insTag" data-target="wzFmt" data-tag="${t}" title="${k}, t.ex. ${ex}">${t}</button>`).join('')}</div></div>`
       + wf('start', 'Första löpnummer', { num: 1, hint: 'Har du redan projektnummer från tiden före Sisyfos? Börja efter det senaste, till exempel 15 om du är uppe i 2026-014.' })
       + `<div class="fld"><span class="lbl">Första projektet får numret</span><div class="wz-next mono" id="wzNext">${f.err ? `<span class="bad">${esc(f.err)}</span>` : esc(f.next)}</div><span class="fld-hint" id="wzNextInfo">${f.err ? '' : !f.serial ? 'Utan {löpnummer} blir alla nummer likadana' : f.monthTag ? 'Löpnumret börjar om varje månad' : f.yearTag ? 'Löpnumret börjar om på 1 varje nytt år' : ''}</span></div>`
+      + wf('tasks', 'Uppgifter i nya projekt', { hint: 'Kommaseparerade. En generell uppgift räcker ofta – fler kan läggas till i varje projekt.' })
       + `<div class="fld"><label for="w_idle">Projekt blir inaktiva efter</label><select id="w_idle" data-w="idle">${IDLE.map(([n, l]) => `<option value="${n}" ${+d.idle === n ? 'selected' : ''}>${n ? cap(l) + ' utan tid' : 'Aldrig av sig självt'}</option>`).join('')}</select><span class="fld-hint">Standard för nya projekt. Inaktiva hamnar sist i listorna.</span></div>` + REQNOTE;
   } else {
     const f = wizNum(), emp = d.emp === 'hourly' ? 'Timanställd' : d.emp === 'part' ? `Deltid ${d.pct} %` : 'Heltid';
-    const rows = [['Företaget', [d.company || '–', d.orgNr && 'org.nr ' + d.orgNr].filter(Boolean).join(', ')], ['Kontakt', [d.email, d.phone, d.web].filter(Boolean).join(' · ') || '–'], ['Läge', d.mode === 'simple' ? 'Enkelt' : 'Fullständigt'], ['Logga', d.logo ? 'Ja' : 'Ingen'], ...(d.mode === 'simple' ? [['Du', `${d.person || 'Jag'} (${(d.initials || initialsFrom(d.person || 'Jag'))})`]] : [['Personal', d.team === 'team' ? 'Flera – du är administratör' : 'Bara du'], ['Du', `${d.person || 'Jag'} (${(d.initials || initialsFrom(d.person || 'Jag'))}) · ${emp}`]]), ...(d.emp === 'hourly' || d.mode === 'simple' ? [] : [['Arbetstid', `${fh(+d.dayH || 8)} h per dag, ${fh((+d.dayH || 8) * 5)} h per vecka · ${d.vac} semesterdagar`]]), ['Timpris', `${d.roleName || 'Konsult'} ${fkr(+d.rate || 0)}/h exkl. moms · moms ${d.vat} %`], ['Projektnummer', `${d.fmt} → första blir ${f.next}`], ['Inaktiva efter', +d.idle ? cap(idleLabel(+d.idle)) + ' utan tid' : 'Aldrig']];
+    const rows = [['Företaget', [d.company || '–', d.orgNr && 'org.nr ' + d.orgNr].filter(Boolean).join(', ')], ['Kontakt', [d.email, d.phone, d.web].filter(Boolean).join(' · ') || '–'], ['Läge', d.mode === 'simple' ? 'Enkelt' : 'Fullständigt'], ['Logga', d.logo ? 'Ja' : 'Ingen'], ...(d.mode === 'simple' ? [['Du', `${d.person || 'Jag'} (${(d.initials || initialsFrom(d.person || 'Jag'))})`]] : [['Personal', d.team === 'team' ? 'Flera – du är administratör' : 'Bara du'], ['Du', `${d.person || 'Jag'} (${(d.initials || initialsFrom(d.person || 'Jag'))}) · ${emp}`]]), ...(d.emp === 'hourly' || d.mode === 'simple' ? [] : [['Arbetstid', `${fh(+d.dayH || 8)} h per dag, ${fh((+d.dayH || 8) * 5)} h per vecka · ${d.vac} semesterdagar`]]), ['Timpris', `${d.roleName || 'Konsult'} ${fkr(+d.rate || 0)}/h exkl. moms · moms ${d.vat} %`], ['Projektnummer', `${d.fmt} → första blir ${f.next}`], ['Uppgifter i nya projekt', String(d.tasks || '').trim() || DEF_TASKS], ['Inaktiva efter', +d.idle ? cap(idleLabel(+d.idle)) + ' utan tid' : 'Aldrig']];
     h += `<dl class="dfacts fld full wz-sum">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
       <div class="alert soft fld full">${ic('alert')}<div class="txt">Den nya boken <b>ersätter</b> boken som finns i den här webbläsaren nu${R().book.example ? ' (exempelboken)' : ` – <b>${esc(R().book.name)}</b>`}. Spara en kopia först om du vill behålla den.</div><button type="button" class="btn sm" data-act="wzExport">${ic('save')}Spara kopia som fil</button></div>`;
   }
@@ -3098,7 +3122,7 @@ function wizNext(dir) {
 }
 function createFromWizard() {
   const d = st.wiz.d, b = emptyBook(), reg = b.register, B = reg.book, P0 = reg.people[0], f = wizNum(), num = v => +String(v).replace(/\s/g, '').replace(',', '.');
-  Object.assign(B, { name: d.name.trim() || d.company.trim() || 'Min bok', company: d.company.trim(), orgNr: d.orgNr.trim(), email: d.email.trim(), phone: d.phone.trim(), web: d.web.trim(), address: d.address.trim(), vatRate: d.vat, numberFormat: d.fmt.trim() || DEF_NUMFMT, idleDays: +d.idle, team: d.team, defaultEmployment: d.emp });
+  Object.assign(B, { name: d.name.trim() || d.company.trim() || 'Min bok', company: d.company.trim(), orgNr: d.orgNr.trim(), email: d.email.trim(), phone: d.phone.trim(), web: d.web.trim(), address: d.address.trim(), vatRate: d.vat, numberFormat: d.fmt.trim() || DEF_NUMFMT, idleDays: +d.idle, team: d.team, defaultEmployment: d.emp, defaultTasks: String(d.tasks || '').split(',').map(s => s.trim()).filter(Boolean).join(', ') || DEF_TASKS });
   if (d.mode === 'simple') { B.mode = 'simple'; B.team = 'solo'; }
   if (d.logo) B.logo = d.logo;
   if (d.start > 1 && f.serial) B.serialStart = { re: f.re, n: d.start };
@@ -3163,13 +3187,34 @@ function aboutDlg() {
   openDlg(`<div class="about"><div class="about-head">${LOGO}<div><h2 id="dlgTitle">Sisyfos</h2><div class="ver">version ${APP_VERSION} · alfa · filformat ${FORMAT_VERSION}</div></div></div>
   <p>Tidrapport och projektdagbok för en- och fåmansföretag: kunder, projekt och tid per dag med anteckning.</p>
   <ul><li>Allt sparas lokalt i den här webbläsaren. Ingen server, inget konto, inget moln, ingen AI. Fungerar utan nät och kan installeras som app.</li><li>Inget bokförings- eller faktureringssystem – projektdagböcker och sammanställningar blir PDF-filer att bifoga i dina egna system.</li><li>Gamla böcker går alltid att öppna: filformatet är versionerat och uppgraderas automatiskt.</li><li>Öppen källkod under GPL.</li></ul>
-  <h3>Integritet</h3>
-  <ul><li><b>Din bok stannar hos dig.</b> Tider, anteckningar, kunder och projekt sparas bara i den här webbläsaren. Sisyfos har ingen statistik, ingen spårning och inga kakor.</li>
-  <li><b>Synpunkter är det enda som skickas</b> – och bara när du själv trycker på Skicka. Med följer det du skrivit i formuläret, och version och skärmstorlek om du kryssat i det. Ingenting ur din bok.</li>
-  <li><b>Anonymt om du vill.</b> Meddelandet går via ett litet skript på agrellarkitektur.se som skickar det vidare som e-post. Skriptet sparar ingenting och lägger inte till din IP-adress eller något annat om dig. Webbhotellet kan, som för alla webbsidor, föra tekniska loggar. Skriver du din e-postadress används den bara för att svara dig.</li>
-  <li><b>Via ditt e-postprogram</b> (reserv om skriptet inte nås) syns din adress som avsändare, som i vilket mejl som helst.</li>
-  <li><b>Typsnitten är inbyggda</b> i appen, så webbläsaren kontaktar varken Google eller någon annan för att visa Sisyfos.</li></ul>
+  <h3>Data och integritet</h3>
+  <p>Din bok stannar på din enhet. Det enda som skickas är synpunkter, och bara när du själv trycker på Skicka. Ingen statistik, ingen spårning, inga kakor. <button type="button" class="linkish" data-act="dataInfo">Vilken data hanteras?</button></p>
   <div class="dlg-foot"><button class="btn ghost" data-act="feedback">${ic('mail')}Skicka synpunkter</button><button class="btn primary" data-act="closeDlg">Stäng</button></div></div>`);
+}
+// Data och integritet – vilken data Sisyfos hanterar, var den finns och vad som skickas
+function dataDlg() {
+  openDlg(`<div class="about data-info"><h2 id="dlgTitle">Data och integritet</h2><p class="muted small">Gäller Sisyfos ${APP_VERSION} (alfa). Texten uppdateras när något ändras – till exempel när lagring på webben kommer.</p>
+  <h3>Vad boken innehåller</h3>
+  <ul><li><b>Företaget:</b> namn, organisationsnummer, adress, e-post, telefon, webbplats och logga.</li>
+  <li><b>Kunder:</b> namn, organisations- eller personnummer, referens, kontaktperson, e-post, telefon, adresser och anteckningar.</li>
+  <li><b>Projekt:</b> namn, nummer, fastighetsbeteckning, budget, timpriser, uppgifter och anteckningar.</li>
+  <li><b>Tid:</b> datum, timmar, pris och anteckning för varje tidpost, med historik över ändringar, avcheckning och signering.</li>
+  <li><b>Du:</b> namn, initialer, roll och timpris – och i fullständigt läge anställningsform, normtid, kompsaldo och semester.</li>
+  <li><b>Inställningar</b> för hur appen visas.</li></ul>
+  <p class="small">Personnummer, kontaktpersoner och anteckningar om människor är personuppgifter.</p>
+  <h3>Var den sparas</h3>
+  <ul><li><b>Bara i den här webbläsaren, på den här enheten</b> (IndexedDB med en kopia i webbläsarens lokala lagring), tillsammans med automatiska ögonblicksbilder. En app installerad på iPhones hemskärm har en egen, separat lagring.</li>
+  <li><b>Filer du själv sparar</b> – kopior av boken, autospar till en mapp, PDF- och CSV-rapporter – är vanliga, okrypterade filer. Hantera dem som andra affärshandlingar.</li>
+  <li><b>Ingen annan kan se boken</b> – inte heller Agrell Arkitektur, som gör Sisyfos. Det betyder också att ingen kan återställa den åt dig: rensar du webbplatsdata eller tappar enheten är boken borta om du inte har en kopia.</li></ul>
+  <h3>Vad som skickas över nätet</h3>
+  <ul><li><b>Appen hämtas</b> från agrellarkitektur.se. Webbhotellet för, som alla webbservrar, tekniska loggar över anrop (IP-adress, tidpunkt, vilken fil). Inget ur boken följer med.</li>
+  <li><b>Synpunkter</b> – bara när du trycker på Skicka: det du skrivit i formuläret, din e-postadress om du anger den och, om du kryssat i det, version och skärmstorlek. Skriptet skickar det vidare som e-post och sparar ingenting.</li>
+  <li><b>Inget annat.</b> Ingen statistik, spårning, reklam, AI eller tjänster från andra företag. Typsnitten är inbyggda.</li></ul>
+  <h3>Ditt ansvar</h3>
+  <ul><li>Du ansvarar för personuppgifterna du för in i boken, på samma sätt som för ett eget kalkylark eller pappersarkiv. Eftersom inget ur boken når Agrell Arkitektur behandlar vi inga personuppgifter åt dig.</li>
+  <li>Skriv inte mer om människor än uppdraget kräver, och inga känsliga uppgifter som hälsa i anteckningarna.</li>
+  <li>Sisyfos är en <b>alfaversion</b> och fri programvara under GPL, <b>utan garanti</b>. Kontrollera rapporter och underlag innan de används, och spara kopior av boken regelbundet.</li></ul>
+  <div class="dlg-foot"><button class="btn ghost" data-act="about">${ic('info')}Om Sisyfos</button><button class="btn primary" data-act="closeDlg">Stäng</button></div></div>`);
 }
 let fbOpened = 0;
 function feedbackDlg() {
@@ -3181,7 +3226,7 @@ function feedbackDlg() {
    <div class="fld full"><label for="fbReply">Din e-post <span class="opt-lbl">– frivilligt, bara om du vill ha svar</span></label><input id="fbReply" type="email" inputmode="email" autocomplete="email" maxlength="200" placeholder="namn@exempel.se"></div>
    <div class="hp" aria-hidden="true"><label for="fbHp">Lämna tomt</label><input id="fbHp" tabindex="-1" autocomplete="off"></div>
    <label class="chk fld full"><input type="checkbox" id="fbInfo" checked> Ta med version och skärmstorlek (inget annat följer med)</label>
-   <p class="fb-to fld full" style="margin:0">Skickas <b>anonymt</b> via agrellarkitektur.se – ingen e-postadress följer med om du inte skriver en, och inget ur din bok. <button type="button" class="linkish" data-act="about">Om integritet</button></p>
+   <p class="fb-to fld full" style="margin:0">Skickas <b>anonymt</b> via agrellarkitektur.se – ingen e-postadress följer med om du inte skriver en, och inget ur din bok. <button type="button" class="linkish" data-act="dataInfo">Data och integritet</button></p>
    <div class="err fld full" id="fbErr"></div>
    <div class="fb-alt fld full" id="fbAlt" hidden><span>Synpunkten kunde inte skickas härifrån. Skicka den med ditt e-postprogram i stället – då syns din e-postadress som avsändare – eller kopiera texten.</span><div class="acts"><button type="button" class="btn sm" data-act="fbMail">${ic('mail')}Öppna i e-post</button><button type="button" class="btn sm" data-act="fbCopy">${ic('copy')}Kopiera texten</button></div></div>
    <div class="dlg-foot fld full"><button type="button" class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" type="submit" id="fbSend">${ic('send')}Skicka</button></div></form>`);
@@ -3227,9 +3272,12 @@ function importDlg() {
 function confirmDlg(title, text, okLabel, act) {
   openDlg(`<h2 id="dlgTitle">${title}</h2><p>${text}</p><div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn" data-act="exportBook">${ic('export')}Exportera först</button><button class="btn primary" data-act="${act}">${okLabel}</button></div>`);
 }
-function confirmPlain(title, text, okLabel, act) {
-  openDlg(`<h2 id="dlgTitle">${title}</h2><p>${text}</p><div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="${act}">${okLabel}</button></div>`);
+// words: ord som bekräftar från tangentbordet (Enter i rutan), t.ex. ['sign', 'ok'] – Esc avbryter
+function confirmPlain(title, text, okLabel, act, words) {
+  openDlg(`<h2 id="dlgTitle">${title}</h2><p>${text}</p>${words ? `<div class="fld cf-type"><label for="cfType">Skriv <b class="mono">${words[0]}</b> eller <b class="mono">${words[1]}</b> och tryck Enter för att bekräfta – <span class="mono">Esc</span> avbryter</label><input id="cfType" class="mono" data-act-ok="${act}" data-words="${words.join(' ')}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${words[0]}"></div>` : ''}<div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="${act}">${okLabel}</button></div>`);
+  if (words) $('#cfType')?.focus();
 }
+const SIGN_WORDS = ['sign', 'ok'];
 function replaceBook(b, reason = 'Före byte av bok') {
   const prev = JSON.stringify(S), wasEx = isExample() || st.noSave;
   S = migrate(b); derive();
@@ -3252,7 +3300,7 @@ function openOrg() {
 }
 function brandMenu(btn) {
   const m = $('#menu');
-  m.innerHTML = `<div class="mh">${esc(R().book.name)}</div><hr><button role="menuitem" data-act="page" data-page="installningar">${ic('settings')}Inställningar …</button>${simple() ? '' : `<button role="menuitem" data-act="personDlg">${ic('person')}Anställning, saldo och semester …</button>`}<button role="menuitem" data-act="numbering">${ic('hash')}Projektnummer …</button><button role="menuitem" data-act="quickHelp">${ic('bolt')}Smartshell och förkortningar …</button><hr><button role="menuitem" data-act="backupFile">${ic('save')}Spara kopia som fil</button><button role="menuitem" data-act="storageInfo">${ic('folder')}Spara och återställ …</button><button role="menuitem" data-act="exportBook">${ic('export')}Exportera boken …</button><button role="menuitem" data-act="importBook">${ic('import')}Importera bok …</button><hr><button role="menuitem" data-act="askNew">${ic('newbook')}Ny tom bok</button><button role="menuitem" data-act="askSample">${ic('sample')}Ladda exempelboken</button><hr><button role="menuitem" data-act="about">${ic('info')}Om Sisyfos</button><button role="menuitem" data-act="feedback">${ic('mail')}Skicka synpunkter …</button>${standalone() ? '' : `<button role="menuitem" data-act="installApp">${ic('import')}Installera som app …</button>`}<hr><div class="mh">Allt sparas bara på den här enheten. Ingen server, inget moln.</div>`;
+  m.innerHTML = `<div class="mh">${esc(R().book.name)}</div><hr><button role="menuitem" data-act="page" data-page="installningar">${ic('settings')}Inställningar …</button>${simple() ? '' : `<button role="menuitem" data-act="personDlg">${ic('person')}Anställning, saldo och semester …</button>`}<button role="menuitem" data-act="numbering">${ic('hash')}Projektnummer …</button><button role="menuitem" data-act="quickHelp">${ic('bolt')}Smartshell och förkortningar …</button><hr><button role="menuitem" data-act="backupFile">${ic('save')}Spara kopia som fil</button><button role="menuitem" data-act="storageInfo">${ic('folder')}Spara och återställ …</button><button role="menuitem" data-act="exportBook">${ic('export')}Exportera boken …</button><button role="menuitem" data-act="importBook">${ic('import')}Importera bok …</button><hr><button role="menuitem" data-act="askNew">${ic('newbook')}Ny tom bok</button><button role="menuitem" data-act="askSample">${ic('sample')}Ladda exempelboken</button><hr><button role="menuitem" data-act="about">${ic('info')}Om Sisyfos</button><button role="menuitem" data-act="dataInfo">${ic('lock')}Data och integritet</button><button role="menuitem" data-act="feedback">${ic('mail')}Skicka synpunkter …</button>${standalone() ? '' : `<button role="menuitem" data-act="installApp">${ic('import')}Installera som app …</button>`}<hr><div class="mh">Allt sparas bara på den här enheten. Ingen server, inget moln.</div>`;
   m.hidden = false; btn.setAttribute('aria-expanded', 'true');
   const r = btn.getBoundingClientRect(); m.style.left = Math.max(8, r.left) + 'px'; m.style.top = (r.bottom + 6) + 'px';
   $('button', m).focus();
@@ -3348,7 +3396,7 @@ const A = {
   checkWeek: () => checkWeekDlg(),
   forceCheck: () => doCheckWeek(curWeek()),
   reopenWeek: () => { const wk = curWeek(); if (weekState(wk).signed) { lockMsg(wk); return; } weekEvent(wk, false); toast(`Vecka ${isoWeek(wk).w} är öppen igen`); },
-  signWeek: () => { const wk = curWeek(); closeFloating(); confirmPlain(`Signera vecka ${isoWeek(wk).w}?`, 'En signerad vecka är slutgiltig. Den kan inte öppnas igen, och ingen tid i den kan ändras eller tas bort.', `${ic('sign')}Signera`, 'doSign'); },
+  signWeek: () => { const wk = curWeek(); closeFloating(); confirmPlain(`Signera vecka ${isoWeek(wk).w}?`, 'En signerad vecka är slutgiltig. Den kan inte öppnas igen, och ingen tid i den kan ändras eller tas bort.', `${ic('sign')}Signera`, 'doSign', SIGN_WORDS); },
   doSign: () => { const wk = curWeek(); R().signed[me() + '|' + wk] = { at: new Date().toISOString(), by: me() }; save(); closeDlg(); renderMain(); renderPanel(); renderStatus(); toast(`Vecka ${isoWeek(wk).w} är signerad`, { label: 'Ångra', fn: () => { delete R().signed[me() + '|' + wk]; save(); renderMain(); renderPanel(); renderStatus(); } }); },
   weekStateMenu: el => { if (!$('#menu').hidden) { closeFloating(); return; } weekStateMenu(el); },
   gotoMiss: el => {
@@ -3425,6 +3473,7 @@ const A = {
     const t = ta.value.replace(/\s+$/, ''); ta.value = t ? (/[.!?]$/.test(t) ? t + ' ' : t + '. ') + el.dataset.text : el.dataset.text;
     ta.focus(); ta.dispatchEvent(new Event('input', { bubbles: true }));
   },
+  modeToggle: () => { closeFloating(); setMode(simple() ? 'full' : 'simple'); },
   theme: () => {
     const root = document.documentElement, cur = root.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     root.dataset.theme = cur === 'dark' ? 'light' : 'dark'; S.prefs.theme = root.dataset.theme; save();
@@ -3462,6 +3511,7 @@ const A = {
   npFmtTog: el => { const box = $('#npFmtBox'), open = box.hidden; box.hidden = !open; el.setAttribute('aria-expanded', open); if (open) { const f = $('#npFmt'); f.focus(); f.setSelectionRange(f.value.length, f.value.length); } },
   numbering: () => { closeFloating(); numberingDlg(); },
   about: () => { closeFloating(); aboutDlg(); },
+  dataInfo: () => { closeFloating(); dataDlg(); },
   feedback: () => { closeFloating(); feedbackDlg(); },
   fbMail: () => mailFeedback(),
   quickHelp: () => { closeFloating(); quickHelpDlg(); },
@@ -3535,6 +3585,11 @@ document.addEventListener('keydown', ev => {
     return;
   }
   if (t.id === 'quickIn' && ev.key === 'Enter') { ev.preventDefault(); shellEnter(); return; }
+  if (t.id === 'cfType' && ev.key === 'Enter') {
+    ev.preventDefault(); const w = t.value.trim().toLowerCase();
+    if (t.dataset.words.split(' ').includes(w)) A[t.dataset.actOk]?.(t); else { t.classList.add('bad'); t.select(); toast(`Skriv ${t.dataset.words.split(' ').join(' eller ')} – eller Esc för att avbryta`); }
+    return;
+  }
   if (t.id === 'pickQ' && ev.key === 'Enter') { const f = $('#pickList .pick[data-act="pick"]'); if (f) { ev.preventDefault(); picked(f.dataset.rk); } return; }
   if ((t.id === 'pickQ' || t.closest?.('#pickList')) && (ev.key === 'ArrowDown' || ev.key === 'ArrowUp')) {
     const items = $$('#pickList .pick').filter(b => b.offsetParent), i = items.indexOf(t); ev.preventDefault();
@@ -3664,7 +3719,7 @@ function calSave() {
 
 /* ───────────── Inställningar ───────────── */
 const ROUND = [[0, 'Ingen avrundning'], [0.1, '0,1 h (6 min)'], [0.25, '0,25 h (15 min)'], [0.5, '0,5 h (30 min)'], [1, '1 h']];
-const SET_NAV = [['set-mode', 'Läge'], ['set-company', 'Företaget'], ['set-time', 'Arbetstid'], ['set-cal', 'Årsarbetstid'], ['set-roles', 'Roller och priser'], ['set-person', 'Du'], ['set-num', 'Projektnummer'], ['set-book', 'Spara boken']];
+const SET_NAV = [['set-mode', 'Läge'], ['set-company', 'Företaget'], ['set-time', 'Arbetstid'], ['set-cal', 'Årsarbetstid'], ['set-roles', 'Roller och priser'], ['set-person', 'Du'], ['set-num', 'Nya projekt'], ['set-book', 'Spara boken']];
 function roleUse(id) {
   let n = 0; for (const e of E.values()) if (!e.deleted && e.roleId === id) n++;
   const ppl = R().people.filter(p => p.defaultRoleId === id).length;
@@ -3708,10 +3763,10 @@ function settingsHtml() {
     ${simple() ? '' : `<div class="fld"><span class="lbl">Anställning</span><div class="vacnow">${p.employment === 'hourly' ? 'Timanställd' : p.employment === 'part' ? `Deltid ${p.pct} %` : 'Heltid'}${cb != null ? ` · komp ${sgn(cb)} h` : ''}${vi ? ` · semester ${fdays(vi.left)} d kvar` : ''}</div></div>
     <div class="fld full"><div><button class="btn sm" data-act="personDlg">${ic('person')}Anställning, saldo och semester …</button></div></div>`}</div></section>`;
   const nf = numFmt(b.numberFormat || DEF_NUMFMT);
-  h += `<section class="sset" id="set-num"><h2>Projektnummer och förkortningar</h2><div class="form">${fmtEditorHtml('setFmt', b.numberFormat || DEF_NUMFMT)}
+  h += `<section class="sset" id="set-num"><h2>Nya projekt, nummer och förkortningar</h2><div class="form">${fmtEditorHtml('setFmt', b.numberFormat || DEF_NUMFMT)}
     ${nf.serial && !nf.err ? `<div class="fld"><label for="setStart">Nästa löpnummer</label><input id="setStart" class="mono" inputmode="numeric" value="${nf.n}"><span class="fld-hint" id="setStartHint">Lägst ${nf.minN}. Höj det om du har projektnummer från tiden före Sisyfos.</span></div>` : ''}
-    <div class="fld"><label for="s_idle">Nya projekt blir inaktiva efter</label>${idleSel('s_idle', b.idleDays ?? 90)}<span class="fld-hint">Kan ändras per projekt</span></div><div class="fld full"><div><button class="btn sm" data-act="quickHelp">${ic('bolt')}Förkortningar i smartshell …</button></div></div></div></section>`;
-  h += `<section class="sset" id="set-book"><h2>Spara boken</h2><p class="muted small">Boken sparas bara på den här enheten, i den här webbläsaren. Ingenting skickas någonstans. Rensar du webbplatsdata försvinner den – därför: spara kopior.</p><div id="safeBox" class="safe-box"><p class="muted small">Läser in …</p></div><h3 class="dsub">Hela boken</h3><div class="btn-row"><button class="btn" data-act="exportBook">${ic('export')}Exportera boken …</button><button class="btn" data-act="importBook">${ic('import')}Importera bok …</button><button class="btn ghost" data-act="askNew">${ic('newbook')}Ny tom bok</button><button class="btn ghost" data-act="askSample">${ic('sample')}Ladda exempelboken</button></div></section>`;
+    <div class="fld"><label for="s_tasks">Uppgifter i nya projekt</label><input id="s_tasks" data-set="book.defaultTasks" value="${esc(defTasks().join(', '))}"><span class="fld-hint">Kommaseparerade, till exempel Utredning eller Skiss, Bygglov</span></div><div class="fld"><label for="s_idle">Nya projekt blir inaktiva efter</label>${idleSel('s_idle', b.idleDays ?? 90)}<span class="fld-hint">Kan ändras per projekt</span></div><div class="fld full"><div><button class="btn sm" data-act="quickHelp">${ic('bolt')}Förkortningar i smartshell …</button></div></div></div></section>`;
+  h += `<section class="sset" id="set-book"><h2>Spara boken</h2><p class="muted small">Boken sparas bara på den här enheten, i den här webbläsaren. Ingenting skickas någonstans. Rensar du webbplatsdata försvinner den – därför: spara kopior. <button type="button" class="linkish" data-act="dataInfo">Data och integritet</button></p><div id="safeBox" class="safe-box"><p class="muted small">Läser in …</p></div><h3 class="dsub">Hela boken</h3><div class="btn-row"><button class="btn" data-act="exportBook">${ic('export')}Exportera boken …</button><button class="btn" data-act="importBook">${ic('import')}Importera bok …</button><button class="btn ghost" data-act="askNew">${ic('newbook')}Ny tom bok</button><button class="btn ghost" data-act="askSample">${ic('sample')}Ladda exempelboken</button></div></section>`;
   return h + `</div>`;
 }
 function setSetting(key, raw, el) {
@@ -3723,6 +3778,7 @@ function setSetting(key, raw, el) {
   if (k === 'rounding') tgt[k] = +v;
   else if (k === 'vatRate') { const x = num(v); if (!(x >= 0 && x <= 100)) { el.value = fhs(+tgt.vatRate || 0); toast('Ange momssatsen som 0–100'); return; } tgt[k] = x; }
   else if (k === 'initials') tgt[k] = v.toUpperCase().slice(0, 4) || tgt.initials;
+  else if (k === 'defaultTasks') { tgt[k] = v.split(',').map(s => s.trim()).filter(Boolean).join(', ') || DEF_TASKS; el.value = tgt[k]; }
   else tgt[k] = el.tagName === 'TEXTAREA' ? String(raw).replace(/\s+$/, '') : v;
   save(); renderBook(); flashSaved(el);
 }
@@ -4212,12 +4268,12 @@ function overview(y) {
 function monthHtml() {
   const r = rep(), y = r.year, rows = overview(y), cur = ymOf(today());
   const tot = { h: Array(12).fill(0), a: Array(12).fill(0) }; rows.forEach(x => x.h.forEach((v, i) => { tot.h[i] += v; tot.a[i] += x.a[i]; }));
-  let h = `<div class="wk-head"><div class="wk-nav"><button class="icon-btn" data-act="repYear" data-d="-1" aria-label="Föregående år">${ic('left')}</button><h2 class="rep-y">${y}</h2><button class="icon-btn" data-act="repYear" data-d="1" aria-label="Nästa år">${ic('right')}</button></div><span class="small muted">Timmar per projekt och månad. Belopp i kronor exkl. moms. Klicka på en månad för dagbok och avstämning.</span></div>`;
+  let h = `<div class="wk-head"><div class="wk-nav"><button class="icon-btn" data-act="repYear" data-d="-1" aria-label="Föregående år">${ic('left')}</button><h2 class="rep-y">${y}</h2><button class="icon-btn" data-act="repYear" data-d="1" aria-label="Nästa år">${ic('right')}</button></div><span class="small muted">Timmar per projekt och månad. Belopp i kronor exkl. moms. Klicka på en månad för dagbok och avstämning, på projektets namn för projektsidan eller någon annanstans på raden för en meny.</span></div>`;
   if (!rows.length) return h + `<p class="muted">Ingen tid registrerad ${y}.</p>`;
   h += `<div class="mo-wrap"><table class="mo"><thead><tr><th class="p">Projekt</th>${MON.map((m, i) => `<th class="${`${y}-${pad(i + 1)}` === cur ? 'cur' : ''}">${cap(m)}</th>`).join('')}<th class="yr">År</th></tr></thead><tbody>`;
   for (const x of rows) {
     const P = x.P, c = cust(P.customerId), yh = x.h.reduce((s, v) => s + v, 0), ya = x.a.reduce((s, v) => s + v, 0);
-    h += `<tr style="--pc:${pc(P)}"><th class="p"><div class="pcell"><span class="dot"></span><span class="r-text"><span class="r-name"><span class="r-num">${esc(P.number)}</span>${esc(P.name)}</span><span class="r-sub">${P.internal ? 'Intern tid' : esc(c?.name || 'Ingen kund')}${P.budgetKr > 0 ? ' · ' + fpct(budgetPct(P)) : ''}${P.status !== 'active' ? ' · ' + STATUS1[P.status].toLowerCase() : ''}</span></span></div></th>`;
+    h += `<tr class="mo-row" style="--pc:${pc(P)}" data-act="moRow" data-p="${P.id}" title="Klicka för meny"><th class="p"><div class="pcell"><span class="dot"></span><span class="r-text"><button class="r-name mo-lnk" data-act="openProject" data-p="${P.id}" title="Gå till projektet"><span class="r-num">${esc(P.number)}</span>${esc(P.name)}</button><span class="r-sub">${P.internal ? 'Intern tid' : c && !simple() ? `<button class="mo-lnk" data-act="openCustomer" data-c="${c.id}" title="Gå till kunden">${esc(c.name)}</button>` : simple() ? 'Löpande' : 'Ingen kund'}${P.budgetKr > 0 ? ' · ' + fpct(budgetPct(P)) : ''}${P.status !== 'active' ? ' · ' + STATUS1[P.status].toLowerCase() : ''}</span></span></div></th>`;
     x.h.forEach((v, i) => {
       const ym = `${y}-${pad(i + 1)}`, hd = R().handled[P.id + '|' + ym];
       h += `<td class="${ym === cur ? 'cur' : ''}">${v > 0 || hd ? `<button class="mo-c${hd ? ' hd' : ''}" data-act="moCell" data-p="${P.id}" data-ym="${ym}" aria-label="${esc(P.name)}, ${MONL[i]}: ${fh(v)} timmar${hd ? ', hanterad' : ''}"><b>${v > 0 ? fh(v) : '–'}</b>${x.a[i] > 0 ? `<small>${nfKr.format(Math.round(x.a[i]))}</small>` : ''}${hd ? ic('lock', 'mo-l') : x.miss[i] ? '<i class="mo-w" title="Tider utan anteckning"></i>' : ''}</button>` : ''}</td>`;
@@ -4228,10 +4284,18 @@ function monthHtml() {
   h += `<p class="legend-row small muted"><span>${ic('lock', 'mo-l')} Hanterad – avstämd och dagboken utskriven. Projektets tid i månaden är låst.</span><span><i class="mo-w"></i> Tider utan anteckning</span></p>`;
   return h;
 }
+function moRowMenu(el, ev) {
+  const P = proj(el.dataset.p); if (!P) return;
+  const c = cust(P.customerId), o = P.internal ? null : openSplit(P.id), m = $('#menu'), y = rep().year;
+  m.innerHTML = `<div class="mh" style="--pc:${pc(P)}"><span class="dot"></span><b style="color:var(--ink)">${esc(P.number && P.number !== '–' ? P.number + ' ' : '')}${esc(P.name)}</b></div>${o && o.all.h ? `<div class="mh">Öppet ${fh(o.all.h)} h · ${fkr(o.all.a)} sedan ${dYear(o.first)}</div>` : ''}<hr>
+  <button role="menuitem" data-act="openProject" data-p="${P.id}">${ic('folder')}Gå till projektet</button>${c && !simple() ? `<button role="menuitem" data-act="openCustomer" data-c="${c.id}">${ic('users')}Gå till kunden – ${esc(c.name)}</button>` : ''}<button role="menuitem" data-act="gotoTidbok" data-p="${P.id}" data-ym="${ymOf(today())}">${ic('month')}Gå till tidboken</button><hr>
+  <button role="menuitem" data-act="showDiary" data-p="${P.id}" data-ym="${y === +today().slice(0, 4) ? ymOf(today()) : y + '-12'}">${ic('report')}Projektdagbok</button>${o && o.all.h ? `<button role="menuitem" data-act="rpOpen" data-p="${P.id}">${ic('report')}Dagbok för all öppen tid</button><button role="menuitem" data-act="showInvoice" data-s="p:${P.id}" data-ym="${ymOf(o.last)}">${ic('report')}Fakturaunderlag …</button>` : ''}`;
+  placeMenu(m, ev?.clientX ?? el.getBoundingClientRect().left, (ev?.clientY ?? el.getBoundingClientRect().bottom) + 4); $('button', m)?.focus();
+}
 function moMenu(btn) {
   const P = proj(btn.dataset.p), ym = btn.dataset.ym, hd = R().handled[P.id + '|' + ym], d = diaryData(P.id, `${ym}-01`, ymLast(ym), 'ex'), miss = d.miss;
   const m = $('#menu');
-  m.innerHTML = `<div class="mh" style="--pc:${pc(P)}"><span class="dot"></span><b style="color:var(--ink)">${esc(P.name)}</b> · ${ymLabel(ym)}</div><div class="mh">${fh(d.hours)} h${d.amount > 0 ? ' · ' + fkr(d.amount) + ' exkl. moms' : ''}${miss ? ` · <span style="color:var(--warn-ink)">${miss} utan anteckning</span>` : ''}</div>${hd || !d.hours ? '' : (r => r.ready ? `<div class="mh ready">${ic('check')}Alla timmar avcheckade – redo att hanteras</div>` : `<div class="mh wait">${ic('clock')}${openWeeksTxt(r)}</div>`)(monthReady(P.id, ym))}<hr>
+  m.innerHTML = `<div class="mh" style="--pc:${pc(P)}"><span class="dot"></span><b style="color:var(--ink)">${esc(P.name)}</b> · ${ymLabel(ym)}</div><div class="mh">${fh(d.hours)} h${d.amount > 0 ? ' · ' + fkr(d.amount) + ' exkl. moms' : ''}${miss ? ` · <span style="color:var(--warn-ink)">${miss} utan anteckning</span>` : ''}</div>${st.page === 'projekt' && st.pid === P.id ? '' : `<button role="menuitem" data-act="openProject" data-p="${P.id}">${ic('folder')}Gå till projektet</button>`}${hd || !d.hours ? '' : (r => r.ready ? `<div class="mh ready">${ic('check')}Alla timmar avcheckade – redo att hanteras</div>` : `<div class="mh wait">${ic('clock')}${openWeeksTxt(r)}</div>`)(monthReady(P.id, ym))}<hr>
   ${st.page === 'tid' && st.view === 'month' && st.month === ym ? '' : `<button role="menuitem" data-act="gotoTidbok" data-p="${P.id}" data-ym="${ym}">${ic('month')}Gå till tidboken – ${MONL[+ym.slice(5, 7) - 1]}</button>`}<button role="menuitem" data-act="dlDiary" data-p="${P.id}" data-ym="${ym}">${ic('export')}Ladda ner projektdagbok (PDF)</button><button role="menuitem" data-act="showDiary" data-p="${P.id}" data-ym="${ym}">${ic('report')}Visa projektdagboken</button>${P.internal ? '' : `<button role="menuitem" data-act="showInvoice" data-s="p:${P.id}" data-ym="${ym}">${ic('report')}Fakturaunderlag …</button>`}<hr>
   ${hd ? `<div class="mh">${ic('lock')}Hanterad ${sdate(hd.at.slice(0, 10))} – låst</div><button role="menuitem" data-act="unhandle" data-p="${P.id}" data-ym="${ym}">${ic('unlock')}Häv hanterad och lås upp</button>` : `<button role="menuitem" data-act="handle" data-p="${P.id}" data-ym="${ym}">${ic('lock')}Markera som hanterad och lås</button>`}`;
   const b = btn.getBoundingClientRect(); placeMenu(m, b.left, b.bottom + 4); $('button', m)?.focus();
@@ -4269,8 +4333,9 @@ function diaryTabHtml() {
   const r = rep(), [from, to] = diaryPeriod(), ps = R().projects.filter(p => p.kind !== 'absence');
   if (!ps.length || !r.pid) return `<p class="muted">Inga projekt än.</p>`;
   const d = diaryData(r.pid, from, to, r.amount), full = !r.custom, hd = full && R().handled[r.pid + '|' + r.ym];
+  const sug = repSuggestHtml('diary');
   const og = s => { const l = ps.filter(p => p.status === s).sort((a, b) => (pRank(a) - pRank(b)) || String(b.number).localeCompare(String(a.number))); return l.length ? `<optgroup label="${STATUS[s]}">${l.map(p => `<option value="${p.id}" ${p.id === r.pid ? 'selected' : ''}>${esc(p.number)} ${esc(p.name)}</option>`).join('')}</optgroup>` : ''; };
-  let h = `<div class="rep-ctl"><div class="fld"><label for="rpP">Projekt</label><select id="rpP">${og('active')}${og('paused')}${og('closed')}</select></div>
+  let h = sug + `<div class="rep-ctl"><div class="fld"><label for="rpP">Projekt</label><select id="rpP">${og('active')}${og('paused')}${og('closed')}</select></div>
    <div class="fld"><label for="rpM">Månad</label>${r.custom ? `<div class="two"><input type="date" id="rpFrom" value="${r.from}" aria-label="Från"><input type="date" id="rpTo" value="${r.to}" aria-label="Till"></div>` : `<div class="mnav"><button class="icon-btn" data-act="rpMonth" data-d="-1" aria-label="Föregående månad">${ic('left')}</button><input type="month" id="rpM" value="${r.ym}"><button class="icon-btn" data-act="rpMonth" data-d="1" aria-label="Nästa månad">${ic('right')}</button></div>`}<label class="chk small"><input type="checkbox" id="rpCustom" ${r.custom ? 'checked' : ''}> Egen period</label></div>
    <div class="fld"><label for="rpAmt">Belopp</label><select id="rpAmt"><option value="none" ${r.amount === 'none' ? 'selected' : ''}>Visa inte belopp</option><option value="ex" ${r.amount === 'ex' ? 'selected' : ''}>Exkl. moms</option><option value="inc" ${r.amount === 'inc' ? 'selected' : ''}>Inkl. moms ${fhs(+R().book.vatRate || 0)} %</option></select><label class="chk small"><input type="checkbox" id="rpBud" ${r.budget ? 'checked' : ''}> Visa budgetläge</label></div>
    <div class="rep-acts"><button class="btn primary" data-act="dlDiary" ${d.rows.length ? '' : 'disabled'}>${ic('export')}Ladda ner PDF</button>
@@ -4373,7 +4438,7 @@ function invoiceData(sel, from, to, old, withRows) {
     m.ready = monthReady(m.pid, m.ym);
   }
   out.months.sort((a, b) => a.ym < b.ym ? -1 : a.ym > b.ym ? 1 : 0);
-  out.all = sel === 'all';
+  out.all = sel === 'all'; out.withRows = !!withRows;
   out.label = periodLabel(out.first && out.first < from ? out.first : from, to);
   return out;
 }
@@ -4383,13 +4448,35 @@ function invFacts(d) {
   return [...(d.all ? [] : [['Kund', C ? C.name + (C.orgNr ? ` (${C.orgNr})` : '') : 'Ingen kund angiven']]), ['Period', d.label], ...(addr ? [['Fakturaadress', addr]] : []), ...(C?.ref ? [['Kundens referens', C.ref]] : []), ...(C?.contact ? [['Kontaktperson', C.contact]] : [])];
 }
 const INV_NOTE = 'Underlag för fakturering – inte en faktura. Fakturan upprättas i bokföringsprogrammet. Belopp exkl. moms om inget annat anges.';
+// Förslag på rapporter att ta fram: det som har öppen (ohanterad) tid, äldst först
+function repSuggestHtml(kind) {
+  const l = openProjects(); if (!l.length) return '';
+  const cur = ymOf(today()), upTo = first => first < cm1() ? ymAdd(cur, -1) : cur, mon = d => MON[+d.slice(5, 7) - 1];
+  const span = o => ymOf(o.first) === ymOf(o.last) ? mon(o.first) : `${mon(o.first)}–${mon(o.last)}`;
+  let items = [];
+  if (kind === 'invoice') {
+    const v = invSel(), byC = new Map();
+    for (const x of l) {
+      const key = !simple() && x.p.customerId && cust(x.p.customerId) ? 'c:' + x.p.customerId : 'p:' + x.p.id;
+      const o = byC.get(key) || { s: key, name: key.startsWith('c:') ? cust(x.p.customerId).name : x.p.name, pc: key.startsWith('p:') ? pc(x.p) : null, a: 0, first: x.o.first, last: x.o.last };
+      o.a += x.o.all.a; if (x.o.first < o.first) o.first = x.o.first; if (x.o.last > o.last) o.last = x.o.last; byC.set(key, o);
+    }
+    items = [...byC.values()].sort((a, b) => a.first < b.first ? -1 : 1).map(o => `<button class="sug${v.sel === o.s ? ' on' : ''}" data-act="ivSuggest" data-s="${o.s}" data-ym="${upTo(o.first)}" ${o.pc ? `style="--pc:${o.pc}"` : ''} title="Öppet sedan ${dYear(o.first)} – underlag till och med ${MONL[+upTo(o.first).slice(5, 7) - 1]}">${o.pc ? '<span class="dot"></span>' : ''}<b>${esc(o.name)}</b><span class="mono">${nk(o.a)}</span><small${o.first < cm1() ? ' class="due"' : ''}>${span(o)}</small></button>`);
+    if (byC.size > 1) items.unshift(`<button class="sug${v.sel === 'all' ? ' on' : ''}" data-act="ivSuggest" data-s="all" data-ym="${upTo(l[0].o.first)}"><b>Alla projekt</b><span class="mono">${nk(l.reduce((s, x) => s + x.o.all.a, 0))}</span></button>`);
+  } else {
+    const r = rep();
+    items = l.map(({ p, o }) => `<button class="sug${r.pid === p.id && r.custom && r.from === o.first && r.to === o.last ? ' on' : ''}" data-act="rpOpen" data-p="${p.id}" style="--pc:${pc(p)}" title="All öppen tid ${dYear(o.first)} – ${dYear(o.last)}"><span class="dot"></span><b>${esc(p.name)}</b><span class="mono">${nk(o.all.a)}</span><small${o.first < cm1() ? ' class="due"' : ''}>${span(o)}</small></button>`);
+  }
+  const max = 8, more = items.length - max;
+  return `<div class="rep-sug" aria-label="Förslag"><span class="lbl">Öppen tid${kind === 'invoice' ? ' att fakturera' : ''}</span><div class="sug-row">${items.slice(0, max).join('')}${more > 0 ? `<span class="small muted">och ${more} till</span>` : ''}</div></div>`;
+}
 function invoiceTabHtml() {
   const r = rep(), v = invSel(), [from, to] = invPeriod();
   const cs = R().customers.filter(c => R().projects.some(p => p.customerId === c.id && !p.internal && p.kind !== 'absence')).sort((a, b) => a.name.localeCompare(b.name, 'sv'));
   const ps = R().projects.filter(p => !p.internal && p.kind !== 'absence').sort((a, b) => (pRank(a) - pRank(b)) || String(b.number).localeCompare(String(a.number)));
   if (!ps.length) return `<p class="muted">Inga debiterbara projekt än.</p>`;
   const d = invoiceData(v.sel, from, to, v.old, v.rows);
-  let h = `<div class="rep-ctl"><div class="fld"><label for="ivS">${simple() ? 'Projekt' : 'Underlag för'}</label><select id="ivS"><option value="all" ${v.sel === 'all' ? 'selected' : ''}>Alla projekt</option>${cs.length && !simple() ? `<optgroup label="Kund – alla projekt">${cs.map(c => `<option value="c:${c.id}" ${v.sel === 'c:' + c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</optgroup>` : ''}<optgroup label="${simple() ? 'Projekt' : 'Ett projekt'}">${ps.map(p => `<option value="p:${p.id}" ${v.sel === 'p:' + p.id ? 'selected' : ''}>${esc(p.number)} ${esc(p.name)}</option>`).join('')}</optgroup></select></div>
+  let h = repSuggestHtml('invoice') + `<div class="rep-ctl"><div class="fld"><label for="ivS">${simple() ? 'Projekt' : 'Underlag för'}</label><select id="ivS"><option value="all" ${v.sel === 'all' ? 'selected' : ''}>Alla projekt</option>${cs.length && !simple() ? `<optgroup label="Kund – alla projekt">${cs.map(c => `<option value="c:${c.id}" ${v.sel === 'c:' + c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</optgroup>` : ''}<optgroup label="${simple() ? 'Projekt' : 'Ett projekt'}">${ps.map(p => `<option value="p:${p.id}" ${v.sel === 'p:' + p.id ? 'selected' : ''}>${esc(p.number)} ${esc(p.name)}</option>`).join('')}</optgroup></select></div>
    <div class="fld"><label for="ivM">${v.custom ? 'Period' : 'Till och med månad'}</label>${v.custom ? `<div class="two"><input type="date" id="ivFrom" value="${v.from}" aria-label="Från"><input type="date" id="ivTo" value="${v.to}" aria-label="Till"></div>` : `<div class="mnav"><button class="icon-btn" data-act="ivMonth" data-d="-1" aria-label="Föregående månad">${ic('left')}</button><input type="month" id="ivM" value="${v.ym}"><button class="icon-btn" data-act="ivMonth" data-d="1" aria-label="Nästa månad">${ic('right')}</button></div>`}<label class="chk small"><input type="checkbox" id="ivCustom" ${v.custom ? 'checked' : ''}> Egen period</label></div>
    <div class="fld"><span class="lbl">Innehåll</span><label class="chk small" style="margin-top:6px"><input type="checkbox" id="ivOld" ${v.old ? 'checked' : ''}> All öppen tid före perioden</label><label class="chk small"><input type="checkbox" id="ivRows" ${v.rows ? 'checked' : ''}> Dagboksrader med datum och anteckning</label></div>
    <div class="rep-acts"><button class="btn primary" data-act="dlInvPdf" ${d.hours ? '' : 'disabled'}>${ic('export')}PDF</button><button class="btn" data-act="dlInvCsv" ${d.hours ? '' : 'disabled'}>${ic('export')}CSV</button>${d.months.some(m => m.ok) ? `<button class="btn" data-act="invHandle">${ic('lock')}Markera som hanterat</button>` : ''}</div></div>`;
@@ -4398,9 +4485,9 @@ function invoiceTabHtml() {
   return h;
 }
 const invPHead = (d, P) => `${P.number && P.number !== '–' ? P.number + ' ' : ''}${P.name}${d.all && !simple() && cust(P.customerId) ? ' – ' + cust(P.customerId).name : ''}`;
-const invTitle = sel => sel === 'all' ? 'Öppen tid per projekt' : 'Fakturaunderlag';
+const invTitle = (sel, rows) => rows ? 'Fakturaunderlag och dagbok' : sel === 'all' ? 'Öppen tid per projekt' : 'Fakturaunderlag';
 function invPreview(d, sel) {
-  let h = paperHead(invTitle(sel), sel === 'all' ? '' : invName(sel)) + `<dl class="pp-facts">${invFacts(d).map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v).replace(/\n/g, '<br>')}</dd></div>`).join('')}</dl>`;
+  let h = paperHead(invTitle(sel, d.withRows), sel === 'all' ? '' : invName(sel)) + `<dl class="pp-facts">${invFacts(d).map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v).replace(/\n/g, '<br>')}</dd></div>`).join('')}</dl>`;
   if (!d.hours) return h + `<p class="muted">Ingen öppen debiterbar tid${d.done.h ? ` – ${fh(d.done.h)} h i perioden är redan hanterade` : ''}.</p>`;
   for (const x of d.projects) {
     h += `<h3 class="pp-h">${esc(invPHead(d, x.P))}${x.P.property ? ` <span class="muted">· ${esc(x.P.property)}</span>` : ''}</h3>${x.rows.length ? `<table class="pp-t"><thead><tr><th>Datum</th>${x.P.tasks.length > 1 ? '<th>Uppgift</th>' : ''}<th class="w">Anteckning</th><th class="r">Timmar</th><th class="r">Belopp</th></tr></thead><tbody>${x.rows.map(rw => `<tr><td class="nw">${sdate(rw.date)}</td>${x.P.tasks.length > 1 ? `<td>${esc(rw.task)}</td>` : ''}<td class="w${rw.miss ? ' miss' : ''}">${rw.miss ? 'Anteckning saknas' : esc(rw.note)}</td><td class="r mono">${fh(rw.hours)}</td><td class="r mono">${fkr(rw.amount)}</td></tr>`).join('')}</tbody></table>` : ''}<table class="pp-t"><thead><tr><th class="w">Uppgift</th><th>Roll</th><th class="r">Timmar</th><th class="r">À-pris</th><th class="r">Belopp</th></tr></thead><tbody>${x.lines.map(l => `<tr><td class="w">${esc(l.task)}</td><td>${esc(l.role)}</td><td class="r mono">${fh(l.hours)}</td><td class="r mono">${fkr(l.rate)}</td><td class="r mono">${fkr(l.amount)}</td></tr>`).join('')}<tr class="tot"><td class="w">Summa projektet</td><td></td><td class="r mono">${fh(x.hours)}</td><td></td><td class="r mono">${fkr(x.amount)}</td></tr></tbody></table>`;
@@ -4410,7 +4497,7 @@ function invPreview(d, sel) {
   return h;
 }
 function invoicePdf(d, sel) {
-  const doc = makeDoc(invTitle(sel), sel === 'all' ? '' : invName(sel));
+  const doc = makeDoc(invTitle(sel, d.withRows), sel === 'all' ? '' : invName(sel));
   pdfFacts(doc, invFacts(d));
   for (const x of d.projects) {
     pdfH2(doc, `${invPHead(d, x.P)}${x.P.property ? ' · ' + x.P.property : ''}`);
@@ -4433,7 +4520,7 @@ function invoiceCsv(d) {
   for (const x of d.projects) for (const l of x.lines) { const m = l.amount * d.vat / 100, K = d.all ? cust(x.P.customerId) : C; rows.push([K?.name || '', K?.orgNr || '', K?.ref || '', (K?.invoiceAddress || K?.address || '').replace(/\n/g, ', '), x.P.number === '–' ? '' : x.P.number, x.P.name, x.P.property || '', l.task, l.role, from, d.to, n(l.hours), n(l.rate), n(l.amount), n(d.vat), n(m), n(l.amount + m)]); }
   return '﻿' + rows.map(r => r.map(q).join(';')).join('\r\n') + '\r\n';
 }
-const invFile = (d, sel, ext) => fileSafe(`${invTitle(sel)} ${sel === 'all' ? '' : invName(sel)} ${(d.first && d.first < d.from ? d.first : d.from)}–${d.to}.${ext}`);
+const invFile = (d, sel, ext) => fileSafe(`${invTitle(sel, d.withRows)} ${sel === 'all' ? '' : invName(sel)} ${(d.first && d.first < d.from ? d.first : d.from)}–${d.to}.${ext}`);
 async function invDownload(kind) {
   const v = invSel(), [from, to] = invPeriod(), d = invoiceData(v.sel, from, to, v.old, v.rows);
   if (!d.hours) { toast('Ingen öppen tid att fakturera'); return; }
@@ -4555,6 +4642,7 @@ Object.assign(A, {
   repTab: el => { rep().tab = el.dataset.tab; renderMain(); },
   repYear: el => { rep().year += +el.dataset.d; renderMain(); },
   moCell: el => moMenu(el),
+  moRow: (el, ev) => { if (!$('#menu').hidden) { closeFloating(); return; } moRowMenu(el, ev); },
   dlDiary: el => { closeFloating(); const r = rep(); if (el.dataset.p) downloadDiary(el.dataset.p, `${el.dataset.ym}-01`, ymLast(el.dataset.ym), r.amount, r.budget); else { const [f, t] = diaryPeriod(); downloadDiary(r.pid, f, t, r.amount, r.budget); } },
   showDiary: el => { closeFloating(); if (simple()) { const v = invSel(); Object.assign(v, { sel: 'p:' + el.dataset.p, rows: true }); if (el.dataset.ym) { v.custom = false; v.ym = el.dataset.ym; } st.page = 'rapporter'; st.pid = null; st.cid = null; render(); return; } Object.assign(rep(), { tab: 'diary', pid: el.dataset.p, ym: el.dataset.ym, custom: false }); if (st.page !== 'rapporter') { st.page = 'rapporter'; st.pid = null; st.cid = null; render(); $('#main').scrollTop = 0; } else renderMain(); },
   handle: el => { closeFloating(); handleAsk(el.dataset.p, el.dataset.ym); },
@@ -4570,6 +4658,7 @@ Object.assign(A, {
   invHandleDo: () => invHandleDo(),
   ivMonth: el => { const v = invSel(); v.ym = ymAdd(v.ym, +el.dataset.d); renderMain(); },
   ivPick: el => { invSel().sel = el.dataset.s; renderMain(); },
+  ivSuggest: el => { Object.assign(invSel(), { sel: el.dataset.s, ym: el.dataset.ym, custom: false, old: true }); renderMain(); renderPanel(); },
   showInvoice: el => { closeFloating(); const r = rep(); r.tab = 'invoice'; const v = invSel(); if (el.dataset.s) v.sel = el.dataset.s; if (el.dataset.ym) { v.custom = false; v.ym = el.dataset.ym; } if (st.page !== 'rapporter') { st.page = 'rapporter'; st.pid = null; st.cid = null; render(); $('#main').scrollTop = 0; } else renderMain(); }
 });
 document.addEventListener('change', ev => {
@@ -4691,7 +4780,7 @@ const SHC = [
   { k: 'ov', w: ['översikt', 'öv', 'månadsöversikt'], g: 'Rapporter', t: 'Månadsöversikt', ex: [['översikt', 'i år'], ['översikt 2025', 'ett annat år']] },
   { k: 'hant', w: ['hant', 'hantera'], g: 'Fakturering', t: 'Markera som hanterad och lås', ex: [['hant fm strand', 'förra månaden'], ['hant öppet strand', 'alla avslutade månader med öppen tid'], ['hant sept-okt strand', 'flera månader']] },
   { k: 'unhant', w: ['häv'], g: 'Fakturering', t: 'Häv hanterad', ex: [['häv okt strand', 'låser upp oktober']] },
-  { k: 'proj', w: ['proj', 'projekt'], g: 'Skapa och öppna', t: 'Öppna eller skapa projekt', ex: [['proj strand', 'öppnar projektet'], ['proj Kv. Lärkan 2 100000 Diamanten', 'nytt projekt, budget och kund'], ['proj Ankeborgs GK löp', 'löpande räkning'], ['proj "Hus 2000"', 'citattecken: exakt namn']] },
+  { k: 'proj', w: ['proj', 'projekt'], g: 'Skapa och öppna', t: 'Öppna eller skapa projekt', ex: [['proj strand', 'öppnar projektet'], ['proj Kv. Lärkan 2 100000 Diamanten', 'nytt projekt, budget och kund'], ['proj Ankeborgs GK löp', 'löpande räkning'], ['proj Tennis 100k 850', 'budget och timpris (även 850/h)'], ['proj "Hus 2000"', 'citattecken: exakt namn']] },
   { k: 'kund', w: ['kund'], g: 'Skapa och öppna', t: 'Öppna eller skapa kund', ex: [['kund diamanten', 'öppnar kunden'], ['kund Diamanten Bygg', 'skapar den om den inte finns']] },
   { k: 'uppg', w: ['uppg', 'uppgift'], g: 'Ändra', t: 'Ny uppgift i ett projekt', ex: [['uppg strand Bygglov', 'lägger till uppgiften']] },
   { k: 'ant', w: ['ant', 'anteckning'], g: 'Ändra', t: 'Anteckning på projekt eller kund', ex: [['ant strand Vill ha bygglov före jul', 'projektanteckning'], ['ant kund diamanten Ringde om offerten', 'kundanteckning']] },
@@ -4819,10 +4908,23 @@ function shBudget(toks) {
     else if (/^\d+(?:[.,]\d+)?(?:k|tkr)$/.test(x.lo)) v = Math.round(parseFloat(x.lo.replace(',', '.')) * 1000);
     else if (/^\d{1,3}$/.test(x.lo) && /^\d{3}$/.test(toks[i + 1]?.lo || '')) { let s = x.lo; while (/^\d{3}$/.test(toks[i + n]?.lo || '')) s += toks[i + n++].lo; v = +s; }
     if (v == null) continue;
+    const plain = /^\d{4}$/.test(x.lo);
     if (toks[i + n]?.lo === 'kr') n++;
+    if (hit && plain && hit.i + hit.n === i) continue; // "100k 1200" – 1200 är timpriset (shRate)
     hit = { i, n, v };
   }
   return hit;
+}
+// Timpris i proj: "850/h", "850kr/h", "850 kr/h", "850 /h" var som helst – eller ett tal direkt efter budgeten ("100k 850")
+const RATE_UNIT = /^(?:kr)?\/(?:h|tim|timme|tim\.)$/;
+function shRate(toks, bud) {
+  for (let i = 0; i < toks.length; i++) {
+    const x = toks[i]; if (x.q) continue;
+    const m = x.lo.match(/^(\d+(?:[.,]\d+)?)(?:kr)?\/(?:h|tim|timme)$/); if (m) return { i, n: 1, v: +m[1].replace(',', '.') };
+    if (/^\d+(?:[.,]\d+)?$/.test(x.lo)) { const u = toks[i + 1]?.lo === 'kr' && RATE_UNIT.test(toks[i + 2]?.lo || '') ? 3 : RATE_UNIT.test(toks[i + 1]?.lo || '') ? 2 : 0; if (u) return { i, n: u, v: +x.lo.replace(',', '.') }; }
+  }
+  if (bud) { const j = bud.i + bud.n, x = toks[j]; if (x && !x.q && /^\d{2,4}$/.test(x.lo)) return { i: j, n: toks[j + 1]?.lo === 'kr' ? 2 : 1, v: +x.lo }; }
+  return null;
 }
 
 /* ── Tolkning: vad Enter gör ──
@@ -4888,7 +4990,7 @@ const SH = {
     return { ask: true, html: `Enter signerar <b>${fmtWeeks(todo)}</b>${unch.length ? ` (checkar av ${unch.length === todo.length ? 'den' : fmtWeeks(unch)} först)` : ''} – du får bekräfta, en signerad vecka är slutgiltig`,
       run: () => {
         st.shPending = () => { const t0 = new Date().toISOString(); unch.forEach(w => shWeekEv(w, true)); todo.forEach(w => { R().signed[me() + '|' + w] = { at: t0, by: me() }; }); save(); closeDlg(); shRefresh(); toast(`${cap(fmtWeeks(todo))} är signerad`, { label: 'Ångra', fn: () => { todo.forEach(w => delete R().signed[me() + '|' + w]); unch.forEach(w => shWeekEv(w, false)); save(); shRefresh(); } }); };
-        confirmPlain(`Signera ${fmtWeeks(todo)}?`, 'En signerad vecka är slutgiltig. Den kan inte öppnas igen, och ingen tid i den kan ändras eller tas bort.', `${ic('sign')}Signera`, 'shPending');
+        confirmPlain(`Signera ${fmtWeeks(todo)}?`, 'En signerad vecka är slutgiltig. Den kan inte öppnas igen, och ingen tid i den kan ändras eller tas bort.', `${ic('sign')}Signera`, 'shPending', SIGN_WORDS);
       } };
   },
   db(a) {
@@ -4951,7 +5053,11 @@ const SH = {
   unhant(a) { return shHandle(a, false); },
   proj(a) {
     if (!a.length) return { html: 'Enter öppnar <b>Projekt</b>', run: () => shPage('projekt') };
-    const bud = shBudget(a);
+    // Timpriset plockas ut först: med enhet var som helst, annars talet direkt efter budgeten
+    let rt = shRate(a); if (rt) a = [...a.slice(0, rt.i), ...a.slice(rt.i + rt.n)];
+    let bud = shBudget(a);
+    if (!rt && bud) { rt = shRate(a, bud); if (rt && rt.i === bud.i + bud.n) a = [...a.slice(0, rt.i), ...a.slice(rt.i + rt.n)]; }
+    const rate = rt ? rt.v : null;
     let nameT = bud ? a.slice(0, bud.i) : a, custT = bud ? a.slice(bud.i + bud.n) : [];
     if (bud && !nameT.length) return { bad: true, html: 'Skriv namnet före budgeten: <b>proj Kv. Lärkan 2 100000</b>.' };
     const exAll = !bud && R().projects.find(p => p.kind !== 'absence' && normName(p.name) === normName(shJoin(a)));
@@ -4960,15 +5066,15 @@ const SH = {
     if (!bud && nameT.length > 1 && !nameT.at(-1).q) for (let k = Math.min(nameT.length - 1, 5); k >= 1; k--) { const cr = shFindCust(nameT.slice(-k), 'prefix'); if (cr && (cr.exact || shJoin(nameT.slice(-k)).length >= 4)) { custT = nameT.slice(-k); nameT = nameT.slice(0, -k); break; } }
     const name = cap(shJoin(nameT)), quoted = nameT.length === 1 && nameT[0].q;
     const ex = R().projects.find(p => p.kind !== 'absence' && normName(p.name) === normName(name));
-    if (ex) return { html: `Enter öppnar projektet ${B(ex.name)}${bud || custT.length ? ' · det finns redan – budgeten ändras med <b>budget</b>' : ''}`, run: () => shOpenProj(ex) };
+    if (ex) return { html: `Enter öppnar projektet ${B(ex.name)}${bud || custT.length || rate != null ? ' · det finns redan – budgeten ändras med <b>budget</b>, timpriset under Redigera' : ''}`, run: () => shOpenProj(ex) };
     // Ett ord, en förkortning eller ett nummer utan något mer: öppna det projekt som matchar
-    if (!bud && !custT.length && !quoted && nameT.length === 1) { const r = shFindProj(nameT); if (r) return { html: `Enter öppnar projektet ${B(r.P.name)}${altTxt(r)} <span class="sh-alt">· nytt projekt med det namnet: skriv det inom citattecken</span>`, run: () => shOpenProj(r.P) }; }
+    if (!bud && rate == null && !custT.length && !quoted && nameT.length === 1) { const r = shFindProj(nameT); if (r) return { html: `Enter öppnar projektet ${B(r.P.name)}${altTxt(r)} <span class="sh-alt">· nytt projekt med det namnet: skriv det inom citattecken</span>`, run: () => shOpenProj(r.P) }; }
     if (!name) return needP('namnet');
     if (/^\d{1,3}$/.test(name)) return { bad: true, html: 'Ett projektnamn som bara är siffror skrivs inom citattecken.' };
     const cr = custT.length ? shFindCust(custT, 'prefix') : null, cname = custT.length ? (cr ? cr.C.name : cap(shJoin(custT))) : '';
     const num = numFmt(R().book.numberFormat || DEF_NUMFMT).next;
-    return { html: `Enter skapar projektet ${B(name)}${num ? ` (nr ${esc(num)})` : ''}, ${bud ? (bud.v > 0 ? 'budget ' + B(fkr(bud.v)) : 'löpande räkning') : 'löpande räkning (ingen budget angiven)'}${custT.length ? `, kund ${B(cname)}${cr ? '' : ' (ny)'}` : ''}`,
-      run: () => shNewProj(name, num, bud ? bud.v : 0, cname, cr?.C) };
+    return { html: `Enter skapar projektet ${B(name)}${num ? ` (nr ${esc(num)})` : ''}, ${bud ? (bud.v > 0 ? 'budget ' + B(fkr(bud.v)) : 'löpande räkning') : 'löpande räkning (ingen budget angiven)'}${rate != null ? `, timpris ${B(fkr(rate))}/h` : ''}${custT.length ? `, kund ${B(cname)}${cr ? '' : ' (ny)'}` : ''}`,
+      run: () => shNewProj(name, num, bud ? bud.v : 0, cname, cr?.C, rate) };
   },
   kund(a) {
     if (!a.length) return { html: 'Enter öppnar <b>Kunder</b>', run: () => shPage('kunder') };
@@ -5050,10 +5156,12 @@ function shShowDiary(pid, from, to) {
 }
 function shOpenProj(P) { st.back = null; st.page = 'projekt'; st.pid = P.id; st.cid = null; st.sel = null; st.selDay = null; $('#org').hidden = true; render(); $('#main').scrollTop = 0; }
 function shOpenCust(C) { st.back = null; st.page = 'kunder'; st.cid = C.id; st.pid = null; st.sel = null; st.selDay = null; $('#org').hidden = true; render(); $('#main').scrollTop = 0; }
-function shNewProj(name, num, budget, cname, C) {
+function shNewProj(name, num, budget, cname, C, rate = null) {
   let newC = null;
   if (cname && !C) { newC = C = { id: 'k' + uid(), name: cname, archived: false, notes: [], created: new Date().toISOString() }; R().customers.push(C); }
-  const P = { id: 'p' + uid(), number: num || '–', name, customerId: C?.id || null, property: '', budgetKr: budget, internal: false, color: nextColor(), status: 'active', tasks: ['Skiss', 'Bygglov'].map(n => ({ id: 'u' + uid(), name: n, billable: true })), roleRates: {}, personRates: {}, memberRoles: {}, notices: {}, notes: [], created: new Date().toISOString() };
+  const P = { id: 'p' + uid(), number: num || '–', name, customerId: C?.id || null, property: '', budgetKr: budget, internal: false, color: nextColor(), status: 'active', tasks: defTasks().map(n => ({ id: 'u' + uid(), name: n, billable: true })), roleRates: {}, personRates: {}, memberRoles: {}, notices: {}, notes: [], created: new Date().toISOString() };
+  // Timpris: enkelt läge som i Nytt projekt (ditt pris i projektet), fullständigt läge som pris för din roll i projektet
+  if (rate != null) { const rl = person().defaultRoleId; if (simple()) P.personRates = { [me()]: { [rl]: rate } }; else P.roleRates = { [rl]: rate }; }
   R().projects.push(P); save(); shOpenProj(P);
   toast(`Skapade ${P.name}${newC ? ' och kunden ' + newC.name : ''} – uppgifter och färg ändras under Redigera`, { label: 'Ångra', fn: () => { if (hasTime(P.id)) { toast('Projektet har tid nu och tas inte bort'); return; } R().projects = R().projects.filter(p => p !== P); if (newC && !R().projects.some(p => p.customerId === newC.id)) R().customers = R().customers.filter(c => c !== newC); if (st.pid === P.id) st.pid = null; save(); render(); } });
 }

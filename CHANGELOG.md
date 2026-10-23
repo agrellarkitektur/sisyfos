@@ -1,5 +1,18 @@
 # Ändringar i Sisyfos
 
+## 0.11.1
+
+Småjusteringar. Filformatet är oförändrat (7) – standarduppgiften sparas som ett nytt, valfritt fält (`book.defaultTasks`).
+
+- **Nya projekt får en uppgift, Utredning**, i stället för Skiss och Bygglov. Vilka uppgifter nya projekt ska få anges i guiden för ny bok och under *Inställningar → Nya projekt*.
+- **Lägesknapp** bredvid temaknappen: *Enkelt | Fullt* byter läge direkt, med Ångra.
+- **Rubriken blir "Fakturaunderlag och dagbok"** när dagboksrader är ikryssade, på skärmen, i PDF:en och i filnamnet.
+- **Månadsöversikten:** projektets namn eller nummer går till projektsidan, kundnamnet till kunden, och ett klick någon annanstans på raden öppnar en meny (projektet, kunden, tidboken, dagboken, all öppen tid, fakturaunderlag). Månadsmenyn har också *Gå till projektet*.
+- **Förslag på rapporter:** överst i Projektdagbok och Fakturaunderlag (och Öppen tid i enkelt läge) visas det som har öppen tid, äldst först – ett klick tar fram rapporten.
+- **Smartshell – timpris i `proj`:** `proj Tennis 100k 850` eller `proj Golf 850/h` (även `850 kr/h`). Ett tal direkt efter budgeten är timpriset; med `/h` kan det stå var som helst.
+- **Signera från tangentbordet:** bekräftelsen har en ruta där `sign` eller `ok` + Enter signerar och Esc avbryter. Fokus går tillbaka till smartshell.
+- **Data och integritet:** ny ruta (Sisyfos-menyn, Om Sisyfos, Synpunkter och *Spara boken*) som beskriver vilken data boken innehåller, var den sparas, vad som skickas och vem som ansvarar för vad. Samma text står i README.
+
 ## 0.11.0
 
 Enkelt läge. Filformatet är oförändrat (7) – läget sparas som ett nytt, valfritt fält i boken (`book.mode`) som äldre versioner bortser från.
