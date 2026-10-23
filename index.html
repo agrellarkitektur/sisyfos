@@ -803,8 +803,8 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 .rep .seg .sm{display:none}
 @media (width <= 560px){.rep .seg .lg{display:none}.rep .seg .sm{display:inline}.mo th.p{min-width:150px;max-width:170px}}
 .mo .pcell{display:flex;align-items:center;gap:8px;min-width:0}
-.rep-sug{display:flex;align-items:flex-start;gap:10px;margin:0 0 14px;flex-wrap:wrap}
-.rep-sug>.lbl{font-size:12px;color:var(--muted);font-weight:600;padding-top:7px;white-space:nowrap}
+.rep-sug{display:flex;flex-direction:column;gap:6px;margin:14px 0 4px}
+.rep-sug>.lbl{font-size:12px;color:var(--muted);font-weight:600}.rep-sug>.lbl span{font-weight:400}
 .sug-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:0;flex:1}
 .sug{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border:1px solid var(--rule);border-radius:999px;background:var(--paper);font:500 12.5px var(--font-ui);cursor:pointer;max-width:100%}
 .sug b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
@@ -1141,7 +1141,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 
 /* ───────────── Hjälpfunktioner ───────────── */
 const FORMAT = 'sisyfos', FORMAT_VERSION = 7, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.11.1', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const APP_VERSION = '0.11.2', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 { const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
@@ -4335,11 +4335,11 @@ function diaryTabHtml() {
   const d = diaryData(r.pid, from, to, r.amount), full = !r.custom, hd = full && R().handled[r.pid + '|' + r.ym];
   const sug = repSuggestHtml('diary');
   const og = s => { const l = ps.filter(p => p.status === s).sort((a, b) => (pRank(a) - pRank(b)) || String(b.number).localeCompare(String(a.number))); return l.length ? `<optgroup label="${STATUS[s]}">${l.map(p => `<option value="${p.id}" ${p.id === r.pid ? 'selected' : ''}>${esc(p.number)} ${esc(p.name)}</option>`).join('')}</optgroup>` : ''; };
-  let h = sug + `<div class="rep-ctl"><div class="fld"><label for="rpP">Projekt</label><select id="rpP">${og('active')}${og('paused')}${og('closed')}</select></div>
+  let h = `<div class="rep-ctl"><div class="fld"><label for="rpP">Projekt</label><select id="rpP">${og('active')}${og('paused')}${og('closed')}</select></div>
    <div class="fld"><label for="rpM">Månad</label>${r.custom ? `<div class="two"><input type="date" id="rpFrom" value="${r.from}" aria-label="Från"><input type="date" id="rpTo" value="${r.to}" aria-label="Till"></div>` : `<div class="mnav"><button class="icon-btn" data-act="rpMonth" data-d="-1" aria-label="Föregående månad">${ic('left')}</button><input type="month" id="rpM" value="${r.ym}"><button class="icon-btn" data-act="rpMonth" data-d="1" aria-label="Nästa månad">${ic('right')}</button></div>`}<label class="chk small"><input type="checkbox" id="rpCustom" ${r.custom ? 'checked' : ''}> Egen period</label></div>
    <div class="fld"><label for="rpAmt">Belopp</label><select id="rpAmt"><option value="none" ${r.amount === 'none' ? 'selected' : ''}>Visa inte belopp</option><option value="ex" ${r.amount === 'ex' ? 'selected' : ''}>Exkl. moms</option><option value="inc" ${r.amount === 'inc' ? 'selected' : ''}>Inkl. moms ${fhs(+R().book.vatRate || 0)} %</option></select><label class="chk small"><input type="checkbox" id="rpBud" ${r.budget ? 'checked' : ''}> Visa budgetläge</label></div>
    <div class="rep-acts"><button class="btn primary" data-act="dlDiary" ${d.rows.length ? '' : 'disabled'}>${ic('export')}Ladda ner PDF</button>
-   ${full ? hd ? `<button class="btn done" data-act="unhandle" data-p="${r.pid}" data-ym="${r.ym}" title="Häv hanterad och lås upp">${ic('lock')}Hanterad ${sdate(hd.at.slice(0, 10))}</button>` : d.rows.length ? `<button class="btn" data-act="handle" data-p="${r.pid}" data-ym="${r.ym}">${ic('lock')}Markera som hanterad</button>` : '' : ''}</div></div>`;
+   ${full ? hd ? `<button class="btn done" data-act="unhandle" data-p="${r.pid}" data-ym="${r.ym}" title="Häv hanterad och lås upp">${ic('lock')}Hanterad ${sdate(hd.at.slice(0, 10))}</button>` : d.rows.length ? `<button class="btn" data-act="handle" data-p="${r.pid}" data-ym="${r.ym}">${ic('lock')}Markera som hanterad</button>` : '' : ''}</div></div>` + sug;
   if (d.miss) h += `<div class="alert soft">${ic('alert')}<div class="txt">${d.miss === 1 ? 'En tid saknar' : d.miss + ' tider saknar'} anteckning i perioden. Den står med som tom rad i dagboken.</div></div>`;
   h += `<div class="paper">${diaryPreview(d)}</div>`;
   return h;
@@ -4468,7 +4468,7 @@ function repSuggestHtml(kind) {
     items = l.map(({ p, o }) => `<button class="sug${r.pid === p.id && r.custom && r.from === o.first && r.to === o.last ? ' on' : ''}" data-act="rpOpen" data-p="${p.id}" style="--pc:${pc(p)}" title="All öppen tid ${dYear(o.first)} – ${dYear(o.last)}"><span class="dot"></span><b>${esc(p.name)}</b><span class="mono">${nk(o.all.a)}</span><small${o.first < cm1() ? ' class="due"' : ''}>${span(o)}</small></button>`);
   }
   const max = 8, more = items.length - max;
-  return `<div class="rep-sug" aria-label="Förslag"><span class="lbl">Öppen tid${kind === 'invoice' ? ' att fakturera' : ''}</span><div class="sug-row">${items.slice(0, max).join('')}${more > 0 ? `<span class="small muted">och ${more} till</span>` : ''}</div></div>`;
+  return `<div class="rep-sug" role="group" aria-label="Rapportförslag"><div class="lbl">Rapportförslag <span>· öppen tid${kind === 'invoice' && !simple() ? ' att fakturera' : ''}, äldst först</span></div><div class="sug-row">${items.slice(0, max).join('')}${more > 0 ? `<span class="small muted">och ${more} till</span>` : ''}</div></div>`;
 }
 function invoiceTabHtml() {
   const r = rep(), v = invSel(), [from, to] = invPeriod();
@@ -4476,10 +4476,10 @@ function invoiceTabHtml() {
   const ps = R().projects.filter(p => !p.internal && p.kind !== 'absence').sort((a, b) => (pRank(a) - pRank(b)) || String(b.number).localeCompare(String(a.number)));
   if (!ps.length) return `<p class="muted">Inga debiterbara projekt än.</p>`;
   const d = invoiceData(v.sel, from, to, v.old, v.rows);
-  let h = repSuggestHtml('invoice') + `<div class="rep-ctl"><div class="fld"><label for="ivS">${simple() ? 'Projekt' : 'Underlag för'}</label><select id="ivS"><option value="all" ${v.sel === 'all' ? 'selected' : ''}>Alla projekt</option>${cs.length && !simple() ? `<optgroup label="Kund – alla projekt">${cs.map(c => `<option value="c:${c.id}" ${v.sel === 'c:' + c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</optgroup>` : ''}<optgroup label="${simple() ? 'Projekt' : 'Ett projekt'}">${ps.map(p => `<option value="p:${p.id}" ${v.sel === 'p:' + p.id ? 'selected' : ''}>${esc(p.number)} ${esc(p.name)}</option>`).join('')}</optgroup></select></div>
+  let h = `<div class="rep-ctl"><div class="fld"><label for="ivS">${simple() ? 'Projekt' : 'Underlag för'}</label><select id="ivS"><option value="all" ${v.sel === 'all' ? 'selected' : ''}>Alla projekt</option>${cs.length && !simple() ? `<optgroup label="Kund – alla projekt">${cs.map(c => `<option value="c:${c.id}" ${v.sel === 'c:' + c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</optgroup>` : ''}<optgroup label="${simple() ? 'Projekt' : 'Ett projekt'}">${ps.map(p => `<option value="p:${p.id}" ${v.sel === 'p:' + p.id ? 'selected' : ''}>${esc(p.number)} ${esc(p.name)}</option>`).join('')}</optgroup></select></div>
    <div class="fld"><label for="ivM">${v.custom ? 'Period' : 'Till och med månad'}</label>${v.custom ? `<div class="two"><input type="date" id="ivFrom" value="${v.from}" aria-label="Från"><input type="date" id="ivTo" value="${v.to}" aria-label="Till"></div>` : `<div class="mnav"><button class="icon-btn" data-act="ivMonth" data-d="-1" aria-label="Föregående månad">${ic('left')}</button><input type="month" id="ivM" value="${v.ym}"><button class="icon-btn" data-act="ivMonth" data-d="1" aria-label="Nästa månad">${ic('right')}</button></div>`}<label class="chk small"><input type="checkbox" id="ivCustom" ${v.custom ? 'checked' : ''}> Egen period</label></div>
    <div class="fld"><span class="lbl">Innehåll</span><label class="chk small" style="margin-top:6px"><input type="checkbox" id="ivOld" ${v.old ? 'checked' : ''}> All öppen tid före perioden</label><label class="chk small"><input type="checkbox" id="ivRows" ${v.rows ? 'checked' : ''}> Dagboksrader med datum och anteckning</label></div>
-   <div class="rep-acts"><button class="btn primary" data-act="dlInvPdf" ${d.hours ? '' : 'disabled'}>${ic('export')}PDF</button><button class="btn" data-act="dlInvCsv" ${d.hours ? '' : 'disabled'}>${ic('export')}CSV</button>${d.months.some(m => m.ok) ? `<button class="btn" data-act="invHandle">${ic('lock')}Markera som hanterat</button>` : ''}</div></div>`;
+   <div class="rep-acts"><button class="btn primary" data-act="dlInvPdf" ${d.hours ? '' : 'disabled'}>${ic('export')}PDF</button><button class="btn" data-act="dlInvCsv" ${d.hours ? '' : 'disabled'}>${ic('export')}CSV</button>${d.months.some(m => m.ok) ? `<button class="btn" data-act="invHandle">${ic('lock')}Markera som hanterat</button>` : ''}</div></div>` + repSuggestHtml('invoice');
   if (d.miss) h += `<div class="alert soft">${ic('alert')}<div class="txt">${d.miss === 1 ? 'En tid saknar' : d.miss + ' tider saknar'} anteckning. Fyll i dem i tidboken innan du skickar ${v.rows ? 'underlaget' : 'projektdagboken som bilaga'}.</div></div>`;
   h += `<div class="paper">${invPreview(d, v.sel)}</div>`;
   return h;

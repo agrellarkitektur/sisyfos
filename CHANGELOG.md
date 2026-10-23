@@ -1,5 +1,11 @@
 # Ändringar i Sisyfos
 
+## 0.11.2
+
+Rättning efter test. Filformatet är oförändrat (7).
+
+- **Rapportförslagen ligger under val och knappar** i Projektdagbok och Fakturaunderlag (och Öppen tid i enkelt läge), med rubriken *Rapportförslag* ovanför knapparna. Förut låg de över projekt- och datumväljaren och syntes dåligt.
+
 ## 0.11.1
 
 Småjusteringar. Filformatet är oförändrat (7) – standarduppgiften sparas som ett nytt, valfritt fält (`book.defaultTasks`).
