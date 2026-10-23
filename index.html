@@ -1123,7 +1123,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 
 /* ───────────── Hjälpfunktioner ───────────── */
 const FORMAT = 'sisyfos', FORMAT_VERSION = 7, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.10.0', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const APP_VERSION = '0.11.0', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 { const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
@@ -1447,10 +1447,12 @@ const weekdayNorm = d => +(R().book.norm[dow(d)] ?? 0);
 const bookNorm = d => { const dev = calDev(+d.slice(0, 4)); return d in dev ? +dev[d] : weekdayNorm(d); };
 const person = () => R().people.find(x => x.id === me());
 // Normtid för personen: heltid = bokens normtid, deltid = andel av den, timanställd = ingen normtid.
-const hasNorm = () => person().employment !== 'hourly';
+// Enkelt läge (0.11.0): bara projekt, timpris och budget – inga kunder, ingen normtid eller frånvaro. Data ligger kvar orörd.
+const simple = () => R().book.mode === 'simple';
+const hasNorm = () => !simple() && person().employment !== 'hourly';
 // Timanställda har varken kompsaldo eller semesterkonto – de uppgifterna döljs helt för dem
-const taskHidden = (P, T) => !!T?.archived || (P?.kind === 'absence' && !hasNorm() && (T.absence === 'comp' || T.absence === 'vacation'));
-const norm = d => { const p = person(); return p.employment === 'hourly' ? 0 : p.employment === 'part' ? bookNorm(d) * (+p.pct || 0) / 100 : bookNorm(d); };
+const taskHidden = (P, T) => !!T?.archived || (P?.kind === 'absence' && simple()) || (P?.kind === 'absence' && !hasNorm() && (T.absence === 'comp' || T.absence === 'vacation'));
+const norm = d => { const p = person(); return p.employment === 'hourly' || simple() ? 0 : p.employment === 'part' ? bookNorm(d) * (+p.pct || 0) / 100 : bookNorm(d); };
 const weekState = wk => { const w = WEEKS.get(me() + '|' + wk), sg = R().signed[me() + '|' + wk]; return { checked: !!w?.checked, at: w?.at, signed: sg || null }; };
 const locked = d => { const w = weekState(monday(d)); return w.checked || !!w.signed; };
 // Hanterad månad: projektets tid i månaden är avstämd och dagboken utskriven – låst för ändringar
@@ -1558,7 +1560,7 @@ function semStart(d, ys = '04-01') { let s = `${d.slice(0, 4)}-${ys}`; if (s > d
 const ydate = d => `${+d.slice(8)} ${MONL[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}`;
 const semLabel = (y, ys) => ys === '01-01' ? String(y) : `${y}/${String((y + 1) % 100).padStart(2, '0')}`;
 function vacInfo(p = person(), t = today()) {
-  if (!p || p.employment === 'hourly') return null;
+  if (!p || p.employment === 'hourly' || simple()) return null;
   const v = p.vacation || {}, ys = v.yearStart || '04-01', per = +v.perYear || 0, ru = vacRules();
   const curS = semStart(t, ys), cy = +curS.slice(0, 4), y0 = Math.min(+semStart(v.from || curS, ys).slice(0, 4), cy);
   let pools = (v.saved || []).map((n, i) => ({ y: y0 - 1 - i, left: +n || 0 })).filter(x => x.left > 0.004);
@@ -1965,7 +1967,7 @@ function rowsForWeek(wk) {
 function rowInfo(rk) {
   const [p, t] = splitRow(rk), P = proj(p), T = taskOf(P, t);
   const r = role(roleFor(p));
-  return { P, T, color: pc(P), sub: T.absence ? T.name : `${T.name}${P.internal || !T.billable ? ' · ej debiterbar' : ' · ' + (r?.name || '')}` };
+  return { P, T, color: pc(P), sub: T.absence ? T.name : `${T.name}${P.internal || !T.billable ? ' · ej debiterbar' : simple() ? '' : ' · ' + (r?.name || '')}` };
 }
 function ring(P, size = 28, withText = false) {
   const x = budgetPct(P);
@@ -1981,13 +1983,13 @@ function renderBook() {
 }
 const PAGES = [['tid', 'clock', 'Tid'], ['projekt', 'folder', 'Projekt'], ['kunder', 'users', 'Kunder'], ['rapporter', 'report', 'Rapporter'], ['installningar', 'settings', 'Inställ­ningar']];
 function renderRail() {
-  $('#rail').innerHTML = PAGES.map(([id, icn, lbl], i) => `${i === 3 ? '<div class="rail-sep"></div>' : ''}<button class="tool" data-act="page" data-page="${id}" ${st.page === id ? 'aria-current="page"' : ''}>${ic(icn)}<span>${lbl}</span></button>`).join('');
+  $('#rail').innerHTML = PAGES.filter(([id]) => !(simple() && id === 'kunder')).map(([id, icn, lbl]) => `${id === 'rapporter' ? '<div class="rail-sep"></div>' : ''}<button class="tool" data-act="page" data-page="${id}" ${st.page === id ? 'aria-current="page"' : ''}>${ic(icn)}<span>${lbl}</span></button>`).join('');
 }
 function renderMain() {
   const m = $('#mainBody');
   if (st.page === 'tid') m.innerHTML = st.view === 'week' ? weekHtml() : st.view === 'month' ? mviewHtml() : dayHtml();
   else if (st.page === 'projekt') m.innerHTML = projectsHtml();
-  else if (st.page === 'kunder') m.innerHTML = customersHtml();
+  else if (st.page === 'kunder') { if (simple()) { st.page = 'projekt'; st.cid = null; renderRail(); m.innerHTML = projectsHtml(); } else m.innerHTML = customersHtml(); }
   else if (st.page === 'rapporter') m.innerHTML = reportsHtml();
   else m.innerHTML = settingsHtml();
   if (st.focus) { const el = m.querySelector(`[data-focus="${CSS.escape(st.focus)}"]`); st.focus = null; if (el) requestAnimationFrame(() => el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })); }
@@ -2035,7 +2037,7 @@ function weekHtml() {
   if (!rows.length) h += `<p class="muted" style="margin:6px 8px">Inga rader den här veckan än. Lägg till ett projekt eller skriv i smartshell.</p>`;
   h += `<div class="add-line">${lk ? '' : `<button class="add-row" data-act="addRow">${ic('plus')}Lägg till rad <small>senast använda först</small></button>`}</div>`;
   h += `</div></div>`;
-  h += `<div class="summary"><div class="s-head"><h2>Veckan</h2>${hasNorm() ? `<span class="legend"><i class="lg-norm"></i>Normtid</span>` : `<span class="legend">Timanställd – ingen normtid</span>`}<div class="stats" id="stats">${statsHtml(days)}</div></div><div class="dgrid chart" id="chart" style="--n:${n}">${chartHtml(days)}</div><div class="s-foot" id="sfoot">${sumFootHtml()}</div></div>`;
+  h += `<div class="summary"><div class="s-head"><h2>Veckan</h2>${hasNorm() ? `<span class="legend"><i class="lg-norm"></i>Normtid</span>` : `<span class="legend">${simple() ? 'Enkelt läge – ingen normtid' : 'Timanställd – ingen normtid'}</span>`}<div class="stats" id="stats">${statsHtml(days)}</div></div><div class="dgrid chart" id="chart" style="--n:${n}">${chartHtml(days)}</div><div class="s-foot" id="sfoot">${sumFootHtml()}</div></div>`;
   return h + `</div>`;
 }
 // Ta bort-knappen på en rad: finns inte i låsta veckor eller när raden har tid i en hanterad månad
@@ -2057,7 +2059,7 @@ function factsHtml(P) {
   }
   return `<span class="r-facts">`
     + f('f-num', 'Nr', `<button class="lnk mono" data-act="gotoProject" data-p="${P.id}" title="Öppna projektet">${esc(P.number)}</button>`)
-    + (P.internal ? f('f-cust', 'Kund', '<span class="v">intern tid</span>') : f('f-cust', 'Kund', c ? `<button class="lnk" data-act="gotoCustomer" data-c="${c.id}" title="Öppna kunden">${esc(c.name)}</button>` : '<span class="v">ingen kund</span>'))
+    + (simple() ? (P.internal ? f('f-cust', 'Typ', '<span class="v">intern tid</span>') : f('f-cust', 'Timpris', `<span class="v mono">${fkr(rateFor(P.id, roleFor(P.id), me()))}</span>`)) : P.internal ? f('f-cust', 'Kund', '<span class="v">intern tid</span>') : f('f-cust', 'Kund', c ? `<button class="lnk" data-act="gotoCustomer" data-c="${c.id}" title="Öppna kunden">${esc(c.name)}</button>` : '<span class="v">ingen kund</span>'))
     + (P.internal ? '' : f('f-bud', running(P) ? 'Löpande' : 'Kvar', `<span class="v mono" data-rkvar="${P.id}">${kvarTxt(P)}</span>`))
     + (P.property ? f('f-prop', 'Fastighet', `<span class="v">${esc(P.property)}</span>`) : '')
     + `</span>`;
@@ -2270,7 +2272,7 @@ function renderPanel() {
   const [rk, d] = splitKey(st.sel), { P, T, color } = rowInfo(rk), e = cell(rk, d), key = st.sel, lk = lockedK(rk, d), ro = lk ? 'readonly' : '';
   const r = role(e?.roleId || roleFor(P.id)), rate = e ? e.rate : rateFor(P.id, r?.id, me());
   const bill = !P.internal && T.billable;
-  el.innerHTML = panelChrome() + `<div class="p-head" style="--pc:${color}"><span class="dot"></span><div><h2>${esc(P.name)}</h2><p>${T.absence ? esc(T.name) : `${esc(P.number)} · ${esc(T.name)}${bill ? ` · ${esc(r?.name || '')} ${fkr(rate)}/h` : ' · ej debiterbar'}`}</p></div>${pTools(true)}</div>
+  el.innerHTML = panelChrome() + `<div class="p-head" style="--pc:${color}"><span class="dot"></span><div><h2>${esc(P.name)}</h2><p>${T.absence ? esc(T.name) : `${esc(P.number)} · ${esc(T.name)}${bill ? ` · ${simple() ? '' : esc(r?.name || '') + ' '}${fkr(rate)}/h` : ' · ej debiterbar'}`}</p></div>${pTools(true)}</div>
   <div class="p-body" style="--pc:${color}">
     <section class="psec"><h3>${ldate(d)}${lk ? ' · låst' : ''}</h3><div class="stepper"><button class="sbtn" data-act="step" data-key="${key}" data-d="-0.5" aria-label="Minska en halvtimme" ${lk ? 'disabled' : ''}>${ic('minus')}</button><label class="sr" for="pHours">Timmar</label><input class="h-in p-hours" id="pHours" data-key="${key}" value="${e && e.hours > 0 ? fh(e.hours) : ''}" placeholder="0" inputmode="decimal" autocomplete="off" ${ro}><button class="sbtn" data-act="step" data-key="${key}" data-d="0.5" aria-label="Öka en halvtimme" ${lk ? 'disabled' : ''}>${ic('plus')}</button></div>
       ${lk ? '' : `<div class="chips">${[0.5, 1, 2, 4].map(v => `<button class="chip" data-act="setH" data-key="${key}" data-h="${v}">${fh(v)}</button>`).join('')}${hasNorm() ? `<button class="chip txt" data-act="fillDay" data-key="${key}">Fyll dagen</button>` : ''}</div>`}
@@ -2318,7 +2320,7 @@ function overviewHtml() {
   const wk = st.view === 'day' ? monday(st.day) : st.week;
   const ps = [...new Set(rowsForWeek(wk).map(rk => splitRow(rk)[0]))].map(proj).filter(p => p && !p.internal);
   return `<section class="psec"><h3>Projekt i veckan</h3>${ps.length ? `<ul class="plist">${ps.map(p => `<li style="--pc:${pc(p)}"><span class="dot"></span><span class="r-text"><span class="r-name">${esc(p.name)}</span><span class="r-sub mono">${fkr(used(p.id))}${running(p) ? ' · löpande' : ' av ' + fkr(p.budgetKr)}</span></span>${ring(p, 34, true)}</li>`).join('')}</ul>` : '<p class="small muted" style="margin:0">Inga kundprojekt den här veckan.</p>'}</section>
-  <section class="psec"><h3>Så skriver du tid</h3><ul class="tips"><li>Klicka i en ruta och <b>skriv timmar</b> direkt, till exempel 3,5 eller 3:30. Smartmenyn öppnas vid pekaren – <b>Tab</b> tar dig till anteckningen.</li><li><b>Piltangenter</b> och Enter flyttar mellan rutorna.</li><li>Klicka på en <b>projektrad</b> för att öppna dagböckerna.</li><li>Klicka på en <b>veckodag</b> för att markera den.</li><li>Smartshell: <b>3,5 strand ritade fasad</b> lägger tiden på markerad dag. Börja med <b>tor</b>, <b>mån-fre</b> eller <b>v43</b> för att välja dagar – <b>v43 fl</b> fyller veckan med föräldraledighet.</li><li>En orange ring betyder att anteckning saknas.</li><li><b>Checka av veckan</b> när den är klar.</li></ul></section>`;
+  <section class="psec"><h3>Så skriver du tid</h3><ul class="tips"><li>Klicka i en ruta och <b>skriv timmar</b> direkt, till exempel 3,5 eller 3:30. Smartmenyn öppnas vid pekaren – <b>Tab</b> tar dig till anteckningen.</li><li><b>Piltangenter</b> och Enter flyttar mellan rutorna.</li><li>Klicka på en <b>projektrad</b> för att öppna dagböckerna.</li><li>Klicka på en <b>veckodag</b> för att markera den.</li><li>Smartshell: <b>3,5 strand ritade fasad</b> lägger tiden på markerad dag. Börja med <b>tor</b>, <b>mån-fre</b> eller <b>v43</b> för att välja dagar${simple() ? '' : ' – <b>v43 fl</b> fyller veckan med föräldraledighet'}.</li><li>En orange ring betyder att anteckning saknas.</li><li><b>Checka av veckan</b> när den är klar.</li></ul></section>`;
 }
 
 function renderStatus() {
@@ -2465,7 +2467,7 @@ function parseQuick(s) {
   if (!rest) return w.days || hours != null ? { info: `Skriv projektet efter ${hours != null ? 'timmarna' : 'dagen'}, till exempel ett ord ur namnet eller en egen förkortning.` } : null;
   const words = rest.split(/\s+/), m = matchTarget(words);
   if (!m) return w.days || hours != null ? { error: `Hittar inget projekt eller förkortning som matchar ”${words[0]}”.` } : null;
-  if (hours == null && !hasNorm()) return { error: 'Skriv timmar – som timanställd har du ingen normtid att fylla upp till.' };
+  if (hours == null && !hasNorm()) return { error: simple() ? 'Skriv timmar – i enkelt läge finns ingen normtid att fylla upp till.' : 'Skriv timmar – som timanställd har du ingen normtid att fylla upp till.' };
   return { hours, rk: m.rk, note: cap(words.slice(m.used).join(' ')), days: w.days || [quickDate()], dated: !!w.days };
 }
 // Vad Enter kommer att göra: låsta veckor hoppas över; utan timmar fylls varje dag upp till normtiden
@@ -2709,6 +2711,7 @@ function custPanelHtml(C) {
 }
 function repPanelHtml() {
   const r = rep();
+  if (simple()) return invPanelHtml();
   if (r.tab === 'diary' && r.pid && proj(r.pid)) {
     const P = proj(r.pid), [from, to] = diaryPeriod();
     let h = pHead('Projektdagbok', `${esc(P.name)} · ${periodLabel(from, to)}`, pc(P)) + `<div class="p-body" style="--pc:${pc(P)}">`;
@@ -2988,7 +2991,7 @@ function newProjectDlg(pre) {
    <div class="fld full"><label for="npName">Projektnamn${REQ}</label><input id="npName" required aria-required="true" placeholder="Kv. Exempel"></div>
    <div class="fld"><label for="npNum">Projektnummer</label><input id="npNum" class="mono" value="${esc(numFmt(fmt).next)}" data-numdup="" autocomplete="off"><span class="fld-msg" id="npNumMsg" aria-live="polite"></span><button type="button" class="linkish fmt-tog" data-act="npFmtTog" aria-expanded="false">Format <span class="mono">${esc(fmt)}</span> · Ändra</button></div>
    <div class="fld"><label for="npProp">Fastighetsbeteckning</label><input id="npProp" placeholder="Exempel 1:23"></div>
-   <div class="fld"><label for="npCust">Kund</label>${custAcHtml('npCust', pre?.customer || '')}</div>
+   ${simple() ? `<div class="fld"><label for="npRate">Timpris, kr exkl. moms</label><input id="npRate" class="mono" inputmode="numeric" placeholder="${nfKr.format(role(person().defaultRoleId)?.rate || 0)}"><span class="fld-hint">Tomt = ditt vanliga pris</span></div>` : `<div class="fld"><label for="npCust">Kund</label>${custAcHtml('npCust', pre?.customer || '')}</div>`}
    <div class="fld"><label for="npBud">Budget, kr exkl. moms</label><input id="npBud" inputmode="numeric" placeholder="120 000"><span class="fld-hint">Tomt eller 0 = löpande utan budget</span></div>
    <div class="fld"><label for="npTasks">Uppgifter, kommaseparerade</label><input id="npTasks" value="Skiss, Bygglov"></div>
    <div class="fld" data-ext><label for="npIdle">Blir inaktivt efter</label>${idleSel('npIdle', R().book.idleDays ?? 90)}<span class="fld-hint">utan registrerad tid</span></div>
@@ -3006,13 +3009,15 @@ function createProject() {
   if (nf !== (R().book.numberFormat || DEF_NUMFMT)) { if (nff.err) { $('#npErr').textContent = nff.err; return; } R().book.numberFormat = nf; }
   const internal = $('#npInt').checked, budget = +($('#npBud').value.replace(/\s/g, '').replace(',', '.')) || 0;
   if (!internal && !(budget >= 0)) { $('#npErr').textContent = 'Ange budgeten i kronor, till exempel 120000 – eller 0 för löpande räkning.'; return; }
-  let cn = $('#npCust').value.trim(), c = R().customers.find(x => x.name.toLowerCase() === cn.toLowerCase());
+  const sRate = simple() ? parseKr($('#npRate').value) : null; if (sRate != null && !(sRate >= 0)) { $('#npErr').textContent = 'Timpriset ska vara ett tal i kronor.'; return; }
+  let cn = $('#npCust')?.value.trim() || '', c = cn && R().customers.find(x => x.name.toLowerCase() === cn.toLowerCase());
   if (cn && !c) { c = { id: 'k' + uid(), name: cn, archived: false, notes: [], created: new Date().toISOString() }; R().customers.push(c); }
   const tasks = ($('#npTasks').value || 'Uppdrag').split(',').map(s => s.trim()).filter(Boolean).map(n => ({ id: 'u' + uid(), name: n, billable: !internal }));
   const cv = $('input[name=pjColor]:checked')?.value;
   const color = internal ? -1 : cv === 'free' ? $('#pjColorFree').value.toLowerCase() : cv != null ? +cv : nextColor();
   const idle = +$('#npIdle').value, now = new Date().toISOString();
   const P = { id: 'p' + uid(), number: num || '–', name, customerId: c?.id || null, property: $('#npProp').value.trim(), budgetKr: internal ? 0 : budget, internal, color, status: 'active', tasks: tasks.length ? tasks : [{ id: 'u' + uid(), name: 'Uppdrag', billable: !internal }], roleRates: {}, personRates: {}, memberRoles: {}, notices: {}, notes: [], created: now, ...(idle !== (R().book.idleDays ?? 90) ? { idleDays: idle } : {}) };
+  if (sRate != null && !internal) P.personRates = { [me()]: { [person().defaultRoleId]: sRate } };
   R().projects.push(P); closeDlg();
   if (pickMode?.mode === 'move') picked(P.id + '~' + P.tasks[0].id);
   else if (st.page === 'projekt' || st.page === 'kunder') { st.page = 'projekt'; st.pid = P.id; st.cid = null; render(); $('#main').scrollTop = 0; }
@@ -3022,30 +3027,30 @@ function createProject() {
 /* ───────────── Ny bok: guide i fyra steg ─────────────
    Företaget → personal och arbetstid → projektnummer → klart. Inget sparas förrän man trycker Skapa boken. */
 const WIZ = ['Företaget', 'Personal och arbetstid', 'Projektnummer', 'Klart'];
-const wizDefaults = () => ({ company: '', name: '', orgNr: '', email: '', phone: '', web: '', address: '', logo: null, team: 'solo', emp: 'full', pct: 100, person: '', initials: '', dayH: 8, vac: 25, vacStart: '04-01', savedVac: 'no', sv1: 0, sv2: 0, sv3: 0, sv4: 0, sv5: 0, roleName: 'Konsult', rate: 900, vat: 25, fmt: DEF_NUMFMT, start: 1, idle: 90 });
+const wizDefaults = () => ({ mode: 'full', company: '', name: '', orgNr: '', email: '', phone: '', web: '', address: '', logo: null, team: 'solo', emp: 'full', pct: 100, person: '', initials: '', dayH: 8, vac: 25, vacStart: '04-01', savedVac: 'no', sv1: 0, sv2: 0, sv3: 0, sv4: 0, sv5: 0, roleName: 'Konsult', rate: 900, vat: 25, fmt: DEF_NUMFMT, start: 1, idle: 90 });
 function newBookWizard() { st.wiz = { step: 0, d: wizDefaults() }; wizRender(); }
 const REQ = '<span class="req" title="Krävs" aria-hidden="true">*</span>', REQNOTE = `<p class="req-note fld full">${REQ} krävs – resten kan lämnas tomt eller fyllas i senare.</p>`;
-const wf = (key, label, o = {}) => { const v = st.wiz.d[key]; return `<div class="fld${o.full ? ' full' : ''}"${o.hide ? ' data-hide="' + o.hide + '"' : ''}><label for="w_${key}">${label}${o.req ? REQ : ''}</label>${o.ta ? `<textarea id="w_${key}" class="ta" data-w="${key}" rows="3" placeholder="${o.ph || ''}">${esc(v)}</textarea>` : `<input id="w_${key}" data-w="${key}" value="${esc(v)}" ${o.req ? 'aria-required="true"' : ''} ${o.num ? 'inputmode="decimal" data-num="1" class="mono"' : ''} ${o.type ? `type="${o.type}"` : ''} placeholder="${o.ph || ''}" autocomplete="off">`}${o.hint ? `<span class="fld-hint">${o.hint}</span>` : ''}</div>`; };
+const wf = (key, label, o = {}) => { const v = st.wiz.d[key]; return `<div class="fld${o.full ? ' full' : ''}"${o.hide ? ' data-hide="' + o.hide + '"' : ''}${o.fm ? ' data-fm' : ''}><label for="w_${key}">${label}${o.req ? REQ : ''}</label>${o.ta ? `<textarea id="w_${key}" class="ta" data-w="${key}" rows="3" placeholder="${o.ph || ''}">${esc(v)}</textarea>` : `<input id="w_${key}" data-w="${key}" value="${esc(v)}" ${o.req ? 'aria-required="true"' : ''} ${o.num ? 'inputmode="decimal" data-num="1" class="mono"' : ''} ${o.type ? `type="${o.type}"` : ''} placeholder="${o.ph || ''}" autocomplete="off">`}${o.hint ? `<span class="fld-hint">${o.hint}</span>` : ''}</div>`; };
 const wRadio = (key, opts) => `<div class="wz-opts">${opts.map(([v, t, sub]) => `<label class="wz-opt"><input type="radio" name="w_${key}" data-w="${key}" value="${v}" ${String(st.wiz.d[key]) === String(v) ? 'checked' : ''}><span><b>${t}</b>${sub ? `<small>${sub}</small>` : ''}</span></label>`).join('')}</div>`;
 function wizNum() { const d = st.wiz.d, f0 = numFmt(d.fmt || DEF_NUMFMT, today(), { projects: [] }); return f0.err ? f0 : numFmt(d.fmt || DEF_NUMFMT, today(), { projects: [], start: { re: f0.re, n: Math.max(1, Math.floor(+d.start) || 1) } }); }
 function wizRender() {
   const w = st.wiz, d = w.d, step = w.step;
   let h = `<div class="wz-head"><h2 id="dlgTitle">Ny bok</h2><ol class="wz-steps">${WIZ.map((t, i) => `<li class="${i === step ? 'on' : i < step ? 'done' : ''}"><span>${i < step ? ic('check') : i + 1}</span>${t}</li>`).join('')}</ol></div><form class="form" id="wzForm" novalidate>`;
   if (step === 0) {
-    h += `<p class="fld full">Uppgifterna hamnar i sidhuvudet på projektdagböcker och sammanställningar. Inget här krävs – allt kan fyllas i eller ändras senare under Inställningar.</p>`
+    h += `<div class="fld full"><span class="lbl">Hur vill du använda Sisyfos?</span>${modeRadio('w_mode', d.mode, 'data-w="mode"')}</div><p class="fld full">Uppgifterna hamnar i sidhuvudet på projektdagböcker och sammanställningar. Inget här krävs – allt kan fyllas i eller ändras senare under Inställningar.</p>`
       + wf('company', 'Företagsnamn', { ph: 'Ditt företag AB' }) + wf('name', 'Bokens namn', { ph: d.company || 'Min bok', hint: 'Visas överst i appen. Tomt = företagsnamnet.' })
       + wf('orgNr', 'Organisationsnummer', { ph: '556000-0000' }) + wf('email', 'E-post', { type: 'email', ph: 'info@foretaget.se' }) + wf('phone', 'Telefon', { type: 'tel' }) + wf('web', 'Webbplats', { ph: 'foretaget.se' })
       + wf('address', 'Adress', { ta: 1, full: 1, ph: 'Gatan 1\n123 45 Orten' })
       + `<div class="fld full"><span class="lbl">Logga</span><div class="logo-row">${d.logo ? `<div class="logo-box"><img src="${d.logo.src}" alt="Logga"></div>` : '<div class="logo-box empty">Ingen logga</div>'}<div class="logo-acts"><label class="btn sm">${ic('import')}${d.logo ? 'Byt logga' : 'Välj bild'}<input type="file" id="wzLogo" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></label>${d.logo ? `<button type="button" class="btn sm ghost" data-act="wzLogoX">${ic('trash')}Ta bort</button>` : ''}</div></div>
         <p class="small muted" style="margin:4px 0 0"><b>Rekommendation:</b> PNG eller JPEG i liggande format, gärna minst 600 px bred, på vit eller genomskinlig bakgrund och med lite luft runt om. Loggan skalas ner till högst 900 × 300 px och sparas i boken (under 200 kB). Genomskinligt blir vitt.</p></div>`;
   } else if (step === 1) {
-    h += `<div class="fld full"><span class="lbl">Hur många är ni?</span>${wRadio('team', [['solo', 'Bara jag', 'Ensamföretagare – du är både administratör och den som rapporterar tid'], ['team', 'Vi är flera', 'Du är administratör. Medarbetare med egna filer kommer i en senare version av Sisyfos']])}</div>`
+    h += `<div class="fld full" data-fm><span class="lbl">Hur många är ni?</span>${wRadio('team', [['solo', 'Bara jag', 'Ensamföretagare – du är både administratör och den som rapporterar tid'], ['team', 'Vi är flera', 'Du är administratör. Medarbetare med egna filer kommer i en senare version av Sisyfos']])}</div>`
       + wf('person', 'Ditt namn', { ph: 'Förnamn Efternamn' }) + wf('initials', 'Initialer', { ph: 'FE', hint: 'Står i dagböckerna när flera rapporterar' })
-      + `<div class="fld full"><span class="lbl" data-team-lbl>${d.team === 'team' ? 'Huvudsaklig anställningsform i företaget' : 'Din arbetstid'}</span>${wRadio('emp', [['full', 'Heltid', 'Normtid varje dag, kompsaldo och semester'], ['part', 'Deltid', 'En andel av normtiden'], ['hourly', 'Timanställd', 'Ingen normtid, inget kompsaldo eller semesterkonto']])}${d.team === 'team' ? '<span class="fld-hint">Gäller dig från början och blir standard för medarbetare som läggs till senare.</span>' : ''}</div>`
-      + wf('pct', 'Omfattning, % av heltid', { num: 1, hide: 'part', req: 1 }) + wf('dayH', 'Normal arbetsdag, timmar', { num: 1, hide: 'norm', req: 1, hint: 'Måndag–fredag. Röda dagar räknas bort automatiskt.' })
-      + wf('vac', 'Semesterdagar per år', { num: 1, hide: 'norm', req: 1 }) + `<div class="fld" data-hide="norm"><label for="w_vacStart">Semesteråret börjar</label><select id="w_vacStart" data-w="vacStart"><option value="04-01" ${d.vacStart === '04-01' ? 'selected' : ''}>1 april (semesterlagen)</option><option value="01-01" ${d.vacStart === '01-01' ? 'selected' : ''}>1 januari (kalenderår)</option></select></div>`
-      + `<div class="fld full" data-hide="norm"><span class="lbl">Har du sparad semester från tidigare år?</span>${wRadio('savedVac', [['no', 'Nej'], ['yes', 'Ja', 'Ange dagarna per år – sedan räknar Sisyfos själv']])}</div>`
-      + [1, 2, 3, 4, 5].map(n => wf('sv' + n, `Sparade år ${n} · ${semLabel(+semStart(today(), d.vacStart).slice(0, 4) - n, d.vacStart)}`, { num: 1, hide: 'saved' })).join('')
+      + `<div class="fld full" data-fm><span class="lbl" data-team-lbl>${d.team === 'team' ? 'Huvudsaklig anställningsform i företaget' : 'Din arbetstid'}</span>${wRadio('emp', [['full', 'Heltid', 'Normtid varje dag, kompsaldo och semester'], ['part', 'Deltid', 'En andel av normtiden'], ['hourly', 'Timanställd', 'Ingen normtid, inget kompsaldo eller semesterkonto']])}${d.team === 'team' ? '<span class="fld-hint">Gäller dig från början och blir standard för medarbetare som läggs till senare.</span>' : ''}</div>`
+      + wf('pct', 'Omfattning, % av heltid', { num: 1, hide: 'part', req: 1, fm: 1 }) + wf('dayH', 'Normal arbetsdag, timmar', { num: 1, hide: 'norm', req: 1, fm: 1, hint: 'Måndag–fredag. Röda dagar räknas bort automatiskt.' })
+      + wf('vac', 'Semesterdagar per år', { num: 1, hide: 'norm', req: 1, fm: 1 }) + `<div class="fld" data-hide="norm" data-fm><label for="w_vacStart">Semesteråret börjar</label><select id="w_vacStart" data-w="vacStart"><option value="04-01" ${d.vacStart === '04-01' ? 'selected' : ''}>1 april (semesterlagen)</option><option value="01-01" ${d.vacStart === '01-01' ? 'selected' : ''}>1 januari (kalenderår)</option></select></div>`
+      + `<div class="fld full" data-hide="norm" data-fm><span class="lbl">Har du sparad semester från tidigare år?</span>${wRadio('savedVac', [['no', 'Nej'], ['yes', 'Ja', 'Ange dagarna per år – sedan räknar Sisyfos själv']])}</div>`
+      + [1, 2, 3, 4, 5].map(n => wf('sv' + n, `Sparade år ${n} · ${semLabel(+semStart(today(), d.vacStart).slice(0, 4) - n, d.vacStart)}`, { num: 1, hide: 'saved', fm: 1 })).join('')
       + `<h3 class="fld full dsub">Timpris</h3>` + wf('roleName', 'Din roll', { ph: 'Arkitekt, konsult …' }) + wf('rate', 'Timpris, kr exkl. moms', { num: 1, req: 1 }) + wf('vat', 'Momssats i rapporter, %', { num: 1, req: 1 })
       + `<p class="small muted fld" style="margin:0;align-self:end">Fler roller och priser per projekt lägger du till under Inställningar.</p>` + REQNOTE;
   } else if (step === 2) {
@@ -3057,7 +3062,7 @@ function wizRender() {
       + `<div class="fld"><label for="w_idle">Projekt blir inaktiva efter</label><select id="w_idle" data-w="idle">${IDLE.map(([n, l]) => `<option value="${n}" ${+d.idle === n ? 'selected' : ''}>${n ? cap(l) + ' utan tid' : 'Aldrig av sig självt'}</option>`).join('')}</select><span class="fld-hint">Standard för nya projekt. Inaktiva hamnar sist i listorna.</span></div>` + REQNOTE;
   } else {
     const f = wizNum(), emp = d.emp === 'hourly' ? 'Timanställd' : d.emp === 'part' ? `Deltid ${d.pct} %` : 'Heltid';
-    const rows = [['Företaget', [d.company || '–', d.orgNr && 'org.nr ' + d.orgNr].filter(Boolean).join(', ')], ['Kontakt', [d.email, d.phone, d.web].filter(Boolean).join(' · ') || '–'], ['Logga', d.logo ? 'Ja' : 'Ingen'], ['Personal', d.team === 'team' ? 'Flera – du är administratör' : 'Bara du'], ['Du', `${d.person || 'Jag'} (${(d.initials || initialsFrom(d.person || 'Jag'))}) · ${emp}`], ...(d.emp === 'hourly' ? [] : [['Arbetstid', `${fh(+d.dayH || 8)} h per dag, ${fh((+d.dayH || 8) * 5)} h per vecka · ${d.vac} semesterdagar`]]), ['Timpris', `${d.roleName || 'Konsult'} ${fkr(+d.rate || 0)}/h exkl. moms · moms ${d.vat} %`], ['Projektnummer', `${d.fmt} → första blir ${f.next}`], ['Inaktiva efter', +d.idle ? cap(idleLabel(+d.idle)) + ' utan tid' : 'Aldrig']];
+    const rows = [['Företaget', [d.company || '–', d.orgNr && 'org.nr ' + d.orgNr].filter(Boolean).join(', ')], ['Kontakt', [d.email, d.phone, d.web].filter(Boolean).join(' · ') || '–'], ['Läge', d.mode === 'simple' ? 'Enkelt' : 'Fullständigt'], ['Logga', d.logo ? 'Ja' : 'Ingen'], ...(d.mode === 'simple' ? [['Du', `${d.person || 'Jag'} (${(d.initials || initialsFrom(d.person || 'Jag'))})`]] : [['Personal', d.team === 'team' ? 'Flera – du är administratör' : 'Bara du'], ['Du', `${d.person || 'Jag'} (${(d.initials || initialsFrom(d.person || 'Jag'))}) · ${emp}`]]), ...(d.emp === 'hourly' || d.mode === 'simple' ? [] : [['Arbetstid', `${fh(+d.dayH || 8)} h per dag, ${fh((+d.dayH || 8) * 5)} h per vecka · ${d.vac} semesterdagar`]]), ['Timpris', `${d.roleName || 'Konsult'} ${fkr(+d.rate || 0)}/h exkl. moms · moms ${d.vat} %`], ['Projektnummer', `${d.fmt} → första blir ${f.next}`], ['Inaktiva efter', +d.idle ? cap(idleLabel(+d.idle)) + ' utan tid' : 'Aldrig']];
     h += `<dl class="dfacts fld full wz-sum">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
       <div class="alert soft fld full">${ic('alert')}<div class="txt">Den nya boken <b>ersätter</b> boken som finns i den här webbläsaren nu${R().book.example ? ' (exempelboken)' : ` – <b>${esc(R().book.name)}</b>`}. Spara en kopia först om du vill behålla den.</div><button type="button" class="btn sm" data-act="wzExport">${ic('save')}Spara kopia som fil</button></div>`;
   }
@@ -3068,7 +3073,7 @@ function wizCollect() {
   const d = st.wiz.d;
   for (const el of $$('#wzForm [data-w]')) { if (el.type === 'radio' && !el.checked) continue; d[el.dataset.w] = el.value; }
 }
-function wizSync() { const d = st.wiz.d; $$('#wzForm [data-hide]').forEach(x => x.hidden = x.dataset.hide === 'part' ? d.emp !== 'part' : x.dataset.hide === 'norm' ? d.emp === 'hourly' : x.dataset.hide === 'saved' ? d.emp === 'hourly' || d.savedVac !== 'yes' : false); }
+function wizSync() { const d = st.wiz.d; $$('#wzForm [data-hide], #wzForm [data-fm]').forEach(x => x.hidden = (d.mode === 'simple' && x.hasAttribute('data-fm')) || !!x.dataset.hide && (x.dataset.hide === 'part' ? d.emp !== 'part' : x.dataset.hide === 'norm' ? d.emp === 'hourly' : x.dataset.hide === 'saved' ? d.emp === 'hourly' || d.savedVac !== 'yes' : false)); }
 const initialsFrom = n => n.trim().split(/\s+/).map(w => w[0] || '').join('').slice(0, 3).toUpperCase();
 function wizValidate() {
   const d = st.wiz.d, step = st.wiz.step, num = v => +String(v).replace(/\s/g, '').replace(',', '.');
@@ -3094,6 +3099,7 @@ function wizNext(dir) {
 function createFromWizard() {
   const d = st.wiz.d, b = emptyBook(), reg = b.register, B = reg.book, P0 = reg.people[0], f = wizNum(), num = v => +String(v).replace(/\s/g, '').replace(',', '.');
   Object.assign(B, { name: d.name.trim() || d.company.trim() || 'Min bok', company: d.company.trim(), orgNr: d.orgNr.trim(), email: d.email.trim(), phone: d.phone.trim(), web: d.web.trim(), address: d.address.trim(), vatRate: d.vat, numberFormat: d.fmt.trim() || DEF_NUMFMT, idleDays: +d.idle, team: d.team, defaultEmployment: d.emp });
+  if (d.mode === 'simple') { B.mode = 'simple'; B.team = 'solo'; }
   if (d.logo) B.logo = d.logo;
   if (d.start > 1 && f.serial) B.serialStart = { re: f.re, n: d.start };
   const dh = d.emp === 'hourly' ? 8 : d.dayH; B.norm = { 0: 0, 1: dh, 2: dh, 3: dh, 4: dh, 5: dh, 6: 0 };
@@ -3246,7 +3252,7 @@ function openOrg() {
 }
 function brandMenu(btn) {
   const m = $('#menu');
-  m.innerHTML = `<div class="mh">${esc(R().book.name)}</div><hr><button role="menuitem" data-act="page" data-page="installningar">${ic('settings')}Inställningar …</button><button role="menuitem" data-act="personDlg">${ic('person')}Anställning, saldo och semester …</button><button role="menuitem" data-act="numbering">${ic('hash')}Projektnummer …</button><button role="menuitem" data-act="quickHelp">${ic('bolt')}Smartshell och förkortningar …</button><hr><button role="menuitem" data-act="backupFile">${ic('save')}Spara kopia som fil</button><button role="menuitem" data-act="storageInfo">${ic('folder')}Spara och återställ …</button><button role="menuitem" data-act="exportBook">${ic('export')}Exportera boken …</button><button role="menuitem" data-act="importBook">${ic('import')}Importera bok …</button><hr><button role="menuitem" data-act="askNew">${ic('newbook')}Ny tom bok</button><button role="menuitem" data-act="askSample">${ic('sample')}Ladda exempelboken</button><hr><button role="menuitem" data-act="about">${ic('info')}Om Sisyfos</button><button role="menuitem" data-act="feedback">${ic('mail')}Skicka synpunkter …</button>${standalone() ? '' : `<button role="menuitem" data-act="installApp">${ic('import')}Installera som app …</button>`}<hr><div class="mh">Allt sparas bara på den här enheten. Ingen server, inget moln.</div>`;
+  m.innerHTML = `<div class="mh">${esc(R().book.name)}</div><hr><button role="menuitem" data-act="page" data-page="installningar">${ic('settings')}Inställningar …</button>${simple() ? '' : `<button role="menuitem" data-act="personDlg">${ic('person')}Anställning, saldo och semester …</button>`}<button role="menuitem" data-act="numbering">${ic('hash')}Projektnummer …</button><button role="menuitem" data-act="quickHelp">${ic('bolt')}Smartshell och förkortningar …</button><hr><button role="menuitem" data-act="backupFile">${ic('save')}Spara kopia som fil</button><button role="menuitem" data-act="storageInfo">${ic('folder')}Spara och återställ …</button><button role="menuitem" data-act="exportBook">${ic('export')}Exportera boken …</button><button role="menuitem" data-act="importBook">${ic('import')}Importera bok …</button><hr><button role="menuitem" data-act="askNew">${ic('newbook')}Ny tom bok</button><button role="menuitem" data-act="askSample">${ic('sample')}Ladda exempelboken</button><hr><button role="menuitem" data-act="about">${ic('info')}Om Sisyfos</button><button role="menuitem" data-act="feedback">${ic('mail')}Skicka synpunkter …</button>${standalone() ? '' : `<button role="menuitem" data-act="installApp">${ic('import')}Installera som app …</button>`}<hr><div class="mh">Allt sparas bara på den här enheten. Ingen server, inget moln.</div>`;
   m.hidden = false; btn.setAttribute('aria-expanded', 'true');
   const r = btn.getBoundingClientRect(); m.style.left = Math.max(8, r.left) + 'px'; m.style.top = (r.bottom + 6) + 'px';
   $('button', m).focus();
@@ -3658,7 +3664,7 @@ function calSave() {
 
 /* ───────────── Inställningar ───────────── */
 const ROUND = [[0, 'Ingen avrundning'], [0.1, '0,1 h (6 min)'], [0.25, '0,25 h (15 min)'], [0.5, '0,5 h (30 min)'], [1, '1 h']];
-const SET_NAV = [['set-company', 'Företaget'], ['set-time', 'Arbetstid'], ['set-cal', 'Årsarbetstid'], ['set-roles', 'Roller och priser'], ['set-person', 'Du'], ['set-num', 'Projektnummer'], ['set-book', 'Spara boken']];
+const SET_NAV = [['set-mode', 'Läge'], ['set-company', 'Företaget'], ['set-time', 'Arbetstid'], ['set-cal', 'Årsarbetstid'], ['set-roles', 'Roller och priser'], ['set-person', 'Du'], ['set-num', 'Projektnummer'], ['set-book', 'Spara boken']];
 function roleUse(id) {
   let n = 0; for (const e of E.values()) if (!e.deleted && e.roleId === id) n++;
   const ppl = R().people.filter(p => p.defaultRoleId === id).length;
@@ -3670,26 +3676,37 @@ function logoHtml() {
   return lg ? `<div class="logo-box"><img src="${lg.src}" alt="Logga"></div><div class="logo-acts"><label class="btn sm">${ic('import')}Byt logga<input type="file" id="setLogo" accept="image/*" hidden></label><button class="btn sm ghost" data-act="logoRemove">${ic('trash')}Ta bort</button></div>`
     : `<div class="logo-box empty">Ingen logga</div><div class="logo-acts"><label class="btn sm">${ic('import')}Välj bild<input type="file" id="setLogo" accept="image/*" hidden></label></div>`;
 }
+const MODES = [['simple', 'Enkelt', 'För dig som fakturerar din egen tid, till exempel konsult med eget bolag: projekt med timpris och budget, intern tid och en rapport över öppen tid. Inga kunder, ingen normtid, saldo eller semester.'], ['full', 'Fullständigt', 'Kunder, roller och priser per projekt, normtid med kompsaldo och semester, frånvaro, projektdagbok, fakturaunderlag och personsammanställning.']];
+const modeRadio = (name, cur, attr = '') => `<div class="wz-opts">${MODES.map(([v, t, sub]) => `<label class="wz-opt"><input type="radio" name="${name}" ${attr} value="${v}" ${cur === v ? 'checked' : ''}><span><b>${t}</b><small>${sub}</small></span></label>`).join('')}</div>`;
+function setMode(m) {
+  const prev = R().book.mode;
+  if (m === 'simple') R().book.mode = 'simple'; else delete R().book.mode;
+  if (prev === R().book.mode) return;
+  st.rep = null; if (st.page === 'kunder') st.page = 'projekt'; st.cid = null;
+  save(); render();
+  toast(m === 'simple' ? 'Enkelt läge – kunder, normtid och frånvaro är dolda' : 'Fullständigt läge', { label: 'Ångra', fn: () => { if (prev) R().book.mode = prev; else delete R().book.mode; st.rep = null; save(); render(); } });
+}
 function settingsHtml() {
   const b = R().book, p = person(), vi = vacInfo(), cb = compBalance();
   const f = (key, label, val, extra = '', cls = '') => `<div class="fld ${cls}"><label for="s_${key}">${label}</label><input id="s_${key}" data-set="${key}" value="${esc(val ?? '')}" ${extra}></div>`;
   let h = `<div class="view set"><div class="wk-head"><h1>Inställningar</h1><span class="spacer"></span><span class="small muted">Ändringar sparas direkt</span></div>
-  <nav class="set-nav" aria-label="Avsnitt">${SET_NAV.map(([id, l]) => `<button class="chip txt" data-act="setNav" data-to="${id}">${l}</button>`).join('')}</nav>`;
+  <nav class="set-nav" aria-label="Avsnitt">${SET_NAV.filter(([id]) => !(simple() && ['set-time', 'set-cal'].includes(id))).map(([id, l]) => `<button class="chip txt" data-act="setNav" data-to="${id}">${l}</button>`).join('')}</nav>`;
+  h += `<section class="sset" id="set-mode"><h2>Läge</h2><p class="muted small">Du kan byta när som helst – inget försvinner. Det som inte syns i enkelt läge ligger kvar och kommer tillbaka i fullständigt läge.</p>${modeRadio('setMode', simple() ? 'simple' : 'full')}</section>`;
   h += `<section class="sset" id="set-company"><h2>Företaget</h2><p class="muted small">Visas i rapporternas sidhuvud. Loggan skalas ner i webbläsaren och sparas i boken. Fält med ${REQ} krävs.</p><div class="form">
     ${f('book.name', 'Bokens namn' + REQ, b.name)}${f('book.company', 'Företagsnamn', b.company)}${f('book.orgNr', 'Organisationsnummer', b.orgNr, 'autocomplete="off"')}${f('book.email', 'E-post', b.email, 'type="email"')}${f('book.phone', 'Telefon', b.phone, 'type="tel"')}${f('book.web', 'Webbplats', b.web)}
     <div class="fld full"><label for="s_book.address">Adress</label><textarea id="s_book.address" class="ta" data-set="book.address" rows="3">${esc(b.address || '')}</textarea></div>
     <div class="fld full"><span class="lbl">Logga</span><div class="logo-row" id="logoRow">${logoHtml()}</div></div></div></section>`;
-  h += `<section class="sset" id="set-time"><h2>Arbetstid</h2><p class="muted small">Normtid per veckodag för heltid. Deltid räknas som andel av den, timanställda har ingen normtid.</p>
+  if (!simple()) h += `<section class="sset" id="set-time"><h2>Arbetstid</h2><p class="muted small">Normtid per veckodag för heltid. Deltid räknas som andel av den, timanställda har ingen normtid.</p>
     <div class="norm-row">${[1, 2, 3, 4, 5, 6, 0].map(i => `<div class="fld"><label for="sn${i}">${cap(DOW[i])}</label><input id="sn${i}" class="mono" data-normd="${i}" inputmode="decimal" value="${fhs(+b.norm[i] || 0)}"></div>`).join('')}<div class="fld sumf"><span class="lbl">Vecka</span><div class="vacnow"><b class="mono">${fh(Object.values(b.norm).reduce((s, x) => s + +x, 0))}</b> h</div></div></div>
     <div class="form" style="margin-top:10px"><div class="fld"><label for="s_round">Avrundning av timmar</label><select id="s_round" data-set="book.rounding">${ROUND.map(([v, l]) => `<option value="${v}" ${+b.rounding === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div></section>`;
-  h += `<section class="sset" id="set-cal"><h2>Årsarbetstid</h2><p class="muted small">Svenska röda dagar räknas bort ur normtiden. Justera enskilda dagar, se årstimmarna summeras och spara. Det påverkar saldo, semesteravräkning och smartshell (till exempel <span class="mono">v52 sem</span>).</p><div id="calBox">${calHtml()}</div></section>`;
+  if (!simple()) h += `<section class="sset" id="set-cal"><h2>Årsarbetstid</h2><p class="muted small">Svenska röda dagar räknas bort ur normtiden. Justera enskilda dagar, se årstimmarna summeras och spara. Det påverkar saldo, semesteravräkning och smartshell (till exempel <span class="mono">v52 sem</span>).</p><div id="calBox">${calHtml()}</div></section>`;
   h += `<section class="sset" id="set-roles"><h2>Roller och timpriser</h2><p class="muted small">Centralt pris per roll, exklusive moms. Priset kan överstyras per projekt i projektets inställningar. Varje tidpost behåller priset som gällde när den registrerades – ändringar gäller tid från och med nu.</p>
     <ul class="role-list">${R().roles.map(r => { const u = roleUse(r.id); return `<li data-role="${r.id}"><input data-rolef="name" value="${esc(r.name)}" aria-label="Rollens namn"><span class="rate-in"><input class="mono" data-rolef="rate" inputmode="numeric" value="${r.rate}" aria-label="Timpris för ${esc(r.name)}"><span class="muted small">kr/h</span></span><span class="small muted ru">${u.n ? `${u.n} tidposter` : 'oanvänd'}</span><button class="icon-btn" data-act="delRole" data-r="${r.id}" ${u.any || R().roles.length < 2 ? 'disabled title="Rollen används och kan inte tas bort"' : 'title="Ta bort rollen"'} aria-label="Ta bort ${esc(r.name)}">${ic('trash')}</button></li>`; }).join('')}</ul>
     <div class="form" style="margin-top:8px"><div><button class="btn sm" data-act="addRole">${ic('plus')}Ny roll</button></div><div class="fld"><label for="s_vat">Momssats i rapporter, %</label><input id="s_vat" class="mono" data-set="book.vatRate" inputmode="decimal" value="${fhs(+b.vatRate || 0)}"></div></div></section>`;
   h += `<section class="sset" id="set-person"><h2>Du</h2><div class="form">${f('person.name', 'Namn' + REQ, p.name)}${f('person.initials', 'Initialer', p.initials, 'maxlength="4" class="mono"')}
     <div class="fld"><label for="s_prole">Standardroll</label><select id="s_prole" data-set="person.defaultRoleId">${R().roles.map(r => `<option value="${r.id}" ${p.defaultRoleId === r.id ? 'selected' : ''}>${esc(r.name)} · ${fkr(r.rate)}/h</option>`).join('')}</select></div>
-    <div class="fld"><span class="lbl">Anställning</span><div class="vacnow">${p.employment === 'hourly' ? 'Timanställd' : p.employment === 'part' ? `Deltid ${p.pct} %` : 'Heltid'}${cb != null ? ` · komp ${sgn(cb)} h` : ''}${vi ? ` · semester ${fdays(vi.left)} d kvar` : ''}</div></div>
-    <div class="fld full"><div><button class="btn sm" data-act="personDlg">${ic('person')}Anställning, saldo och semester …</button></div></div></div></section>`;
+    ${simple() ? '' : `<div class="fld"><span class="lbl">Anställning</span><div class="vacnow">${p.employment === 'hourly' ? 'Timanställd' : p.employment === 'part' ? `Deltid ${p.pct} %` : 'Heltid'}${cb != null ? ` · komp ${sgn(cb)} h` : ''}${vi ? ` · semester ${fdays(vi.left)} d kvar` : ''}</div></div>
+    <div class="fld full"><div><button class="btn sm" data-act="personDlg">${ic('person')}Anställning, saldo och semester …</button></div></div>`}</div></section>`;
   const nf = numFmt(b.numberFormat || DEF_NUMFMT);
   h += `<section class="sset" id="set-num"><h2>Projektnummer och förkortningar</h2><div class="form">${fmtEditorHtml('setFmt', b.numberFormat || DEF_NUMFMT)}
     ${nf.serial && !nf.err ? `<div class="fld"><label for="setStart">Nästa löpnummer</label><input id="setStart" class="mono" inputmode="numeric" value="${nf.n}"><span class="fld-hint" id="setStartHint">Lägst ${nf.minN}. Höj det om du har projektnummer från tiden före Sisyfos.</span></div>` : ''}
@@ -3787,16 +3804,16 @@ function pSorter(how) {
 function projectsHtml() {
   if (st.pid && proj(st.pid)) return projPageHtml(proj(st.pid));
   st.pid = null;
-  const all = R().projects.map(p => { const m = pMoney(p.id); return { p, m, s: pState(p, m) }; });
+  const all = R().projects.filter(p => !(simple() && p.kind === 'absence')).map(p => { const m = pMoney(p.id); return { p, m, s: pState(p, m) }; });
   const cls = x => x.s === 'active' ? 'active' : x.s === 'closed' ? 'closed' : 'inactive';
   const counts = { active: 0, inactive: 0, closed: 0 }; all.forEach(x => counts[cls(x)]++);
   const om = sumMoney(all.filter(x => !x.p.internal && x.p.kind !== 'absence').map(x => x.m)), open = om.oa;
   return `<div class="view"><div class="wk-head"><h1>Projekt</h1><span class="range">${counts.active} aktiva${open > 0 ? ` · <b class="open-t${om.po > 0.5 ? ' due' : ''}" title="${openTip(om)}">${fkr(open)} öppet</b>` : ''}</span><span class="spacer"></span><button class="btn" data-act="newProject">${ic('plus')}Nytt projekt</button></div>
-  ${listBar('p', counts, 'Sök namn, nummer, kund eller fastighet')}<div id="lsBody">${projListBody(all, cls)}</div>
+  ${listBar('p', counts, simple() ? 'Sök namn, nummer eller fastighet' : 'Sök namn, nummer, kund eller fastighet')}<div id="lsBody">${projListBody(all, cls)}</div>
   <p class="muted small">Ett aktivt projekt blir inaktivt av sig självt när ingen tid har lagts på det på en tid (anges per projekt). Inaktiva visas sist i radväljaren. Avslutade syns inte där och går inte att lägga tid på i smartshell men finns kvar i rapporterna.</p></div>`;
 }
 function projListBody(all, cls) {
-  if (!all) { all = R().projects.map(p => { const m = pMoney(p.id); return { p, m, s: pState(p, m) }; }); cls = x => x.s === 'active' ? 'active' : x.s === 'closed' ? 'closed' : 'inactive'; }
+  if (!all) { all = R().projects.filter(p => !(simple() && p.kind === 'absence')).map(p => { const m = pMoney(p.id); return { p, m, s: pState(p, m) }; }); cls = x => x.s === 'active' ? 'active' : x.s === 'closed' ? 'closed' : 'inactive'; }
   const pr = lsPref('p'), q = lsQ('p');
   const hay = p => [p.name, p.number, p.property, cust(p.customerId)?.name, p.abbr].filter(Boolean).join(' ').toLowerCase();
   let l = all.filter(x => !q || hay(x.p).includes(q)).sort(pSorter(pr.sort));
@@ -3820,7 +3837,7 @@ const nk = n => nfKr.format(Math.round(n));
 function intHours(pId, year) { let h = 0; for (const e of E.values()) if (!e.deleted && e.projectId === pId && !billable(e) && (!year || e.date.startsWith(year))) h += e.hours; return h; }
 function pcardHtml({ p, m, s }) {
   const c = cust(p.customerId), lab = stateLabel(p, s), last = m.last, note = p.notes?.[p.notes.length - 1];
-  const sub = p.kind === 'absence' ? 'Semester och ledighet' : p.internal ? 'Intern tid' : c ? `<button class="lnk" data-act="openCustomer" data-c="${c.id}">${esc(c.name)}</button>` : 'Ingen kund';
+  const sub = p.kind === 'absence' ? 'Semester och ledighet' : p.internal ? 'Intern tid' : simple() ? `${fkr(rateFor(p.id, roleFor(p.id), me()))}/h` : c ? `<button class="lnk" data-act="openCustomer" data-c="${c.id}">${esc(c.name)}</button>` : 'Ingen kund';
   return `<article class="pcard click${st.focus === p.id ? ' hl' : ''}${s !== 'active' ? ' inact' : ''}" data-act="openProject" data-p="${p.id}" data-focus="${p.id}" tabindex="0" style="--pc:${pc(p)}" aria-label="Öppna ${esc(p.name)}">
   <div class="dc-head"><span class="dot"></span><span class="r-text"><span class="r-name"><span class="r-num">${esc(p.number)}</span>${esc(p.name)}</span><span class="r-sub">${sub}${p.property ? ' · ' + esc(p.property) : ''}</span></span>${p.internal ? '' : ring(p, 40, true)}<button class="icon-btn" data-act="projEdit" data-p="${p.id}" title="Redigera projektet" aria-label="Redigera ${esc(p.name)}">${ic('note')}</button></div>
   ${lab || running(p) ? `<div class="tags">${lab ? `<span class="ptag">${esc(lab)}</span>` : ''}${running(p) ? '<span class="ptag run">löpande</span>' : ''}</div>` : ''}
@@ -3833,8 +3850,8 @@ function projPageHtml(P) {
   const m = pMoney(P.id), c = cust(P.customerId), s = pState(P, m), lab = stateLabel(P, s), abs = P.kind === 'absence';
   const es = [...E.values()].filter(e => !e.deleted && e.projectId === P.id && e.hours > 0);
   let h = `<div class="view dpage" style="--pc:${pc(P)}"><div class="dp-top"><button class="btn ghost sm" data-act="backList" data-page="projekt">${ic('left')}Projekt</button></div>
-  <div class="dp-head"><span class="dot big"></span><div class="r-text"><h1><span class="r-num">${esc(P.number)}</span>${esc(P.name)}</h1><div class="dp-sub">${abs ? 'Semester och ledighet' : P.internal ? 'Intern tid' : c ? `<button class="lnk" data-act="openCustomer" data-c="${c.id}">${esc(c.name)}</button>` : 'Ingen kund'}${P.property ? ` · ${esc(P.property)}` : ''}${lab ? ` · <span class="ptag">${esc(lab)}</span>` : ''}${running(P) ? ' <span class="ptag run">löpande</span>' : ''}</div></div>
-  <span class="spacer"></span><div class="dp-acts">${!abs && P.status !== 'closed' ? `<button class="btn" data-act="reportTime" data-p="${P.id}">${ic('clock')}Rapportera tid</button>` : ''}${abs ? '' : `<button class="btn" data-act="showDiary" data-p="${P.id}" data-ym="${ymOf(today())}">${ic('report')}Projektdagbok</button>`}<button class="btn" data-act="projEdit" data-p="${P.id}">${ic('note')}Redigera</button></div></div>`;
+  <div class="dp-head"><span class="dot big"></span><div class="r-text"><h1><span class="r-num">${esc(P.number)}</span>${esc(P.name)}</h1><div class="dp-sub">${abs ? 'Semester och ledighet' : P.internal ? 'Intern tid' : simple() ? `${fkr(rateFor(P.id, roleFor(P.id), me()))}/h` : c ? `<button class="lnk" data-act="openCustomer" data-c="${c.id}">${esc(c.name)}</button>` : 'Ingen kund'}${P.property ? ` · ${esc(P.property)}` : ''}${lab ? ` · <span class="ptag">${esc(lab)}</span>` : ''}${running(P) ? ' <span class="ptag run">löpande</span>' : ''}</div></div>
+  <span class="spacer"></span><div class="dp-acts">${!abs && P.status !== 'closed' ? `<button class="btn" data-act="reportTime" data-p="${P.id}">${ic('clock')}Rapportera tid</button>` : ''}${abs ? '' : `<button class="btn" data-act="showDiary" data-p="${P.id}" data-ym="${ymOf(today())}">${ic('report')}${simple() ? 'Öppen tid' : 'Projektdagbok'}</button>`}<button class="btn" data-act="projEdit" data-p="${P.id}">${ic('note')}Redigera</button></div></div>`;
   if (!abs) {
     h += `<div class="dp-kpi">${P.internal ? `<div><span class="k">Timmar totalt</span><b>${fh(es.reduce((x, e) => x + e.hours, 0))} h</b></div>` : `<div class="k-open${openCls(m)}" title="${openTip(m)}"><span class="k">Öppet – inte hanterat</span><b>${fkr(m.oa)}</b><small>${fh(m.oh)} h</small></div><div class="k-done"><span class="k">Hanterat</span><b>${fkr(m.ha)}</b><small>${fh(m.hh)} h</small></div><div><span class="k">Upparbetat totalt</span><b>${fkr(m.a)}</b><small>${fh(m.h)} h debiterbart</small></div>${running(P) ? '' : `<div><span class="k">Kvar av budget</span><b class="${m.a > P.budgetKr ? 'neg' : ''}">${fkr(P.budgetKr - m.a)}</b><small>av ${fkr(P.budgetKr)} · ${fpct(budgetPct(P))}</small></div>`}`}<div><span class="k">Senast tid</span><b>${m.last ? sdate(m.last) : '–'}</b><small>${m.last ? m.last.slice(0, 4) : 'ingen tid än'}</small></div></div>`;
     if (running(P)) h += runningHtml(P, true);
@@ -3851,7 +3868,7 @@ function projPageHtml(P) {
   // Medarbetare
   const ppl = new Map(); for (const e of es) { const o = ppl.get(e.person) || { h: 0, a: 0, roles: new Set(), last: '' }; o.h += e.hours; o.a += amountOf(e); o.roles.add(e.roleId); if (e.date > o.last) o.last = e.date; ppl.set(e.person, o); }
   for (const pid in P.memberRoles || {}) if (!ppl.has(pid)) ppl.set(pid, { h: 0, a: 0, roles: new Set([P.memberRoles[pid]]), last: '' });
-  if (!abs) h += `<section class="dsec"><h2>Medarbetare</h2>${ppl.size ? `<ul class="ppl">${[...ppl].map(([pid, o]) => { const pe = R().people.find(x => x.id === pid); return `<li><span class="av">${esc(pe?.initials || '?')}</span><span class="r-text"><span class="r-name">${esc(pe?.name || 'Okänd')}</span><span class="r-sub">${[...o.roles].map(r => esc(role(r)?.name || '')).filter(Boolean).join(', ')}${o.last ? ' · senast ' + sdate(o.last) : ''}</span></span><span class="mono">${fh(o.h)} h</span></li>`; }).join('')}</ul>` : '<p class="muted small">Ingen har lagt tid på projektet än.</p>'}</section>`;
+  if (!abs && !simple()) h += `<section class="dsec"><h2>Medarbetare</h2>${ppl.size ? `<ul class="ppl">${[...ppl].map(([pid, o]) => { const pe = R().people.find(x => x.id === pid); return `<li><span class="av">${esc(pe?.initials || '?')}</span><span class="r-text"><span class="r-name">${esc(pe?.name || 'Okänd')}</span><span class="r-sub">${[...o.roles].map(r => esc(role(r)?.name || '')).filter(Boolean).join(', ')}${o.last ? ' · senast ' + sdate(o.last) : ''}</span></span><span class="mono">${fh(o.h)} h</span></li>`; }).join('')}</ul>` : '<p class="muted small">Ingen har lagt tid på projektet än.</p>'}</section>`;
   h += `</div><div class="dp-col">`;
   h += notesHtml('p', P);
   // Senaste dagboksanteckningar
@@ -3939,7 +3956,8 @@ function projDlg(id) {
    <div class="fld"><label for="pjNum">Projektnummer</label><input id="pjNum" class="mono" value="${esc(P.number)}" data-numdup="${P.id}" autocomplete="off"><span class="fld-msg" id="pjNumMsg" aria-live="polite"></span></div>
    <div class="fld"><label for="pjStatus">Status</label><select id="pjStatus">${Object.entries(STATUS1).map(([k, l]) => `<option value="${k}" ${P.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select>${pState(P) === 'idle' ? `<span class="fld-hint">Inaktivt just nu – ingen tid på ${idleLabel(idleOf(P))}</span>` : ''}</div>
    <div class="fld" data-ext><label for="pjIdle">Blir inaktivt efter</label>${idleSel('pjIdle', idleOf(P))}<span class="fld-hint">utan registrerad tid</span></div>
-   <div class="fld" data-ext><label for="pjCust">Kund</label>${custAcHtml('pjCust', c?.name || '')}</div>
+   <div class="fld" data-ext data-full><label for="pjCust">Kund</label>${custAcHtml('pjCust', c?.name || '')}</div>
+   <div class="fld" data-ext data-simple><label for="pjSRate">Timpris, kr exkl. moms</label><input id="pjSRate" class="mono" inputmode="numeric" value="${P.personRates?.[me()]?.[roleFor(P.id)] ?? P.roleRates?.[roleFor(P.id)] ?? ''}" placeholder="${nfKr.format(role(roleFor(P.id))?.rate || 0)}"><span class="fld-hint">Tomt = ditt vanliga pris, ${fkr(role(roleFor(P.id))?.rate || 0)}/h</span></div>
    <div class="fld"><label for="pjProp">Fastighetsbeteckning</label><input id="pjProp" value="${esc(P.property)}"></div>
    <div class="fld" data-ext><label for="pjBud">Budget, kr exkl. moms</label><input id="pjBud" class="mono" inputmode="numeric" value="${P.budgetKr ? nfKr.format(P.budgetKr) : ''}" placeholder="0 = löpande"><span class="fld-hint">Tomt eller 0 = löpande utan budget</span></div>
    <div class="fld"><label for="pjAbbr">Förkortningar i smartshell</label><input id="pjAbbr" class="mono" value="${esc(P.abbr || '')}" placeholder="t.ex. vs, strand" autocapitalize="off"></div>
@@ -3948,15 +3966,15 @@ function projDlg(id) {
   h += `<h3 class="fld full dsub">Uppgifter${REQ}</h3><ul class="tk-list fld full" id="pjTasks">${P.tasks.map(t => taskRowHtml(P, t)).join('')}</ul>
    <div class="fld full"><div><button type="button" class="btn sm" data-act="pjAddTask">${ic('plus')}${abs ? 'Ny frånvarotyp' : 'Ny uppgift'}</button></div><p class="small muted" style="margin:4px 0 0">Uppgifter med registrerad tid kan inte tas bort, bara arkiveras. Arkiverade syns inte i radväljaren.</p></div>`;
   if (!abs) {
-    h += `<h3 class="fld full dsub" data-ext>Timpriser i projektet</h3><div class="fld full" data-ext><div class="rt"><span class="rt-h">Roll</span><span class="rt-h">Centralt</span><span class="rt-h">I projektet</span><span class="rt-h">Ditt pris</span>
+    h += `<h3 class="fld full dsub" data-ext data-full>Timpriser i projektet</h3><div class="fld full" data-ext data-full><div class="rt"><span class="rt-h">Roll</span><span class="rt-h">Centralt</span><span class="rt-h">I projektet</span><span class="rt-h">Ditt pris</span>
      ${R().roles.map(r => `<span class="rt-n">${esc(r.name)}</span><span class="mono muted">${nfKr.format(r.rate)}</span><input class="mono" data-rr="${r.id}" inputmode="numeric" value="${P.roleRates?.[r.id] ?? ''}" placeholder="${nfKr.format(r.rate)}" aria-label="Pris för ${esc(r.name)} i projektet"><input class="mono" data-pr="${r.id}" inputmode="numeric" value="${P.personRates?.[me()]?.[r.id] ?? ''}" placeholder="–" aria-label="Ditt pris som ${esc(r.name)} i projektet">`).join('')}</div></div>
-     <div class="fld" data-ext><label for="pjRole">Din roll i projektet</label><select id="pjRole"><option value="">Standard (${esc(role(person().defaultRoleId)?.name || '')})</option>${R().roles.map(r => `<option value="${r.id}" ${myRole === r.id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select></div>
-     <p class="small muted fld" data-ext style="margin:0;align-self:end">Mest specifika priset gäller. Tomt fält = nästa nivå. Ändrade priser gäller tid som registreras från och med nu.</p>`;
+     <div class="fld" data-ext data-full><label for="pjRole">Din roll i projektet</label><select id="pjRole"><option value="">Standard (${esc(role(person().defaultRoleId)?.name || '')})</option>${R().roles.map(r => `<option value="${r.id}" ${myRole === r.id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select></div>
+     <p class="small muted fld" data-ext data-full style="margin:0;align-self:end">Mest specifika priset gäller. Tomt fält = nästa nivå. Ändrade priser gäller tid som registreras från och med nu.</p>`;
   }
   h += `${REQNOTE.replace('resten kan lämnas tomt eller fyllas i senare', 'minst en aktiv uppgift, och varje uppgift behöver ett namn')}<div class="err fld full" id="pjErr"></div><div class="dlg-foot fld full">${canDel ? `<button type="button" class="btn ghost" data-act="projDelete" style="margin-right:auto">${ic('trash')}Ta bort projektet</button>` : ''}<button type="button" class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" type="submit">${ic('check')}Spara</button></div></form>`;
   openDlg(h, 'wide'); syncProjDlg();
 }
-function syncProjDlg() { const i = $('#pjInt'); if (i) $$('#pjForm [data-ext]').forEach(x => x.hidden = i.checked); }
+function syncProjDlg() { const i = $('#pjInt'); if (i) $$('#pjForm [data-ext], #pjForm [data-full], #pjForm [data-simple]').forEach(x => x.hidden = (x.hasAttribute('data-ext') && i.checked) || (x.hasAttribute('data-full') && simple()) || (x.hasAttribute('data-simple') && !simple())); }
 function abbrCheck(a, seen) {
   return !/^[a-zåäöéüæø][a-zåäöéüæø0-9-]{0,11}$/.test(a) ? `”${a}” går inte – börja med en bokstav, högst 12 tecken.`
     : reservedAbbr(a) ? `”${a}” används redan för en period eller ett kommando i smartshell.` : seen.has(a) ? `”${a}” används redan${seen.get(a) ? ' av ' + seen.get(a) : ''}.` : '';
@@ -3979,6 +3997,7 @@ function saveProj() {
     for (const inp of $$('[data-rr]')) { const v = parseKr(inp.value); if (v == null) continue; if (!(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', inp); rr[inp.dataset.rr] = v; }
     for (const inp of $$('[data-pr]')) { const v = parseKr(inp.value); if (v == null) continue; if (!(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', inp); pr[inp.dataset.pr] = v; }
     const cn = $('#pjCust').value.trim();
+    if (simple() && !internal) { const v = parseKr($('#pjSRate').value), rl = roleFor(P.id); if (v != null && !(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', $('#pjSRate')); delete rr[rl]; if (v == null) delete pr[rl]; else pr[rl] = v; }
     const cv = $('input[name=pjColor]:checked')?.value;
     let color = cv === 'free' ? $('#pjColorFree').value.toLowerCase() : +(cv ?? 0); if (internal) color = -1; else if (!cv && !isHex(P.color) && P.color < 0) color = 0;
     const idle = +($('#pjIdle')?.value ?? idleOf(P));
@@ -4174,6 +4193,7 @@ function rep() {
 }
 function reportsHtml() {
   const r = rep(), tabs = [['month', '<span class="lg">Månadsöversikt</span><span class="sm">Månader</span>'], ['diary', '<span class="lg">Projektdagbok</span><span class="sm">Dagbok</span>'], ['person', '<span class="lg">Personsammanställning</span><span class="sm">Person</span>'], ['invoice', '<span class="lg">Fakturaunderlag</span><span class="sm">Faktura</span>']];
+  if (simple()) { r.tab = 'invoice'; return `<div class="view rep"><div class="wk-head"><h1>Öppen tid</h1><span class="small muted">Timmar och belopp som inte är hanterade, per projekt</span></div>${invoiceTabHtml()}</div>`; }
   let h = `<div class="view rep"><div class="wk-head"><h1>Rapporter</h1><div class="seg" role="group" aria-label="Rapport">${tabs.map(([k, l]) => `<button data-act="repTab" data-tab="${k}" aria-pressed="${r.tab === k}">${l}</button>`).join('')}</div></div>`;
   h += r.tab === 'month' ? monthHtml() : r.tab === 'diary' ? diaryTabHtml() : r.tab === 'invoice' ? invoiceTabHtml() : personTabHtml();
   return h + `</div>`;
@@ -4311,23 +4331,24 @@ function invSel() {
   const r = rep();
   if (!r.inv) {
     const l = openProjects(), first = l.find(x => x.p.customerId) || l[0], t = today(), ym = ymAdd(ymOf(t), -1);
-    r.inv = { sel: first ? (first.p.customerId ? 'c:' + first.p.customerId : 'p:' + first.p.id) : '', ym, custom: false, from: `${ym}-01`, to: ymLast(ym), old: true };
+    r.inv = { sel: simple() ? 'all' : first ? (first.p.customerId ? 'c:' + first.p.customerId : 'p:' + first.p.id) : 'all', ym, custom: false, from: `${ym}-01`, to: ymLast(ym), old: true, rows: simple() };
   }
-  const v = r.inv, ok = v.sel.startsWith('c:') ? !!cust(v.sel.slice(2)) : !!proj(v.sel.slice(2));
-  if (!ok) { const p = R().projects.find(p => !p.internal && p.kind !== 'absence'); v.sel = p ? (p.customerId ? 'c:' + p.customerId : 'p:' + p.id) : ''; }
+  const v = r.inv, ok = v.sel === 'all' || (v.sel.startsWith('c:') && simple()) ? v.sel === 'all' : v.sel.startsWith('c:') ? !!cust(v.sel.slice(2)) : !!proj(v.sel.slice(2));
+  if (!ok) v.sel = 'all';
   return v;
 }
 function invPeriod() { const v = invSel(); return v.custom ? [v.from, v.to] : [`${v.ym}-01`, ymLast(v.ym)]; }
 function invProjects(sel) {
   if (!sel) return [];
+  if (sel === 'all') return R().projects.filter(p => !p.internal && p.kind !== 'absence');
   const id = sel.slice(2);
   return sel.startsWith('c:') ? R().projects.filter(p => p.customerId === id && !p.internal && p.kind !== 'absence') : [proj(id)].filter(Boolean);
 }
-function invoiceData(sel, from, to, old) {
-  const ps = invProjects(sel), C = sel.startsWith('c:') ? cust(sel.slice(2)) : cust(proj(sel.slice(2))?.customerId), vat = +R().book.vatRate || 0;
+function invoiceData(sel, from, to, old, withRows) {
+  const ps = invProjects(sel), C = sel === 'all' ? null : sel.startsWith('c:') ? cust(sel.slice(2)) : cust(proj(sel.slice(2))?.customerId), vat = +R().book.vatRate || 0;
   const out = { C, from, to, old, vat, projects: [], hours: 0, amount: 0, first: null, last: null, done: { h: 0, a: 0 }, later: { h: 0, a: 0 }, miss: 0, months: [] };
   for (const P of ps) {
-    const lines = new Map(), tIdx = id => P.tasks.findIndex(t => t.id === id); let ph = 0, pa = 0;
+    const lines = new Map(), rows = [], tIdx = id => P.tasks.findIndex(t => t.id === id); let ph = 0, pa = 0;
     for (const e of E.values()) {
       if (e.deleted || e.projectId !== P.id || !(e.hours > 0) || !billable(e)) continue;
       if (handled(P.id, e.date)) { if (e.date >= from && e.date <= to) { out.done.h += e.hours; out.done.a += amountOf(e); } continue; }
@@ -4336,11 +4357,12 @@ function invoiceData(sel, from, to, old) {
       const k = [e.taskId, e.roleId || '', e.rate].join('|'), T = taskOf(P, e.taskId);
       const o = lines.get(k) || { task: T?.name || '', role: role(e.roleId)?.name || '', rate: e.rate, hours: 0, amount: 0, i: tIdx(e.taskId) };
       o.hours += e.hours; o.amount += amountOf(e); lines.set(k, o); ph += e.hours; pa += amountOf(e);
+      if (withRows) rows.push({ date: e.date, task: T?.name || '', note: (e.note || '').trim(), hours: e.hours, amount: amountOf(e), miss: needsNote(e), i: tIdx(e.taskId) });
       if (needsNote(e)) out.miss++;
       if (!out.first || e.date < out.first) out.first = e.date; if (!out.last || e.date > out.last) out.last = e.date;
       const ym = ymOf(e.date), mk = P.id + '|' + ym; if (!out.months.some(m => m.k === mk)) out.months.push({ k: mk, pid: P.id, ym });
     }
-    if (lines.size) out.projects.push({ P, lines: [...lines.values()].sort((a, b) => (a.i - b.i) || (b.rate - a.rate)), hours: ph, amount: pa });
+    if (lines.size) out.projects.push({ P, lines: [...lines.values()].sort((a, b) => (a.i - b.i) || (b.rate - a.rate)), rows: rows.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.i - b.i), hours: ph, amount: pa });
     out.hours += ph; out.amount += pa;
   }
   out.projects.sort((a, b) => String(a.P.number).localeCompare(String(b.P.number), 'sv'));
@@ -4351,13 +4373,14 @@ function invoiceData(sel, from, to, old) {
     m.ready = monthReady(m.pid, m.ym);
   }
   out.months.sort((a, b) => a.ym < b.ym ? -1 : a.ym > b.ym ? 1 : 0);
+  out.all = sel === 'all';
   out.label = periodLabel(out.first && out.first < from ? out.first : from, to);
   return out;
 }
-const invName = sel => sel.startsWith('c:') ? cust(sel.slice(2))?.name || '' : (P => `${P.number && P.number !== '–' ? P.number + ' ' : ''}${P.name}`)(proj(sel.slice(2)));
+const invName = sel => sel === 'all' ? 'Alla projekt' : sel.startsWith('c:') ? cust(sel.slice(2))?.name || '' : (P => `${P.number && P.number !== '–' ? P.number + ' ' : ''}${P.name}`)(proj(sel.slice(2)));
 function invFacts(d) {
   const C = d.C, addr = C ? (C.invoiceAddress || C.address || '') : '';
-  return [['Kund', C ? C.name + (C.orgNr ? ` (${C.orgNr})` : '') : 'Ingen kund angiven'], ['Period', d.label], ...(addr ? [['Fakturaadress', addr]] : []), ...(C?.ref ? [['Kundens referens', C.ref]] : []), ...(C?.contact ? [['Kontaktperson', C.contact]] : [])];
+  return [...(d.all ? [] : [['Kund', C ? C.name + (C.orgNr ? ` (${C.orgNr})` : '') : 'Ingen kund angiven']]), ['Period', d.label], ...(addr ? [['Fakturaadress', addr]] : []), ...(C?.ref ? [['Kundens referens', C.ref]] : []), ...(C?.contact ? [['Kontaktperson', C.contact]] : [])];
 }
 const INV_NOTE = 'Underlag för fakturering – inte en faktura. Fakturan upprättas i bokföringsprogrammet. Belopp exkl. moms om inget annat anges.';
 function invoiceTabHtml() {
@@ -4365,30 +4388,33 @@ function invoiceTabHtml() {
   const cs = R().customers.filter(c => R().projects.some(p => p.customerId === c.id && !p.internal && p.kind !== 'absence')).sort((a, b) => a.name.localeCompare(b.name, 'sv'));
   const ps = R().projects.filter(p => !p.internal && p.kind !== 'absence').sort((a, b) => (pRank(a) - pRank(b)) || String(b.number).localeCompare(String(a.number)));
   if (!ps.length) return `<p class="muted">Inga debiterbara projekt än.</p>`;
-  const d = invoiceData(v.sel, from, to, v.old);
-  let h = `<div class="rep-ctl"><div class="fld"><label for="ivS">Underlag för</label><select id="ivS">${cs.length ? `<optgroup label="Kund – alla projekt">${cs.map(c => `<option value="c:${c.id}" ${v.sel === 'c:' + c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</optgroup>` : ''}<optgroup label="Ett projekt">${ps.map(p => `<option value="p:${p.id}" ${v.sel === 'p:' + p.id ? 'selected' : ''}>${esc(p.number)} ${esc(p.name)}</option>`).join('')}</optgroup></select></div>
+  const d = invoiceData(v.sel, from, to, v.old, v.rows);
+  let h = `<div class="rep-ctl"><div class="fld"><label for="ivS">${simple() ? 'Projekt' : 'Underlag för'}</label><select id="ivS"><option value="all" ${v.sel === 'all' ? 'selected' : ''}>Alla projekt</option>${cs.length && !simple() ? `<optgroup label="Kund – alla projekt">${cs.map(c => `<option value="c:${c.id}" ${v.sel === 'c:' + c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</optgroup>` : ''}<optgroup label="${simple() ? 'Projekt' : 'Ett projekt'}">${ps.map(p => `<option value="p:${p.id}" ${v.sel === 'p:' + p.id ? 'selected' : ''}>${esc(p.number)} ${esc(p.name)}</option>`).join('')}</optgroup></select></div>
    <div class="fld"><label for="ivM">${v.custom ? 'Period' : 'Till och med månad'}</label>${v.custom ? `<div class="two"><input type="date" id="ivFrom" value="${v.from}" aria-label="Från"><input type="date" id="ivTo" value="${v.to}" aria-label="Till"></div>` : `<div class="mnav"><button class="icon-btn" data-act="ivMonth" data-d="-1" aria-label="Föregående månad">${ic('left')}</button><input type="month" id="ivM" value="${v.ym}"><button class="icon-btn" data-act="ivMonth" data-d="1" aria-label="Nästa månad">${ic('right')}</button></div>`}<label class="chk small"><input type="checkbox" id="ivCustom" ${v.custom ? 'checked' : ''}> Egen period</label></div>
-   <div class="fld"><span class="lbl">Äldre tid</span><label class="chk small" style="margin-top:6px"><input type="checkbox" id="ivOld" ${v.old ? 'checked' : ''}> Ta med all öppen tid före perioden</label></div>
+   <div class="fld"><span class="lbl">Innehåll</span><label class="chk small" style="margin-top:6px"><input type="checkbox" id="ivOld" ${v.old ? 'checked' : ''}> All öppen tid före perioden</label><label class="chk small"><input type="checkbox" id="ivRows" ${v.rows ? 'checked' : ''}> Dagboksrader med datum och anteckning</label></div>
    <div class="rep-acts"><button class="btn primary" data-act="dlInvPdf" ${d.hours ? '' : 'disabled'}>${ic('export')}PDF</button><button class="btn" data-act="dlInvCsv" ${d.hours ? '' : 'disabled'}>${ic('export')}CSV</button>${d.months.some(m => m.ok) ? `<button class="btn" data-act="invHandle">${ic('lock')}Markera som hanterat</button>` : ''}</div></div>`;
-  if (d.miss) h += `<div class="alert soft">${ic('alert')}<div class="txt">${d.miss === 1 ? 'En tid saknar' : d.miss + ' tider saknar'} anteckning. Fyll i dem i tidboken innan du skickar projektdagboken som bilaga.</div></div>`;
+  if (d.miss) h += `<div class="alert soft">${ic('alert')}<div class="txt">${d.miss === 1 ? 'En tid saknar' : d.miss + ' tider saknar'} anteckning. Fyll i dem i tidboken innan du skickar ${v.rows ? 'underlaget' : 'projektdagboken som bilaga'}.</div></div>`;
   h += `<div class="paper">${invPreview(d, v.sel)}</div>`;
   return h;
 }
+const invPHead = (d, P) => `${P.number && P.number !== '–' ? P.number + ' ' : ''}${P.name}${d.all && !simple() && cust(P.customerId) ? ' – ' + cust(P.customerId).name : ''}`;
+const invTitle = sel => sel === 'all' ? 'Öppen tid per projekt' : 'Fakturaunderlag';
 function invPreview(d, sel) {
-  let h = paperHead('Fakturaunderlag', invName(sel)) + `<dl class="pp-facts">${invFacts(d).map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v).replace(/\n/g, '<br>')}</dd></div>`).join('')}</dl>`;
+  let h = paperHead(invTitle(sel), sel === 'all' ? '' : invName(sel)) + `<dl class="pp-facts">${invFacts(d).map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v).replace(/\n/g, '<br>')}</dd></div>`).join('')}</dl>`;
   if (!d.hours) return h + `<p class="muted">Ingen öppen debiterbar tid${d.done.h ? ` – ${fh(d.done.h)} h i perioden är redan hanterade` : ''}.</p>`;
   for (const x of d.projects) {
-    h += `<h3 class="pp-h">${esc(x.P.number && x.P.number !== '–' ? x.P.number + ' ' : '')}${esc(x.P.name)}${x.P.property ? ` <span class="muted">· ${esc(x.P.property)}</span>` : ''}</h3><table class="pp-t"><thead><tr><th class="w">Uppgift</th><th>Roll</th><th class="r">Timmar</th><th class="r">À-pris</th><th class="r">Belopp</th></tr></thead><tbody>${x.lines.map(l => `<tr><td class="w">${esc(l.task)}</td><td>${esc(l.role)}</td><td class="r mono">${fh(l.hours)}</td><td class="r mono">${fkr(l.rate)}</td><td class="r mono">${fkr(l.amount)}</td></tr>`).join('')}<tr class="tot"><td class="w">Summa projektet</td><td></td><td class="r mono">${fh(x.hours)}</td><td></td><td class="r mono">${fkr(x.amount)}</td></tr></tbody></table>`;
+    h += `<h3 class="pp-h">${esc(invPHead(d, x.P))}${x.P.property ? ` <span class="muted">· ${esc(x.P.property)}</span>` : ''}</h3>${x.rows.length ? `<table class="pp-t"><thead><tr><th>Datum</th>${x.P.tasks.length > 1 ? '<th>Uppgift</th>' : ''}<th class="w">Anteckning</th><th class="r">Timmar</th><th class="r">Belopp</th></tr></thead><tbody>${x.rows.map(rw => `<tr><td class="nw">${sdate(rw.date)}</td>${x.P.tasks.length > 1 ? `<td>${esc(rw.task)}</td>` : ''}<td class="w${rw.miss ? ' miss' : ''}">${rw.miss ? 'Anteckning saknas' : esc(rw.note)}</td><td class="r mono">${fh(rw.hours)}</td><td class="r mono">${fkr(rw.amount)}</td></tr>`).join('')}</tbody></table>` : ''}<table class="pp-t"><thead><tr><th class="w">Uppgift</th><th>Roll</th><th class="r">Timmar</th><th class="r">À-pris</th><th class="r">Belopp</th></tr></thead><tbody>${x.lines.map(l => `<tr><td class="w">${esc(l.task)}</td><td>${esc(l.role)}</td><td class="r mono">${fh(l.hours)}</td><td class="r mono">${fkr(l.rate)}</td><td class="r mono">${fkr(l.amount)}</td></tr>`).join('')}<tr class="tot"><td class="w">Summa projektet</td><td></td><td class="r mono">${fh(x.hours)}</td><td></td><td class="r mono">${fkr(x.amount)}</td></tr></tbody></table>`;
   }
   h += `<h3 class="pp-h">Att fakturera</h3><table class="pp-t sum"><tbody><tr><td class="w">Summa exkl. moms</td><td class="r mono">${fh(d.hours)} h</td><td class="r mono">${fkr(d.amount)}</td></tr><tr><td class="w">Moms ${fhs(d.vat)} %</td><td></td><td class="r mono">${fkr(d.vatA)}</td></tr><tr class="tot"><td class="w">Summa inkl. moms</td><td></td><td class="r mono">${fkr(d.amount + d.vatA)}</td></tr></tbody></table>`;
   h += `<p class="pp-hd-note">${INV_NOTE}${d.done.h ? ` ${fh(d.done.h)} h i perioden är redan hanterade och ingår inte.` : ''}</p>`;
   return h;
 }
 function invoicePdf(d, sel) {
-  const doc = makeDoc('Fakturaunderlag', invName(sel));
+  const doc = makeDoc(invTitle(sel), sel === 'all' ? '' : invName(sel));
   pdfFacts(doc, invFacts(d));
   for (const x of d.projects) {
-    pdfH2(doc, `${x.P.number && x.P.number !== '–' ? x.P.number + ' ' : ''}${x.P.name}${x.P.property ? ' · ' + x.P.property : ''}`);
+    pdfH2(doc, `${invPHead(d, x.P)}${x.P.property ? ' · ' + x.P.property : ''}`);
+    if (x.rows.length) { const mt = x.P.tasks.length > 1; pdfTable(doc, [{ h: 'Datum', w: 58 }, ...(mt ? [{ h: 'Uppgift', w: 92, wrap: true }] : []), { h: 'Anteckning', wrap: true }, { h: 'Timmar', w: 46, align: 'right' }, { h: 'Belopp', w: 70, align: 'right' }], x.rows.map(rw => [sdate(rw.date), ...(mt ? [rw.task] : []), rw.miss ? '(anteckning saknas)' : rw.note, fh(rw.hours), fkr(rw.amount)])); }
     pdfTable(doc, [{ h: 'Uppgift', wrap: true }, { h: 'Roll', w: 110, wrap: true }, { h: 'Timmar', w: 50, align: 'right' }, { h: 'À-pris', w: 64, align: 'right' }, { h: 'Belopp', w: 80, align: 'right' }],
       [...x.lines.map(l => [l.task, l.role, fh(l.hours), fkr(l.rate), fkr(l.amount)]), { cells: ['Summa projektet', '', fh(x.hours), '', fkr(x.amount)], bold: true }]);
   }
@@ -4404,38 +4430,38 @@ function invoiceCsv(d) {
   const C = d.C, from = d.first && d.first < d.from ? d.first : d.from;
   const head = ['Kund', 'Kundens org.nr', 'Kundens referens', 'Fakturaadress', 'Projektnummer', 'Projekt', 'Fastighet', 'Uppgift', 'Roll', 'Från', 'Till', 'Timmar', 'À-pris', 'Belopp exkl. moms', 'Momssats %', 'Moms', 'Belopp inkl. moms'];
   const rows = [head];
-  for (const x of d.projects) for (const l of x.lines) { const m = l.amount * d.vat / 100; rows.push([C?.name || '', C?.orgNr || '', C?.ref || '', (C?.invoiceAddress || C?.address || '').replace(/\n/g, ', '), x.P.number === '–' ? '' : x.P.number, x.P.name, x.P.property || '', l.task, l.role, from, d.to, n(l.hours), n(l.rate), n(l.amount), n(d.vat), n(m), n(l.amount + m)]); }
+  for (const x of d.projects) for (const l of x.lines) { const m = l.amount * d.vat / 100, K = d.all ? cust(x.P.customerId) : C; rows.push([K?.name || '', K?.orgNr || '', K?.ref || '', (K?.invoiceAddress || K?.address || '').replace(/\n/g, ', '), x.P.number === '–' ? '' : x.P.number, x.P.name, x.P.property || '', l.task, l.role, from, d.to, n(l.hours), n(l.rate), n(l.amount), n(d.vat), n(m), n(l.amount + m)]); }
   return '﻿' + rows.map(r => r.map(q).join(';')).join('\r\n') + '\r\n';
 }
-const invFile = (d, sel, ext) => fileSafe(`Fakturaunderlag ${invName(sel)} ${(d.first && d.first < d.from ? d.first : d.from)}–${d.to}.${ext}`);
+const invFile = (d, sel, ext) => fileSafe(`${invTitle(sel)} ${sel === 'all' ? '' : invName(sel)} ${(d.first && d.first < d.from ? d.first : d.from)}–${d.to}.${ext}`);
 async function invDownload(kind) {
-  const v = invSel(), [from, to] = invPeriod(), d = invoiceData(v.sel, from, to, v.old);
+  const v = invSel(), [from, to] = invPeriod(), d = invoiceData(v.sel, from, to, v.old, v.rows);
   if (!d.hours) { toast('Ingen öppen tid att fakturera'); return; }
   const ok = kind === 'csv' ? await offerFile(invFile(d, v.sel, 'csv'), new TextEncoder().encode(invoiceCsv(d)), 'text/csv;charset=utf-8') : await offerFile(invFile(d, v.sel, 'pdf'), invoicePdf(d, v.sel));
   if (!ok) return;
   toast(`Fakturaunderlaget är nedladdat (${kind.toUpperCase()})`, d.months.some(m => m.ok) ? { label: 'Markera som hanterat', fn: () => invHandleAsk() } : null);
 }
 function invHandleAsk() {
-  const v = invSel(), [from, to] = invPeriod(), d = invoiceData(v.sel, from, to, v.old), ok = d.months.filter(m => m.ok), skip = d.months.filter(m => !m.ok);
+  const v = invSel(), [from, to] = invPeriod(), d = invoiceData(v.sel, from, to, v.old, v.rows), ok = d.months.filter(m => m.ok), skip = d.months.filter(m => !m.ok);
   if (!ok.length) { toast('Inga hela månader att markera'); return; }
   const lbl = m => `${proj(m.pid).name}, ${MONL[+m.ym.slice(5, 7) - 1]} ${m.ym.slice(0, 4)}`, nr = ok.filter(m => !m.ready.ready);
   openDlg(`<h2 id="dlgTitle">Markera som hanterat?</h2><p>${ok.length === 1 ? 'Månaden' : `De här ${ok.length} månaderna`} låses – ingen tid i projektet kan ändras förrän markeringen hävs.</p><ul class="tips">${ok.map(m => `<li>${esc(lbl(m))}${m.ready.ready ? '' : ` – <span style="color:var(--warn-ink)">${esc(openWeeksTxt(m.ready))}</span>`}</li>`).join('')}</ul>${skip.length ? `<p class="small muted">Hanteras inte, eftersom projektet har tid i månaden som inte ingår i underlaget: ${skip.map(m => esc(lbl(m))).join(', ')}. Hantering av valfri period kommer med nästa filformat.</p>` : ''}${nr.length ? `<p class="small" style="color:var(--warn-ink)">Alla veckor är inte avcheckade – tidrapporten kan ändras.</p>` : ''}<div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="invHandleDo">${ic('lock')}Markera ${ok.length === 1 ? 'månaden' : ok.length + ' månader'}</button></div>`);
 }
 function invHandleDo() {
-  const v = invSel(), [from, to] = invPeriod(), d = invoiceData(v.sel, from, to, v.old), ok = d.months.filter(m => m.ok), at = new Date().toISOString();
+  const v = invSel(), [from, to] = invPeriod(), d = invoiceData(v.sel, from, to, v.old, v.rows), ok = d.months.filter(m => m.ok), at = new Date().toISOString();
   for (const m of ok) { const dd = diaryData(m.pid, `${m.ym}-01`, ymLast(m.ym), 'ex'); R().handled[m.k] = { at, by: me(), hours: dd.hours, amount: Math.round(dd.amount) }; }
   save(); closeDlg(); closeFloating(); renderMain();
   toast(`${ok.length === 1 ? 'En månad' : ok.length + ' månader'} hanterade och låsta`, { label: 'Ångra', fn: () => { ok.forEach(m => delete R().handled[m.k]); save(); renderMain(); } });
 }
 function invPanelHtml() {
-  const v = invSel(), [from, to] = invPeriod(), d = invoiceData(v.sel, from, to, v.old);
+  const v = invSel(), [from, to] = invPeriod(), d = invoiceData(v.sel, from, to, v.old, v.rows);
   const byC = new Map(), noC = [];
-  for (const x of openProjects()) { if (!x.p.customerId) { noC.push(x); continue; } const o = byC.get(x.p.customerId) || { c: cust(x.p.customerId), a: 0, first: x.o.first }; o.a += x.o.all.a; if (x.o.first < o.first) o.first = x.o.first; byC.set(x.p.customerId, o); }
+  for (const x of openProjects()) { if (!x.p.customerId || simple()) { noC.push(x); continue; } const o = byC.get(x.p.customerId) || { c: cust(x.p.customerId), a: 0, first: x.o.first }; o.a += x.o.all.a; if (x.o.first < o.first) o.first = x.o.first; byC.set(x.p.customerId, o); }
   const l = [...byC.values()].filter(x => x.c).sort((a, b) => a.first < b.first ? -1 : 1);
-  let h = pHead('Fakturaunderlag', esc(invName(v.sel) || '')) + `<div class="p-body">`;
+  let h = pHead(simple() ? 'Öppen tid' : 'Fakturaunderlag', esc(invName(v.sel) || '')) + `<div class="p-body">`;
   if (d.hours) h += `<section class="psec"><h3>I underlaget</h3>${pkv('Från', dYear(d.first), d.first < from ? 'warn' : '')}${pkv('Till och med', dYear(to))}${pkv('Exkl. moms', `${fkr(d.amount)}<small>${fh(d.hours)} h</small>`)}${pkv('Inkl. moms', fkr(d.amount + d.vatA), 'tot big')}${d.later.h ? pkv('Öppet efter perioden', hk(d.later)) : ''}</section>`;
-  h += `<section class="psec"><h3>Att fakturera</h3>${l.length || noC.length ? `<ul class="plist">${l.slice(0, 8).map(x => `<li class="pl-li"><button class="pl" data-act="ivPick" data-s="c:${x.c.id}"><span class="r-text"><span class="r-name">${esc(x.c.name)}</span><span class="r-sub">från ${dYear(x.first)}</span></span><span class="mono small${x.first < cm1() ? ' open-t due' : ''}">${nk(x.a)}</span></button></li>`).join('')}${noC.slice(0, 4).map(({ p, o }) => `<li class="pl-li"><button class="pl" data-act="ivPick" data-s="p:${p.id}" style="--pc:${pc(p)}"><span class="dot"></span><span class="r-text"><span class="r-name">${esc(p.name)}</span><span class="r-sub">ingen kund · från ${dYear(o.first)}</span></span><span class="mono small">${nk(o.all.a)}</span></button></li>`).join('')}</ul>` : '<p class="p-note">Ingen öppen tid – allt är hanterat.</p>'}</section>`;
-  return h + helpSec(['Underlaget tar med <b>öppen debiterbar tid</b> – tid som redan är hanterad ingår inte.', 'Välj en <b>kund</b> för alla dess projekt på ett underlag, eller ett enskilt projekt.', '<b>PDF</b> att läsa eller bifoga, <b>CSV</b> att öppna i Excel eller föra in i bokföringsprogrammet. Projektdagboken är specifikationen.', 'När fakturan är skickad: <b>Markera som hanterat</b> låser tiden så att den inte kommer med igen.', 'Sisyfos gör inga fakturor – löpnummer, moms och arkivering sköts i bokföringsprogrammet.']) + `</div>`;
+  h += `<section class="psec"><h3>Att fakturera</h3>${l.length || noC.length ? `<ul class="plist">${l.slice(0, 8).map(x => `<li class="pl-li"><button class="pl" data-act="ivPick" data-s="c:${x.c.id}"><span class="r-text"><span class="r-name">${esc(x.c.name)}</span><span class="r-sub">från ${dYear(x.first)}</span></span><span class="mono small${x.first < cm1() ? ' open-t due' : ''}">${nk(x.a)}</span></button></li>`).join('')}${noC.slice(0, simple() ? 10 : 4).map(({ p, o }) => `<li class="pl-li"><button class="pl" data-act="ivPick" data-s="p:${p.id}" style="--pc:${pc(p)}"><span class="dot"></span><span class="r-text"><span class="r-name">${esc(p.name)}</span><span class="r-sub">${simple() ? '' : 'ingen kund · '}från ${dYear(o.first)}</span></span><span class="mono small">${nk(o.all.a)}</span></button></li>`).join('')}</ul>` : '<p class="p-note">Ingen öppen tid – allt är hanterat.</p>'}</section>`;
+  return h + helpSec(simple() ? ['Visar <b>öppen debiterbar tid</b> per projekt – tid som redan är hanterad ingår inte.', 'Välj <b>alla projekt</b> eller ett projekt, och hur långt fram underlaget ska gå.', '<b>Dagboksrader</b> visar varje dag med anteckning – bra som specifikation till fakturan.', '<b>PDF</b> att bifoga, <b>CSV</b> för Excel eller bokföringsprogrammet.', 'När du har fakturerat: <b>Markera som hanterat</b> låser tiden så att den inte kommer med igen.'] : ['Underlaget tar med <b>öppen debiterbar tid</b> – tid som redan är hanterad ingår inte.', 'Välj en <b>kund</b> för alla dess projekt på ett underlag, eller ett enskilt projekt.', '<b>PDF</b> att läsa eller bifoga, <b>CSV</b> att öppna i Excel eller föra in i bokföringsprogrammet. Projektdagboken är specifikationen.', 'När fakturan är skickad: <b>Markera som hanterat</b> låser tiden så att den inte kommer med igen.', 'Sisyfos gör inga fakturor – löpnummer, moms och arkivering sköts i bokföringsprogrammet.']) + `</div>`;
 }
 // Personsammanställning
 function compAt(end) {
@@ -4530,7 +4556,7 @@ Object.assign(A, {
   repYear: el => { rep().year += +el.dataset.d; renderMain(); },
   moCell: el => moMenu(el),
   dlDiary: el => { closeFloating(); const r = rep(); if (el.dataset.p) downloadDiary(el.dataset.p, `${el.dataset.ym}-01`, ymLast(el.dataset.ym), r.amount, r.budget); else { const [f, t] = diaryPeriod(); downloadDiary(r.pid, f, t, r.amount, r.budget); } },
-  showDiary: el => { closeFloating(); Object.assign(rep(), { tab: 'diary', pid: el.dataset.p, ym: el.dataset.ym, custom: false }); if (st.page !== 'rapporter') { st.page = 'rapporter'; st.pid = null; st.cid = null; render(); $('#main').scrollTop = 0; } else renderMain(); },
+  showDiary: el => { closeFloating(); if (simple()) { const v = invSel(); Object.assign(v, { sel: 'p:' + el.dataset.p, rows: true }); if (el.dataset.ym) { v.custom = false; v.ym = el.dataset.ym; } st.page = 'rapporter'; st.pid = null; st.cid = null; render(); return; } Object.assign(rep(), { tab: 'diary', pid: el.dataset.p, ym: el.dataset.ym, custom: false }); if (st.page !== 'rapporter') { st.page = 'rapporter'; st.pid = null; st.cid = null; render(); $('#main').scrollTop = 0; } else renderMain(); },
   handle: el => { closeFloating(); handleAsk(el.dataset.p, el.dataset.ym); },
   forceHandle: el => doHandle(el.dataset.p, el.dataset.ym),
   unhandle: el => { closeFloating(); const k = el.dataset.p + '|' + el.dataset.ym, prev = R().handled[k]; delete R().handled[k]; save(); renderMain(); toast(`${proj(el.dataset.p).name}, ${MONL[+el.dataset.ym.slice(5, 7) - 1]}: upplåst`, { label: 'Ångra', fn: () => { R().handled[k] = prev; save(); renderMain(); } }); },
@@ -4549,6 +4575,7 @@ Object.assign(A, {
 document.addEventListener('change', ev => {
   const t = ev.target;
   if (t.matches('[data-set]')) { setSetting(t.dataset.set, t.value, t); return; }
+  if (t.name === 'setMode') { setMode(t.value); return; }
   if (t.matches('[data-normd]')) {
     const v = +t.value.replace(',', '.'); if (!(v >= 0 && v <= 24)) { t.value = fhs(+R().book.norm[t.dataset.normd] || 0); toast('Ange normtiden som 0–24 timmar'); return; }
     R().book.norm[t.dataset.normd] = v; save(); flashSaved(t); renderCal(); const sf = $('.norm-row .sumf b'); if (sf) sf.textContent = fh(Object.values(R().book.norm).reduce((s, x) => s + +x, 0)); return;
@@ -4567,11 +4594,12 @@ document.addEventListener('change', ev => {
   if (t.matches('#wzForm [data-w]')) { wizCollect(); if (t.dataset.w === 'emp' || t.dataset.w === 'team' || t.dataset.w === 'savedVac' || t.dataset.w === 'vacStart') { if (t.dataset.w === 'team' || t.dataset.w === 'vacStart') { wizRender(); return; } wizSync(); } return; }
   if (t.id === 'cuInvTog') { $('#cuInvF').hidden = !t.checked; if (t.checked) $('#cuInv').focus(); return; }
   if (t.id === 'pjInt') { syncProjDlg(); return; }
-  if (st.rep?.inv && ['ivS', 'ivM', 'ivCustom', 'ivFrom', 'ivTo', 'ivOld'].includes(t.id)) {
+  if (st.rep?.inv && ['ivS', 'ivM', 'ivCustom', 'ivFrom', 'ivTo', 'ivOld', 'ivRows'].includes(t.id)) {
     const v = st.rep.inv;
     if (t.id === 'ivS') v.sel = t.value;
     if (t.id === 'ivM' && t.value) v.ym = t.value;
     if (t.id === 'ivOld') v.old = t.checked;
+    if (t.id === 'ivRows') v.rows = t.checked;
     if (t.id === 'ivCustom') { v.custom = t.checked; if (v.custom) { v.from = `${v.ym}-01`; v.to = ymLast(v.ym); } }
     if (t.id === 'ivFrom' && t.value) v.from = t.value;
     if (t.id === 'ivTo' && t.value) v.to = t.value;
@@ -4808,6 +4836,7 @@ function shPlan(raw) {
   const toks = shTok(s); if (!toks.length) return null;
   if (!toks[0].q && toks[0].lo.length > 1 && toks[0].lo.startsWith('?')) toks.splice(0, 1, { t: '?', lo: '?', q: false }, { t: toks[0].t.slice(1), lo: toks[0].lo.slice(1), q: false });
   const c = !toks[0].q && SHW.get(toks[0].lo);
+  if (c && simple() && ['kund', 'pers', 'ov'].includes(c.k)) return { info: true, html: `${esc(c.t)} finns i fullständigt läge. Byt läge under <b>Inställningar → Läge</b> – inget försvinner.` };
   if (c) { try { return SH[c.k](toks.slice(1), toks[0].lo); } catch (e) { console.error(e); return { bad: true, html: 'Något gick fel när raden tolkades.' }; } }
   const p = shPeriod(toks, 0);
   if (p?.err) return { bad: true, html: esc(p.err) };
@@ -4900,7 +4929,7 @@ const SH = {
     const from = set.custom ? set.from : `${set.ym}-01`, to = set.custom ? set.to : ymLast(set.ym), d = invoiceData(sel, from, to, old);
     if (!d.hours) return { info: true, html: `${B(invName(sel))} har ingen öppen debiterbar tid ${per.kind === 'open' ? '' : 'till och med ' + esc(dYear(to))}.` };
     const verb = f.dl ? `laddar ner (${csv ? 'CSV' : 'PDF'})` : 'visar';
-    return { html: `Enter ${verb} fakturaunderlaget för ${B(invName(sel))}, ${esc(d.label.replace(/^[A-ZÅÄÖ]/, c => c.toLowerCase()))} – ${fh(d.hours)} h, ${fkr(d.amount)} exkl. moms${d.miss ? ` · <span class="sh-warn">${d.miss} utan anteckning</span>` : ''}`,
+    return { html: `Enter ${verb} ${simple() ? 'öppen tid' : 'fakturaunderlaget'} för ${B(invName(sel))}, ${esc(d.label.replace(/^[A-ZÅÄÖ]/, c => c.toLowerCase()))} – ${fh(d.hours)} h, ${fkr(d.amount)} exkl. moms${d.miss ? ` · <span class="sh-warn">${d.miss} utan anteckning</span>` : ''}`,
       run: () => { const R0 = rep(); R0.tab = 'invoice'; Object.assign(invSel(), set, { sel, old }); if (f.dl) { if (st.page === 'rapporter') renderMain(); return invDownload(csv ? 'csv' : 'pdf'); } shPage('rapporter'); } };
   },
   pers(a) {
@@ -5099,7 +5128,7 @@ function shRefHtml(v) {
   let h = '';
   if (cur) h += `<section class="psec sh-cur"><h3>${esc(cur.t)}</h3><ul class="sh-list">${cur.ex.map(([c, n]) => shCode(c, n)).join('')}</ul></section>`;
   const groups = [['Tid – timmarna först', [['3,5 strand ritade fasad', 'timmar, projekt, anteckning'], ['tor 8 strand', 'en annan dag'], ['mån-fre 8 strand', 'flera dagar'], ['v43 fl', 'utan timmar: fyller upp till normtiden']]], ['Gå till', [['v43', 'veckan i tidboken'], ['okt', 'månaden'], ['idag', 'dagen'], ['2026', 'månadsöversikten']]]];
-  for (const g of [...new Set(SHC.map(c => c.g))]) groups.push([g, SHC.filter(c => c.g === g && c !== cur).flatMap(c => c.ex.slice(0, c.k === 'db' || c.k === 'proj' || c.k === 'ask' || c.k === 'fakt' ? 3 : 2))]);
+  for (const g of [...new Set(SHC.map(c => c.g))]) groups.push([g, SHC.filter(c => c.g === g && c !== cur && !(simple() && ['kund', 'pers', 'ov'].includes(c.k))).flatMap(c => c.ex.slice(0, c.k === 'db' || c.k === 'proj' || c.k === 'ask' || c.k === 'fakt' ? 3 : 2))]);
   h += groups.filter(([, l]) => l.length).map(([g, l]) => `<section class="psec"><h3>${g}</h3><ul class="sh-list">${l.map(([c, n]) => shCode(c, n)).join('')}</ul></section>`).join('');
   h += `<section class="psec"><h3>Perioder</h3><ul class="sh-list sh-per">${[['idag igår tor mån-fre', 'dagar i veckan du står i'], ['15/10 15/10-22/10', 'datum'], ['v43 v40-43 fv', 'veckor, förra veckan'], ['okt sept-okt fm', 'månader, förra månaden'], ['sept- -15/10', 'från och med, till och med'], ['2026 öppet', 'år, all öppen tid']].map(([c, n]) => `<li><code>${esc(c)}</code><span>${n}</span></li>`).join('')}</ul></section>`;
   h += helpSec(['<b>Kommandot först</b>, sedan period och projekt. Tid skrivs som förut, med timmarna först.', 'Raden under fältet säger vad <b>Enter</b> gör – inget händer innan.', '<b>Tab</b> fyller i kommandon, projekt och kunder. <b>Pil upp</b> hämtar tidigare rader.', 'Namn med siffror: <b>proj Kv. Lärkan 2 100000</b> fungerar – en budget är minst fyra siffror, 100k eller löp. Annars citattecken: <b>proj "Hus 2000"</b>.'], 'Så fungerar det');
@@ -5114,15 +5143,15 @@ function shPanelHtml() {
 function shShow(on) { if (!!st.sh.on === on && !st.sh.ans) return; st.sh.on = on; st.sh.ans = null; renderPanel(); }
 
 /* ── Fältet: förhandsrad, Enter, historik, Tab ── */
-const SH_PH = { tid: '3,5 strand ritade fasad · ch · db okt strand · ?', projekt: 'proj Kv. Lärkan 2 100000 Diamanten · ? strand', kunder: 'kund Diamanten Bygg · ant kund diamanten …', rapporter: 'db ner okt strand · pers fm · hant fm strand', installningar: 'kopia · mörkt · kompakt · ?' };
+const SH_PH = { tid: '3,5 strand ritade fasad · ch · db okt strand · ?', projekt: 'proj Kv. Lärkan 2 100000 Diamanten · ? strand', kunder: 'kund Diamanten Bygg · ant kund diamanten …', rapporter: 'db ner okt strand · fakt fm strand · hant fm strand', installningar: 'kopia · mörkt · kompakt · ?' };
 const shellHtml = () => `<div class="quick" id="shell"><div class="quick-top">${ic('bolt')}<label for="quickIn">Smartshell</label><button class="q-help" data-act="shHelp" title="Alla kommandon och hur de skrivs">${ic('help')}<span class="hide-narrow">Kommandon</span></button><kbd class="hide-narrow">Enter</kbd></div><div class="quick-row"><input id="quickIn" autocomplete="off" spellcheck="false" autocapitalize="off" enterkeyhint="go" aria-describedby="quickHint"></div><div class="quick-hint" id="quickHint" aria-live="polite"></div></div>`;
-function shUpdate() { const inp = $('#quickIn'); if (!inp) return; $('#shDock').classList.toggle('set', st.page === 'installningar'); inp.placeholder = SH_PH[st.page] || SH_PH.tid; refreshQuickHint(); }
+function shUpdate() { const inp = $('#quickIn'); if (!inp) return; $('#shDock').classList.toggle('set', st.page === 'installningar'); inp.placeholder = simple() && st.page === 'rapporter' ? 'fakt öppet · fakt ner fm strand · hant fm strand' : simple() && st.page === 'projekt' ? 'proj Konsultuppdrag 120k · ? strand' : SH_PH[st.page] || SH_PH.tid; refreshQuickHint(); }
 function refreshQuickHint() {
   const inp = $('#quickIn'), hint = $('#quickHint'); if (!inp) return;
   const v = inp.value.trim();
   hint.classList.remove('bad');
   const ref = $('#shRef'); if (ref && shPanelOn() && !st.sh.ans) ref.innerHTML = shRefHtml(v);
-  if (!v) { hint.innerHTML = st.page === 'tid' ? `Tid, kommandon och frågor på en rad – tiden hamnar på <b>${sdate(quickDate())}</b>.<span class="hide-narrow"> Skriv <b>?</b> för alla kommandon.</span>` : `Kommandon på en rad – <b>proj</b>, <b>kund</b>, <b>db</b>, <b>ch</b> – och tid som i tidboken.<span class="hide-narrow"> Skriv <b>?</b> för alla kommandon.</span>`; return; }
+  if (!v) { hint.innerHTML = st.page === 'tid' ? `Tid, kommandon och frågor på en rad – tiden hamnar på <b>${sdate(quickDate())}</b>.<span class="hide-narrow"> Skriv <b>?</b> för alla kommandon.</span>` : `Kommandon på en rad – <b>proj</b>, <b>${simple() ? 'fakt' : 'kund'}</b>, <b>db</b>, <b>ch</b> – och tid som i tidboken.<span class="hide-narrow"> Skriv <b>?</b> för alla kommandon.</span>`; return; }
   const c = shPlan(v);
   if (c && !c.time) { if (c.bad) hint.classList.add('bad'); hint.innerHTML = c.html; return; }
   const q = parseQuick(v);

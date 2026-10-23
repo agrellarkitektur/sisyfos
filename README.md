@@ -44,6 +44,14 @@ Fältet överst på alla sidor. Raden under fältet säger vad Enter gör innan 
 
 Perioder: `idag`, `tor`, `mån-fre`, `15/10-22/10`, `v40-43`, `fv` (förra veckan), `okt`, `sept-okt`, `fm` (förra månaden), `sept-`, `2026`, `öppet`. Ett projekt anges med ett ord ur namnet, numret eller en egen förkortning; namn med siffror kan skrivas inom citattecken.
 
+## Enkelt läge
+
+För dig som fakturerar din egen tid – till exempel konsult med eget bolag. Väljs i guiden för ny bok eller under *Inställningar → Läge*, och kan bytas när som helst utan att något försvinner.
+
+- **Projekt med timpris och budget.** Timpriset anges direkt på projektet; tomt = ditt vanliga pris. Interna projekt (administration och liknande) finns kvar.
+- **Inga kunder, ingen normtid, inget kompsaldo, ingen semester eller frånvaro.** Det som döljs ligger kvar i boken och syns igen i fullständigt läge.
+- **En rapport: Öppen tid** – timmar och belopp som inte är hanterade, för alla projekt eller ett projekt, till och med vald månad. Med eller utan dagboksrader, som PDF eller CSV, och med *Markera som hanterat* när fakturan är skickad.
+
 ## Fakturaunderlag
 
 Sisyfos gör inga fakturor, men ett **underlag** att föra in i bokföringsprogrammet: *Rapporter → Fakturaunderlag*, eller knappen *Fakturaunderlag* på kund- och projektsidan.

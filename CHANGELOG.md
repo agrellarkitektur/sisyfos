@@ -1,5 +1,15 @@
 # Ändringar i Sisyfos
 
+## 0.11.0
+
+Enkelt läge. Filformatet är oförändrat (7) – läget sparas som ett nytt, valfritt fält i boken (`book.mode`) som äldre versioner bortser från.
+
+- **Enkelt läge** för den som fakturerar sin egen tid: bara projekt med timpris och budget, intern tid och en rapport över öppen tid. Kunder, roller, normtid, kompsaldo, semester och frånvaro döljs. Väljs i guiden för ny bok eller under *Inställningar → Läge* och kan bytas fram och tillbaka utan att något försvinner.
+- **Timpris direkt på projektet** i enkelt läge, i Nytt projekt och Redigera projekt. Priset syns på projektkortet, projektsidan och raden i veckan.
+- **Rapporten Öppen tid**: alla projekt eller ett projekt, till och med vald månad, med summa per projekt, moms och summa inkl. moms – PDF, CSV och *Markera som hanterat*.
+- **Fakturaunderlaget** (även i fullständigt läge) kan nu gälla *Alla projekt* och visa **dagboksrader** med datum och anteckning för varje projekt.
+- Smartshell: `kund`, `pers` och `översikt` säger vänligt att de finns i fullständigt läge; förteckningen visar bara det som går att använda.
+
 ## 0.10.0
 
 Fakturaunderlag. Filformatet är oförändrat (7).
