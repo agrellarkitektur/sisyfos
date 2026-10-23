@@ -703,6 +703,12 @@ button.stat:hover{border-color:var(--rule)}
 .norm-row input{text-align:center}
 @media (width <= 620px){.norm-row{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .btn-row{display:flex;flex-wrap:wrap;gap:8px}
+.enc-acts{margin-top:10px}
+.rk-box{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin:6px 0 14px;padding:14px;border:1px solid var(--rule);border-radius:12px;background:var(--chrome)}
+.rk-qr{width:132px;height:132px;flex:none;border-radius:6px}
+.rk-txt{display:flex;flex-direction:column;gap:12px;min-width:0;flex:1}
+.rk-key{display:grid;grid-template-columns:repeat(4,auto);justify-content:start;gap:4px 14px;font:600 19px var(--font-data);letter-spacing:.06em;color:var(--ink);user-select:all}
+@media (max-width:420px){.rk-key{font-size:16px;gap:4px 10px}.rk-qr{width:110px;height:110px}}
 .role-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .role-list li{display:grid;grid-template-columns:minmax(0,1fr) 150px 110px 36px;align-items:center;gap:8px}
 .role-list input{height:36px;padding:0 10px;border:1px solid var(--rule);border-radius:9px;background:var(--paper);min-width:0;width:100%}
@@ -1141,7 +1147,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 
 /* ───────────── Hjälpfunktioner ───────────── */
 const FORMAT = 'sisyfos', FORMAT_VERSION = 7, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.11.2', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const APP_VERSION = '0.12.0', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 { const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
@@ -1781,6 +1787,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 
 // En annan flik sparade – läs in den senaste boken i stället för att skriva över den
 bc && (bc.onmessage = async ev => {
+  if (ev.data?.t === 'enc' && ev.data.from !== tabId) { await encLoad(); if (st.page === 'installningar') safetyRender(); return; }
   if (ev.data?.t !== 'saved' || ev.data.from === tabId || !db) return;
   try {
     const v = await kvGet('bok'); if (!v?.raw || v.raw === lastRaw) return;
@@ -1795,6 +1802,7 @@ async function load() {
     db = await idbOpen();
     const v = await kvGet('bok'); if (v?.raw) cand.push({ src: 'idb', at: v.at || '', raw: v.raw });
     st.meta = (await kvGet('meta')) || {};
+    await encLoad();
   } catch (e) { db = null; st.idbErr = e.message; try { st.meta = JSON.parse(localStorage.getItem(KEY + '.meta') || '{}'); } catch (_) { st.meta = {}; } }
   try { const raw = localStorage.getItem(KEY); if (raw) cand.push({ src: 'ls', at: localStorage.getItem(KEY + '.at') || '', raw }); } catch (_) {}
   // Senast sparade först. Spegeln från 0.6 saknar tid och hamnar sist.
@@ -1890,6 +1898,248 @@ async function backupFile() {
   return false;
 }
 
+/* ───────────── Kryptering (0.12.0 steg a: krypterad kopia som fil) ─────────────
+   Boken krypteras med en slumpad boknyckel (AES-256-GCM). Boknyckeln låses två gånger:
+   med en nyckel ur lösenordet (PBKDF2-SHA-256, 600 000 varv, eget salt) och med
+   återställningsnyckeln (160 slumpade bitar via HKDF). Lösenordsbyte och ny återställningsnyckel
+   låser om boknyckeln – boken krypteras aldrig om. Ur lösenordet tas 512 bitar: de första 256
+   låser boknyckeln, de sista 256 blir inloggning mot servern i steg b och lämnar aldrig enheten nu.
+   Valvet (salt och låsta nycklar) ligger i IndexedDB (kv 'vault') och i varje krypterad fil;
+   den upplåsta boknyckeln sparas som en icke-exporterbar CryptoKey (kv 'vaultKey') – boken
+   ligger ändå okrypterad i samma databas, så det skyddar inget att låta bli. */
+const ENC_FORMAT = 'sisyfos-krypterad', ENC_ITER = 600000, PW_MIN = 10, RK_ALPHA = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+const te = s => new TextEncoder().encode(s);
+const b64 = u => { u = new Uint8Array(u); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const rnd = n => crypto.getRandomValues(new Uint8Array(n));
+const encOk = () => !!(window.crypto?.subtle && window.isSecureContext);
+const AAD_KEY = 'sisyfos boknyckel v1', AAD_DATA = 'sisyfos bok v1';
+function rkFormat(bytes) {
+  let bits = 0, v = 0, s = '';
+  for (const b of bytes) { v = (v << 8) | b; bits += 8; while (bits >= 5) { s += RK_ALPHA[(v >> (bits - 5)) & 31]; bits -= 5; } v &= (1 << bits) - 1; }
+  return s.match(/.{4}/g).join('-');
+}
+function rkParse(str) {
+  const s = String(str || '').toUpperCase().replace(/^\s*SISYFOS/, '').replace(/[OØ]/g, '0').replace(/[IL]/g, '1').replace(/[^0-9A-Z]/g, '');
+  if (s.length !== 32 || [...s].some(c => !RK_ALPHA.includes(c))) return null;
+  const out = new Uint8Array(20); let bits = 0, v = 0, k = 0;
+  for (const c of s) { v = (v << 5) | RK_ALPHA.indexOf(c); bits += 5; if (bits >= 8) { out[k++] = (v >> (bits - 8)) & 255; bits -= 8; v &= (1 << bits) - 1; } }
+  return out;
+}
+async function pwBits(pw, salt, iter) {
+  const k = await crypto.subtle.importKey('raw', te(pw.normalize('NFC')), 'PBKDF2', false, ['deriveBits']);
+  return new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: iter }, k, 512));
+}
+async function rkKek(rk, salt) {
+  const k = await crypto.subtle.importKey('raw', rk, 'HKDF', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'HKDF', hash: 'SHA-256', salt, info: te('sisyfos återställningsnyckel v1') }, k, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+const aesKey = (raw, use) => crypto.subtle.importKey('raw', raw, 'AES-GCM', false, use);
+async function seal(key, bytes, aad) { const iv = rnd(12); return { iv: b64(iv), ct: b64(await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: te(aad) }, key, bytes)) }; }
+async function unseal(key, box, aad) { return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(box.iv), additionalData: te(aad) }, key, unb64(box.ct))); }
+async function pwBox(raw, pw) {
+  const salt = rnd(16), bits = await pwBits(pw, salt, ENC_ITER);
+  return { kdf: { name: 'PBKDF2-SHA-256', iter: ENC_ITER, salt: b64(salt) }, pw: await seal(await aesKey(bits.slice(0, 32), ['encrypt']), raw, AAD_KEY), pwAt: new Date().toISOString() };
+}
+async function rkBox(raw) {
+  const rk = rnd(20), salt = rnd(16);
+  return { rkStr: rkFormat(rk), box: { rk: { salt: b64(salt), ...(await seal(await rkKek(rk, salt), raw, AAD_KEY)) }, rkAt: new Date().toISOString() } };
+}
+// Ny boknyckel – returnerar valv, nyckel och återställningsnyckeln (visas en gång)
+async function encCreate(pw) {
+  const raw = rnd(32), r = await rkBox(raw);
+  const vault = { v: 1, id: b64(rnd(9)).replace(/[+/=]/g, ''), created: new Date().toISOString(), ...(await pwBox(raw, pw)), ...r.box };
+  const key = await aesKey(raw, ['encrypt', 'decrypt']);
+  return { vault, key, raw, rk: r.rkStr };
+}
+// Lås upp med lösenord eller återställningsnyckel → { raw, key }
+async function encUnlock(vault, { pw, rk }) {
+  let raw;
+  try {
+    if (rk != null) {
+      const b = rkParse(rk); if (!b) throw new Error('Återställningsnyckeln ska vara 32 tecken (8 grupper om 4).');
+      raw = await unseal(await rkKek(b, unb64(vault.rk.salt)), vault.rk, AAD_KEY);
+    } else {
+      const bits = await pwBits(pw, unb64(vault.kdf.salt), vault.kdf.iter);
+      raw = await unseal(await aesKey(bits.slice(0, 32), ['decrypt']), vault.pw, AAD_KEY);
+    }
+  } catch (e) { if (e?.name === 'OperationError') throw new Error(rk != null ? 'Återställningsnyckeln stämmer inte för den här boken.' : 'Fel lösenord.'); throw e; }
+  return { raw, key: await aesKey(raw, ['encrypt', 'decrypt']) };
+}
+async function gz(bytes, dir) {
+  const Cls = dir === 'zip' ? window.CompressionStream : window.DecompressionStream; if (!Cls) return null;
+  return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new Cls('gzip'))).arrayBuffer());
+}
+const vaultPublic = v => ({ v: v.v, id: v.id, created: v.created, kdf: v.kdf, pw: v.pw, pwAt: v.pwAt, rk: v.rk, rkAt: v.rkAt });
+async function encBookText(obj) {
+  const e = st.enc; let bytes = te(JSON.stringify(obj)), zip = null;
+  const z = await gz(bytes, 'zip'); if (z) { bytes = z; zip = 'gzip'; }
+  return JSON.stringify({ format: ENC_FORMAT, version: 1, app: APP_VERSION, saved: new Date().toISOString(), vault: vaultPublic(e.vault), zip, data: await seal(e.key, bytes, AAD_DATA) });
+}
+async function decBook(file, key) {
+  let bytes = await unseal(key, file.data, AAD_DATA);
+  if (file.zip === 'gzip') { const u = await gz(bytes, 'unzip'); if (!u) throw new Error('Den här webbläsaren kan inte packa upp filen – prova en nyare Chrome, Edge, Firefox eller Safari.'); bytes = u; }
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+async function encLoad() {
+  st.enc = null; if (!db || !encOk()) return;
+  try { const vault = await kvGet('vault'), key = await kvGet('vaultKey'); if (vault) st.enc = { vault, key: key || null }; } catch (_) {}
+}
+async function encStore(vault, key) {
+  st.enc = { vault, key };
+  if (db) { try { await kvSet('vault', vault); await kvSet('vaultKey', key); } catch (e) { toast('Krypteringen kunde inte sparas i webbläsaren: ' + e.message); } }
+  bc?.postMessage({ t: 'enc', from: tabId });
+}
+async function encForget() { st.enc = null; if (db) { await kvDel('vault').catch(() => {}); await kvDel('vaultKey').catch(() => {}); } bc?.postMessage({ t: 'enc', from: tabId }); }
+async function encSaveFile() {
+  if (!st.enc?.key) { encUnlockDlg('save'); return false; }
+  const name = fileSafe(`${R().book.name} ${today()}.sisyfos`);
+  try {
+    const txt = await encBookText(S);
+    if (await offerFile(name, te(txt), 'application/octet-stream')) { backedUp('krypt'); toast('En krypterad kopia av boken är sparad'); if (st.page === 'installningar') safetyRender(); return true; }
+  } catch (e) { toast('Den krypterade kopian kunde inte skapas: ' + e.message); }
+  return false;
+}
+
+/* Återställningsnyckeln som PDF att skriva ut, med QR-kod */
+function rkPdf(rk) {
+  const doc = makeDoc('Återställningsnyckel', `Sisyfos · ${R().book.name}`), { pdf } = doc;
+  pdfFacts(doc, [['Bok', R().book.name || '–'], ['Skapad', dLong(today())], ['Gäller', 'Krypterade kopior av boken – och senare boken på webben'], ['Nyckelns id', st.encNew?.vault.id || st.enc?.vault.id || '–']]);
+  pdfH2(doc, 'Nyckeln');
+  doc.ensure(190);
+  const top = doc.y, B = qrMatrix('SISYFOS ' + rk), N = B.length, mod = 4, q = 4 * mod, size = N * mod + 2 * q, qx = doc.x + doc.w - size;
+  pdf.rect(qx, top, size, size, '#ffffff');
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (B[r][c]) pdf.rect(qx + q + c * mod, top + q + r * mod, mod + 0.05, mod + 0.05, INK);
+  const g = rk.split('-');
+  [g.slice(0, 4).join('  '), g.slice(4).join('  ')].forEach((l, i) => pdf.text(doc.x, top + 30 + i * 28, l, { size: 19, bold: true }));
+  pdf.wrap('Skriv in nyckeln (med eller utan bindestreck) eller skanna QR-koden med telefonens kamera när du öppnar en krypterad kopia och har glömt lösenordet.', 9.5, false, doc.w - size - 24).forEach((l, i) => pdf.text(doc.x, top + 100 + i * 13, l, { size: 9.5, color: MUTED }));
+  doc.y = top + size + 18;
+  pdfH2(doc, 'Så förvarar du den'); doc.y += 4;
+  for (const t of [
+    'Skriv ut sidan och förvara den som en nyckel – i ett låst skåp, ett kassaskåp eller hos någon du litar på. Radera sedan PDF-filen från datorn och från hämtade filer.',
+    'Den som har nyckeln och en krypterad kopia kan läsa hela boken. Visa den inte för någon och fotografera den inte.',
+    'Glömmer du både lösenordet och nyckeln går boken inte att öppna – inte heller för Agrell Arkitektur, som gör Sisyfos. Ingen kan återställa den åt dig.',
+    'Du kan skapa en ny nyckel under Inställningar, avsnittet Spara boken. Då slutar den här att gälla för nya kopior, men gamla kopior öppnas fortfarande med den här.'
+  ]) { const ls = pdf.wrap(t, 9.5, false, doc.w - 14); doc.ensure(ls.length * 13 + 6); pdf.text(doc.x, doc.y, '•', { size: 9.5 }); ls.forEach((l, i) => pdf.text(doc.x + 12, doc.y + i * 13, l, { size: 9.5 })); doc.y += ls.length * 13 + 6; }
+  doc.y += 14; doc.ensure(40);
+  pdf.text(doc.x, doc.y, 'Förvaras:', { size: 9.5, color: MUTED }); pdf.line(doc.x + 52, doc.y + 2, doc.x + doc.w, doc.y + 2, 0.5, MUTED);
+  return doc.finish();
+}
+function rkQrSvg(rk) {
+  const B = qrMatrix('SISYFOS ' + rk), N = B.length; let d = '';
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (B[r][c]) d += `M${c + 4} ${r + 4}h1v1h-1z`;
+  return `<svg class="rk-qr" viewBox="0 0 ${N + 8} ${N + 8}" role="img" aria-label="QR-kod med återställningsnyckeln"><rect width="${N + 8}" height="${N + 8}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
+}
+
+/* Dialoger */
+const pwHint = () => `<p class="muted small">Minst ${PW_MIN} tecken. Ett par ovanliga ord med mellanslag går bra – längd skyddar bättre än krångel. Lösenordet sparas ingenstans och kan inte återställas; det är därför återställningsnyckeln finns.</p>`;
+function pwCheck(a, b) { if (a.length < PW_MIN) return `Lösenordet behöver minst ${PW_MIN} tecken.`; if (a !== b) return 'Lösenorden är inte lika.'; return ''; }
+const busy = (btn, on, label) => { if (!btn) return; btn.disabled = on; if (on) { btn.dataset.l = btn.innerHTML; btn.innerHTML = label || 'Låser …'; } else if (btn.dataset.l) btn.innerHTML = btn.dataset.l; };
+function encSetupDlg() {
+  if (!encOk()) { confirmPlain('Kryptering', 'Den här webbläsaren saknar kryptering (Web Crypto). Öppna Sisyfos över https i en uppdaterad webbläsare.', 'Stäng', 'closeDlg'); return; }
+  st.encNew = null;
+  openDlg(`<h2 id="dlgTitle">Slå på kryptering</h2><p>Med kryptering kan du spara boken som en <b>krypterad kopia</b> (.sisyfos) som bara går att öppna med ditt lösenord eller din återställningsnyckel. Samma nyckel används när boken kan sparas på webben.</p><p class="muted small">Boken i den här webbläsaren påverkas inte – den ligger kvar som förut.</p>
+   <div class="form"><div class="fld full"><label for="encPw">Lösenord${REQ}</label><input type="password" id="encPw" autocomplete="new-password"></div><div class="fld full"><label for="encPw2">Samma lösenord igen${REQ}</label><input type="password" id="encPw2" autocomplete="new-password" data-enter="encCreate"></div><div class="fld full">${pwHint()}</div><div class="err fld full" id="encErr"></div></div>
+   <div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="encCreate">${ic('lock')}Skapa nycklar</button></div>`);
+}
+function rkShowDlg(rk, first) {
+  openDlg(`<h2 id="dlgTitle">${first ? 'Din återställningsnyckel' : 'Ny återställningsnyckel'}</h2><p>Med nyckeln öppnar du boken om du glömmer lösenordet. Den visas <b>bara nu</b>. Ladda ner PDF:en och skriv ut den – eller skriv av nyckeln för hand.</p>
+   <div class="rk-box">${rkQrSvg(rk)}<div class="rk-txt"><code class="rk-key">${rk.split('-').map(g => `<span>${g}</span>`).join('')}</code><div class="btn-row"><button class="btn primary" data-act="rkPdf">${ic('export')}Ladda ner PDF att skriva ut</button><button class="btn ghost" data-act="rkCopy">${ic('copy')}Kopiera</button></div></div></div>
+   <div class="form"><div class="fld full"><label for="rkLast">Skriv de fyra sista tecknen i nyckeln för att bekräfta att du har sparat den${REQ}</label><input id="rkLast" class="mono" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" data-enter="rkConfirm"></div><div class="err fld full" id="encErr"></div></div>
+   <div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="rkConfirm">${ic('check')}${first ? 'Klart – slå på kryptering' : 'Klart – använd den nya nyckeln'}</button></div>`, 'wide');
+}
+// what: 'save' (spara krypterad kopia), 'pw' (byt lösenord), 'rk' (ny återställningsnyckel)
+function encUnlockDlg(what) {
+  const T = { save: ['Lås upp krypteringen', 'Skriv lösenordet för att spara en krypterad kopia.', 'Lås upp'], pw: ['Byt lösenord', 'Skriv det nuvarande lösenordet – eller återställningsnyckeln om du har glömt det – och sedan det nya.', 'Byt lösenord'], rk: ['Ny återställningsnyckel', 'Skriv lösenordet. Den gamla nyckeln slutar då gälla för nya kopior.', 'Skapa ny nyckel'] }[what];
+  openDlg(`<h2 id="dlgTitle">${T[0]}</h2><p>${T[1]}</p><div class="form" data-what="${what}">
+   <div class="fld full" id="ulPwF"><label for="ulPw">${what === 'pw' ? 'Nuvarande lösenord' : 'Lösenord'}</label><input type="password" id="ulPw" autocomplete="current-password" ${what === 'pw' ? '' : 'data-enter="encUnlockGo"'}></div>
+   ${what === 'pw' ? `<div class="fld full" hidden id="ulRkF"><label for="ulRk">Återställningsnyckel</label><input id="ulRk" class="mono" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"></div><div class="fld full"><button type="button" class="linkish" data-act="ulUseRk">Jag har glömt lösenordet – använd återställningsnyckeln</button></div>
+   <div class="fld full"><label for="encPw">Nytt lösenord${REQ}</label><input type="password" id="encPw" autocomplete="new-password"></div><div class="fld full"><label for="encPw2">Samma nya lösenord igen${REQ}</label><input type="password" id="encPw2" autocomplete="new-password" data-enter="encUnlockGo"></div><div class="fld full">${pwHint()}</div>` : ''}
+   <div class="err fld full" id="encErr"></div></div>
+   <div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="encUnlockGo" data-what="${what}">${ic('lock')}${T[2]}</button></div>`);
+}
+// Öppna en krypterad fil (import)
+function encOpenDlg(file) {
+  st.encFile = file;
+  openDlg(`<h2 id="dlgTitle">Öppna krypterad bok</h2><p>Filen är en krypterad kopia${file.saved ? `, sparad ${esc(fwhen(file.saved))}` : ''}${file.app ? ` med Sisyfos ${esc(file.app)}` : ''}. Den nuvarande boken i den här webbläsaren ersätts.</p>
+   <div class="form"><div class="fld full" id="ulPwF"><label for="ulPw">Lösenord</label><input type="password" id="ulPw" autocomplete="current-password" data-enter="encOpenGo"></div>
+   <div class="fld full" hidden id="ulRkF"><label for="ulRk">Återställningsnyckel</label><input id="ulRk" class="mono" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" data-enter="encOpenGo"></div>
+   <div class="fld full"><button type="button" class="linkish" data-act="ulUseRk">Jag har glömt lösenordet – använd återställningsnyckeln</button></div><div class="err fld full" id="encErr"></div></div>
+   <div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="encOpenGo">${ic('import')}Öppna</button></div>`);
+}
+function encNewPwDlg() {
+  openDlg(`<h2 id="dlgTitle">Välj ett nytt lösenord</h2><p>Boken är öppnad med återställningsnyckeln. Välj ett nytt lösenord för krypterade kopior – nyckeln fortsätter att gälla.</p>
+   <div class="form"><div class="fld full"><label for="encPw">Nytt lösenord${REQ}</label><input type="password" id="encPw" autocomplete="new-password"></div><div class="fld full"><label for="encPw2">Samma lösenord igen${REQ}</label><input type="password" id="encPw2" autocomplete="new-password" data-enter="encNewPwGo"></div><div class="fld full">${pwHint()}</div><div class="err fld full" id="encErr"></div></div>
+   <div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Senare</button><button class="btn primary" data-act="encNewPwGo">${ic('lock')}Spara lösenordet</button></div>`);
+}
+function encSectionHtml() {
+  const e = st.enc;
+  let h = `<h3 class="dsub">Kryptering</h3>`;
+  if (!encOk()) return h + `<p class="muted small">Kryptering kräver att Sisyfos öppnas över https i en uppdaterad webbläsare.</p>`;
+  if (!e) return h + `<p class="muted small">Spara boken som en <b>krypterad kopia</b> (.sisyfos) som bara kan öppnas med ditt lösenord eller en återställningsnyckel som du skriver ut. Samma nyckel används när boken kan sparas på webben.</p><div class="btn-row"><button class="btn" data-act="encSetup">${ic('lock')}Slå på kryptering …</button></div>`;
+  const row = (k, v) => `<div class="sf-row"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+  h += `<div class="sf-grid">${row('Status', `${ic('check')} På sedan ${fwhen(e.vault.created)} · AES-256, lösenordet sträcks med PBKDF2 (${nk(e.vault.kdf.iter)} varv)`)}${row('Lösenord', `Senast ändrat ${fwhen(e.vault.pwAt || e.vault.created)}${e.key ? '' : ' · <span class="neg">låst på den här enheten</span>'}`)}${row('Återställningsnyckel', `Skapad ${fwhen(e.vault.rkAt || e.vault.created)} · id ${esc(e.vault.id)}`)}</div>`;
+  h += `<div class="btn-row enc-acts"><button class="btn primary" data-act="encSave">${ic('save')}Spara krypterad kopia</button><button class="btn ghost" data-act="encPw">Byt lösenord …</button><button class="btn ghost" data-act="encRk">Ny återställningsnyckel …</button><button class="btn ghost" data-act="encOff">Stäng av …</button></div>`;
+  return h;
+}
+
+// QR-kod (byte-läge, felrättning M, version 1–6) – tillräckligt för återställningsnyckeln
+function qrMatrix(text) {
+  const data = [...new TextEncoder().encode(text)];
+  const V = [null, [10, 1, 16], [16, 1, 28], [26, 1, 44], [18, 2, 32], [24, 2, 43], [16, 4, 27]];
+  let ver = 1; while (ver < 7 && V[ver][1] * V[ver][2] < data.length + 2) ver++;
+  if (ver > 6) throw new Error('För lång text för QR-koden');
+  const [ecn, nb, dn] = V[ver], cap = nb * dn, bits = [];
+  const put = (v, n) => { for (let i = n - 1; i >= 0; i--) bits.push((v >> i) & 1); };
+  put(4, 4); put(data.length, 8); data.forEach(b => put(b, 8));
+  put(0, Math.min(4, cap * 8 - bits.length)); while (bits.length % 8) bits.push(0);
+  const cw = []; for (let i = 0; i < bits.length; i += 8) cw.push(parseInt(bits.slice(i, i + 8).join(''), 2));
+  for (let p = 0; cw.length < cap; p++) cw.push(p % 2 ? 0x11 : 0xec);
+  // Reed–Solomon i GF(256)
+  const EX = [], LG = []; for (let i = 0, x = 1; i < 255; i++) { EX[i] = x; LG[x] = i; x <<= 1; if (x & 256) x ^= 0x11d; }
+  const mul = (a, b) => a && b ? EX[(LG[a] + LG[b]) % 255] : 0;
+  let gen = [1]; for (let i = 0; i < ecn; i++) { const g = new Array(gen.length + 1).fill(0); gen.forEach((c, j) => { g[j] ^= c; g[j + 1] ^= mul(c, EX[i]); }); gen = g; }
+  const rs = blk => { const r = new Array(ecn).fill(0); for (const b of blk) { const f = b ^ r.shift(); r.push(0); gen.slice(1).forEach((c, j) => { r[j] ^= mul(c, f); }); } return r; };
+  const blocks = []; for (let b = 0; b < nb; b++) blocks.push(cw.slice(b * dn, b * dn + dn));
+  const ecs = blocks.map(rs), out = [];
+  for (let i = 0; i < dn; i++) blocks.forEach(b => out.push(b[i]));
+  for (let i = 0; i < ecn; i++) ecs.forEach(e => out.push(e[i]));
+  // Matris
+  const N = 17 + 4 * ver, M = [...Array(N)].map(() => new Array(N).fill(null)), F = [...Array(N)].map(() => new Array(N).fill(false));
+  const set = (r, c, v) => { M[r][c] = v; F[r][c] = true; };
+  const finder = (r0, c0) => { for (let r = -1; r <= 7; r++) for (let c = -1; c <= 7; c++) { const y = r0 + r, x = c0 + c; if (y < 0 || x < 0 || y >= N || x >= N) continue; const d = Math.max(Math.abs(r - 3), Math.abs(c - 3)); set(y, x, d !== 2 && d !== 4); } };
+  finder(0, 0); finder(0, N - 7); finder(N - 7, 0);
+  for (let i = 8; i < N - 8; i++) { set(6, i, i % 2 === 0); set(i, 6, i % 2 === 0); }
+  if (ver > 1) { const a = 4 * ver + 10; for (let r = -2; r <= 2; r++) for (let c = -2; c <= 2; c++) set(a + r, a + c, Math.max(Math.abs(r), Math.abs(c)) !== 1); }
+  set(N - 8, 8, true);
+  for (let i = 0; i < 9; i++) { F[8][i] = F[i][8] = true; } for (let i = 0; i < 8; i++) { F[8][N - 1 - i] = F[N - 1 - i][8] = true; }
+  const all = []; out.forEach(b => put2(all, b)); function put2(a, b) { for (let i = 7; i >= 0; i--) a.push((b >> i) & 1); }
+  let k = 0;
+  for (let c = N - 1; c > 0; c -= 2) { if (c === 6) c = 5; for (let i = 0; i < N; i++) { const up = ((c + 1) & 2) === 0; const r = up ? N - 1 - i : i; for (let d = 0; d < 2; d++) { const x = c - d; if (!F[r][x]) { M[r][x] = k < all.length ? !!all[k] : false; k++; } } } }
+  const MASKS = [(r, c) => (r + c) % 2 === 0, r => r % 2 === 0, (r, c) => c % 3 === 0, (r, c) => (r + c) % 3 === 0, (r, c) => ((r >> 1) + Math.floor(c / 3)) % 2 === 0, (r, c) => (r * c) % 2 + (r * c) % 3 === 0, (r, c) => ((r * c) % 2 + (r * c) % 3) % 2 === 0, (r, c) => ((r + c) % 2 + (r * c) % 3) % 2 === 0];
+  const fmt = mask => { const d = (0 << 3) | mask; let v = d << 10; for (let i = 14; i >= 10; i--) if (v >> i & 1) v ^= 0x537 << (i - 10); return ((d << 10) | v) ^ 0x5412; };
+  const apply = (A, mask) => {
+    const B = A.map(r => r.slice());
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (!F[r][c] && MASKS[mask](r, c)) B[r][c] = !B[r][c];
+    const f = fmt(mask), bit = i => !!((f >> i) & 1);
+    for (let i = 0; i <= 5; i++) B[i][8] = bit(i);
+    B[7][8] = bit(6); B[8][8] = bit(7); B[8][7] = bit(8);
+    for (let i = 9; i < 15; i++) B[8][14 - i] = bit(i);
+    for (let i = 0; i < 8; i++) B[8][N - 1 - i] = bit(i);
+    for (let i = 8; i < 15; i++) B[N - 15 + i][8] = bit(i);
+    B[N - 8][8] = true; return B;
+  };
+  const score = B => {
+    let s = 0;
+    for (let t = 0; t < 2; t++) for (let i = 0; i < N; i++) { let run = 1; for (let j = 1; j < N; j++) { const a = t ? B[j][i] : B[i][j], b = t ? B[j - 1][i] : B[i][j - 1]; if (a === b) { run++; if (run === 5) s += 3; else if (run > 5) s++; } else run = 1; } }
+    for (let r = 0; r < N - 1; r++) for (let c = 0; c < N - 1; c++) { const v = B[r][c]; if (v === B[r + 1][c] && v === B[r][c + 1] && v === B[r + 1][c + 1]) s += 3; }
+    const dark = B.flat().filter(Boolean).length; s += Math.floor(Math.abs(dark * 20 / (N * N) - 10)) * 10;
+    return s;
+  };
+  let best = null; for (let m = 0; m < 8; m++) { const B = apply(M, m), sc = score(B); if (!best || sc < best.sc) best = { B, sc }; }
+  return best.B;
+}
+
 /* ── Autospar till mapp (File System Access API – Chrome och Edge på dator) ── */
 const dirSupported = () => 'showDirectoryPicker' in window && window.isSecureContext && !narrow();
 async function dirRestore() {
@@ -1945,7 +2195,7 @@ async function safetyRender() {
   h += row('Lagras i', db ? `Webbläsarens databas (IndexedDB) med en spegel i localStorage${st.mirrorErr ? ' – <span class="neg">spegeln fick inte plats</span>' : ''}` : `Bara localStorage – ${esc(st.idbErr || 'IndexedDB saknas')}. Ögonblicksbilder fungerar inte här.`);
   h += row('Beständig lagring', st.persisted ? `${ic('check')} Ja – webbläsaren rensar inte boken när utrymmet tryter` : st.persisted === false ? `Nej – webbläsaren kan rensa boken om utrymmet tryter. Installera Sisyfos som app eller tillåt beständig lagring.` : 'Okänt i den här webbläsaren', st.persisted === false ? `<button class="btn sm" data-act="askPersist">Be om beständig lagring</button>` : '');
   if (st.usage) h += row('Utrymme', `${fsize(st.usage.used)} använt av ${fsize(st.usage.quota)}`);
-  h += row('Senast sparade kopia', m.lastBackup ? `${fwhen(m.lastBackup)} · ${m.lastBackupHow === 'mapp' ? 'autospar till mapp' : 'sparad som fil'}${n >= backupDays() && backupDays() > 0 ? ' · <span class="neg">dags igen</span>' : ''}` : '<span class="neg">Ingen än</span>', `<button class="btn sm" data-act="backupFile">${ic('save')}Spara kopia som fil</button>`);
+  h += row('Senast sparade kopia', m.lastBackup ? `${fwhen(m.lastBackup)} · ${m.lastBackupHow === 'mapp' ? 'autospar till mapp' : m.lastBackupHow === 'krypt' ? 'krypterad kopia' : 'sparad som fil'}${n >= backupDays() && backupDays() > 0 ? ' · <span class="neg">dags igen</span>' : ''}` : '<span class="neg">Ingen än</span>', `<button class="btn sm" data-act="backupFile">${ic('save')}Spara kopia som fil</button>`);
   h += `<div class="sf-row"><label class="k" for="bkDays">Påminn om att spara kopia</label><span class="v"><select id="bkDays">${[[7, 'efter en vecka'], [14, 'efter två veckor'], [30, 'efter en månad'], [0, 'aldrig']].map(([v, l]) => `<option value="${v}" ${backupDays() === v ? 'selected' : ''}>${l}</option>`).join('')}</select></span></div>`;
   if (dirSupported() || st.dir) {
     h += row('Autospar till mapp', dir ? `${dir.ok ? ic('check') : ic('alert')} ”${esc(dir.name)}”${dir.ok ? (dir.last ? ` · senast ${fwhen(dir.last.toISOString())}` : '') : ' – behöver godkännas igen'}${dir.err ? ` · <span class="neg">${esc(dir.err)}</span>` : ''}` : 'Av. Välj en mapp (t.ex. i Dokument eller en molnmapp) så sparar Sisyfos boken där vid varje ändring, plus en kopia per dag.',
@@ -1953,6 +2203,7 @@ async function safetyRender() {
   } else h += row('Autospar till mapp', 'Finns i Chrome och Edge på dator. Här: spara kopia som fil regelbundet.');
   h += row('Som app', standalone() ? `${ic('check')} Installerad – startar utan nät` : isIOS() ? 'Lägg till på hemskärmen via Dela. Hemskärmsappen har en egen lagring – flytta boken med en fil.' : 'Kan installeras och startar då utan nät.', standalone() ? '' : `<button class="btn sm" data-act="installApp">Så gör du …</button>`);
   h += `</div>`;
+  h += encSectionHtml();
   h += `<h3 class="dsub">Ögonblicksbilder</h3><p class="muted small">Sisyfos sparar läget automatiskt före varje dags första ändring (${SNAP_DAILY} dagar bakåt) och före stora ändringar som import, ny bok och uppgradering (${SNAP_EVENT} st). De ligger bara i den här webbläsaren – de ersätter inte en kopia som fil.</p>`;
   h += snaps.length ? `<ul class="snaps">${snaps.map(x => `<li><span class="sn-w">${fwhen(x.at)}</span><span class="sn-r">${esc(x.reason)}${x.name ? ` <span class="muted">· ${esc(x.name)}</span>` : ''}</span><span class="sn-s mono muted">${x.posts} poster · ${fsize(x.size)}</span><button class="btn sm ghost" data-act="snapDl" data-id="${esc(x.id)}" title="Ladda ner som fil">${ic('export')}</button><button class="btn sm" data-act="snapAsk" data-id="${esc(x.id)}">Återställ …</button></li>`).join('')}</ul>` : `<p class="muted small">${db ? 'Inga ögonblicksbilder än – den första tas när du ändrar något en ny dag.' : 'Inte tillgängligt i den här webbläsaren.'}</p>`;
   box.innerHTML = h;
@@ -3193,7 +3444,7 @@ function aboutDlg() {
 }
 // Data och integritet – vilken data Sisyfos hanterar, var den finns och vad som skickas
 function dataDlg() {
-  openDlg(`<div class="about data-info"><h2 id="dlgTitle">Data och integritet</h2><p class="muted small">Gäller Sisyfos ${APP_VERSION} (alfa). Texten uppdateras när något ändras – till exempel när lagring på webben kommer.</p>
+  openDlg(`<div class="about data-info"><h2 id="dlgTitle">Data och integritet</h2><p class="muted small">Gäller Sisyfos ${APP_VERSION} (alfa). Texten uppdateras när något ändras – nästa gång när boken kan sparas krypterad på webben.</p>
   <h3>Vad boken innehåller</h3>
   <ul><li><b>Företaget:</b> namn, organisationsnummer, adress, e-post, telefon, webbplats och logga.</li>
   <li><b>Kunder:</b> namn, organisations- eller personnummer, referens, kontaktperson, e-post, telefon, adresser och anteckningar.</li>
@@ -3205,6 +3456,7 @@ function dataDlg() {
   <h3>Var den sparas</h3>
   <ul><li><b>Bara i den här webbläsaren, på den här enheten</b> (IndexedDB med en kopia i webbläsarens lokala lagring), tillsammans med automatiska ögonblicksbilder. En app installerad på iPhones hemskärm har en egen, separat lagring.</li>
   <li><b>Filer du själv sparar</b> – kopior av boken, autospar till en mapp, PDF- och CSV-rapporter – är vanliga, okrypterade filer. Hantera dem som andra affärshandlingar.</li>
+  <li><b>Krypterade kopior</b> (.sisyfos, när du slagit på kryptering under <i>Spara boken</i>) kan bara öppnas med ditt lösenord eller din utskrivna återställningsnyckel. Lösenordet sparas ingenstans. Glömmer du båda går kopian inte att öppna – inte heller för oss.</li>
   <li><b>Ingen annan kan se boken</b> – inte heller Agrell Arkitektur, som gör Sisyfos. Det betyder också att ingen kan återställa den åt dig: rensar du webbplatsdata eller tappar enheten är boken borta om du inte har en kopia.</li></ul>
   <h3>Vad som skickas över nätet</h3>
   <ul><li><b>Appen hämtas</b> från agrellarkitektur.se. Webbhotellet för, som alla webbservrar, tekniska loggar över anrop (IP-adress, tidpunkt, vilken fil). Inget ur boken följer med.</li>
@@ -3267,7 +3519,7 @@ function exportDlg() {
   openDlg(`<h2 id="dlgTitle">Exportera boken</h2><p>Hela boken som JSON (register och tidlogg, okrypterad). Spara den som fil eller kopiera texten.</p><div class="fld"><label for="exTxt">Boken</label><textarea id="exTxt" readonly>${esc(json)}</textarea></div><div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Stäng</button><button class="btn" data-act="copyExport">${ic('copy')}Kopiera</button><button class="btn primary" data-act="wzExport">${ic('export')}Spara som fil</button></div>`);
 }
 function importDlg() {
-  openDlg(`<h2 id="dlgTitle">Importera bok</h2><p>Välj en exporterad fil eller klistra in innehållet. Den nuvarande boken i den här webbläsaren ersätts.</p><div class="form"><div class="fld full"><label for="imFile">Fil</label><input type="file" id="imFile" accept=".json,application/json"></div><div class="fld full"><label for="imTxt">eller klistra in</label><textarea id="imTxt" placeholder='{"format":"sisyfos", …}'></textarea></div><div class="err fld full" id="imErr"></div></div><div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="doImport">${ic('import')}Importera</button></div>`);
+  openDlg(`<h2 id="dlgTitle">Importera bok</h2><p>Välj en exporterad fil eller en krypterad kopia (.sisyfos), eller klistra in innehållet. Den nuvarande boken i den här webbläsaren ersätts.</p><div class="form"><div class="fld full"><label for="imFile">Fil</label><input type="file" id="imFile" accept=".json,.sisyfos,application/json"></div><div class="fld full"><label for="imTxt">eller klistra in</label><textarea id="imTxt" placeholder='{"format":"sisyfos", …}'></textarea></div><div class="err fld full" id="imErr"></div></div><div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="doImport">${ic('import')}Importera</button></div>`);
 }
 function confirmDlg(title, text, okLabel, act) {
   openDlg(`<h2 id="dlgTitle">${title}</h2><p>${text}</p><div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn" data-act="exportBook">${ic('export')}Exportera först</button><button class="btn primary" data-act="${act}">${okLabel}</button></div>`);
@@ -3300,7 +3552,7 @@ function openOrg() {
 }
 function brandMenu(btn) {
   const m = $('#menu');
-  m.innerHTML = `<div class="mh">${esc(R().book.name)}</div><hr><button role="menuitem" data-act="page" data-page="installningar">${ic('settings')}Inställningar …</button>${simple() ? '' : `<button role="menuitem" data-act="personDlg">${ic('person')}Anställning, saldo och semester …</button>`}<button role="menuitem" data-act="numbering">${ic('hash')}Projektnummer …</button><button role="menuitem" data-act="quickHelp">${ic('bolt')}Smartshell och förkortningar …</button><hr><button role="menuitem" data-act="backupFile">${ic('save')}Spara kopia som fil</button><button role="menuitem" data-act="storageInfo">${ic('folder')}Spara och återställ …</button><button role="menuitem" data-act="exportBook">${ic('export')}Exportera boken …</button><button role="menuitem" data-act="importBook">${ic('import')}Importera bok …</button><hr><button role="menuitem" data-act="askNew">${ic('newbook')}Ny tom bok</button><button role="menuitem" data-act="askSample">${ic('sample')}Ladda exempelboken</button><hr><button role="menuitem" data-act="about">${ic('info')}Om Sisyfos</button><button role="menuitem" data-act="dataInfo">${ic('lock')}Data och integritet</button><button role="menuitem" data-act="feedback">${ic('mail')}Skicka synpunkter …</button>${standalone() ? '' : `<button role="menuitem" data-act="installApp">${ic('import')}Installera som app …</button>`}<hr><div class="mh">Allt sparas bara på den här enheten. Ingen server, inget moln.</div>`;
+  m.innerHTML = `<div class="mh">${esc(R().book.name)}</div><hr><button role="menuitem" data-act="page" data-page="installningar">${ic('settings')}Inställningar …</button>${simple() ? '' : `<button role="menuitem" data-act="personDlg">${ic('person')}Anställning, saldo och semester …</button>`}<button role="menuitem" data-act="numbering">${ic('hash')}Projektnummer …</button><button role="menuitem" data-act="quickHelp">${ic('bolt')}Smartshell och förkortningar …</button><hr><button role="menuitem" data-act="backupFile">${ic('save')}Spara kopia som fil</button>${st.enc ? `<button role="menuitem" data-act="encSave">${ic('lock')}Spara krypterad kopia</button>` : ''}<button role="menuitem" data-act="storageInfo">${ic('folder')}Spara och återställ …</button><button role="menuitem" data-act="exportBook">${ic('export')}Exportera boken …</button><button role="menuitem" data-act="importBook">${ic('import')}Importera bok …</button><hr><button role="menuitem" data-act="askNew">${ic('newbook')}Ny tom bok</button><button role="menuitem" data-act="askSample">${ic('sample')}Ladda exempelboken</button><hr><button role="menuitem" data-act="about">${ic('info')}Om Sisyfos</button><button role="menuitem" data-act="dataInfo">${ic('lock')}Data och integritet</button><button role="menuitem" data-act="feedback">${ic('mail')}Skicka synpunkter …</button>${standalone() ? '' : `<button role="menuitem" data-act="installApp">${ic('import')}Installera som app …</button>`}<hr><div class="mh">Allt sparas bara på den här enheten. Ingen server, inget moln.</div>`;
   m.hidden = false; btn.setAttribute('aria-expanded', 'true');
   const r = btn.getBoundingClientRect(); m.style.left = Math.max(8, r.left) + 'px'; m.style.top = (r.bottom + 6) + 'px';
   $('button', m).focus();
@@ -3480,6 +3732,57 @@ const A = {
   },
   brandMenu: el => { if (!$('#menu').hidden) { closeFloating(); return; } brandMenu(el); },
   exportBook: () => { closeFloating(); exportDlg(); },
+  encSetup: () => { closeFloating(); encSetupDlg(); },
+  encCreate: async () => {
+    const err = $('#encErr'), a = $('#encPw').value, m = pwCheck(a, $('#encPw2').value); err.textContent = m; if (m) return;
+    const btn = $('#dlg [data-act="encCreate"]'); busy(btn, true, 'Skapar nycklar …');
+    try { st.encNew = await encCreate(a); rkShowDlg(st.encNew.rk, true); } catch (e) { busy(btn, false); err.textContent = 'Nycklarna kunde inte skapas: ' + e.message; }
+  },
+  rkPdf: () => { const n = st.encNew; if (!n) return; offerFile(fileSafe(`Återställningsnyckel ${R().book.name} ${today()}.pdf`), rkPdf(n.rk)); toast('Skriv ut PDF:en och radera sedan filen'); },
+  rkCopy: () => { const n = st.encNew; if (!n) return; try { navigator.clipboard.writeText(n.rk).then(() => toast('Nyckeln är kopierad – klistra in den där du förvarar den, inte i ett vanligt dokument'), () => toast('Kunde inte kopiera – skriv av nyckeln')); } catch (_) { toast('Kunde inte kopiera – skriv av nyckeln'); } },
+  rkConfirm: async () => {
+    const n = st.encNew, err = $('#encErr'); if (!n) return;
+    if ($('#rkLast').value.trim().toUpperCase() !== n.rk.slice(-4)) { err.textContent = 'Tecknen stämmer inte med slutet av nyckeln.'; $('#rkLast').select(); return; }
+    const first = !n.renew; n.raw?.fill?.(0);
+    await encStore(n.vault, n.key); st.encNew = null; closeDlg();
+    toast(first ? 'Krypteringen är på' : 'Den nya återställningsnyckeln gäller', first ? { label: 'Spara krypterad kopia', fn: () => encSaveFile() } : null);
+    if (st.page === 'installningar') safetyRender();
+  },
+  encSave: () => { closeFloating(); encSaveFile(); },
+  encPw: () => { closeFloating(); encUnlockDlg('pw'); },
+  encRk: () => { closeFloating(); encUnlockDlg('rk'); },
+  encOff: () => confirmPlain('Stäng av krypteringen', 'Nycklarna tas bort från den här webbläsaren. Krypterade kopior som redan finns går fortfarande att öppna med lösenordet eller återställningsnyckeln. Boken påverkas inte.', 'Stäng av', 'encOffGo'),
+  encOffGo: async () => { await encForget(); closeDlg(); toast('Krypteringen är avstängd på den här enheten'); if (st.page === 'installningar') safetyRender(); },
+  ulUseRk: el => { const rk = $('#ulRkF'), pw = $('#ulPwF'); if (!rk) return; const on = rk.hidden; rk.hidden = !on; pw.hidden = on; el.textContent = on ? 'Använd lösenordet i stället' : 'Jag har glömt lösenordet – använd återställningsnyckeln'; (on ? $('#ulRk') : $('#ulPw')).focus(); },
+  encUnlockGo: async () => {
+    const what = $('#dlg .form')?.dataset.what, err = $('#encErr'), useRk = $('#ulRkF') && !$('#ulRkF').hidden, e = st.enc; err.textContent = ''; if (!e) return;
+    let np = null; if (what === 'pw') { np = $('#encPw').value; const m = pwCheck(np, $('#encPw2').value); if (m) { err.textContent = m; return; } }
+    const btn = $('#dlg [data-act="encUnlockGo"]'); busy(btn, true);
+    try {
+      const u = await encUnlock(e.vault, useRk ? { rk: $('#ulRk').value } : { pw: $('#ulPw').value });
+      if (what === 'pw') { const vault = { ...e.vault, ...(await pwBox(u.raw, np)) }; u.raw.fill(0); await encStore(vault, u.key); closeDlg(); toast('Lösenordet är bytt'); }
+      else if (what === 'rk') { const r = await rkBox(u.raw); u.raw.fill(0); st.encNew = { vault: { ...e.vault, ...r.box }, key: u.key, rk: r.rkStr, renew: true }; rkShowDlg(r.rkStr, false); return; }
+      else { u.raw.fill(0); await encStore(e.vault, u.key); closeDlg(); encSaveFile(); }
+      if (st.page === 'installningar') safetyRender();
+    } catch (x) { busy(btn, false); err.textContent = x.message; }
+  },
+  encOpenGo: async () => {
+    const f = st.encFile, err = $('#encErr'), useRk = !$('#ulRkF').hidden; err.textContent = ''; if (!f) return;
+    const btn = $('#dlg [data-act="encOpenGo"]'); busy(btn, true, 'Låser upp …');
+    try {
+      const u = await encUnlock(f.vault, useRk ? { rk: $('#ulRk').value } : { pw: $('#ulPw').value });
+      const book = await decBook(f, u.key);
+      replaceBook(book, 'Före import'); st.encFile = null;
+      if (encOk()) { await encStore({ ...f.vault }, u.key); }
+      if (useRk) { st.encRaw = u.raw; encNewPwDlg(); } else { u.raw.fill(0); toast('Den krypterade boken är öppnad – krypteringen följer med'); }
+    } catch (x) { busy(btn, false); err.textContent = x instanceof SyntaxError ? 'Filen gick att låsa upp men innehållet är skadat.' : x.message; }
+  },
+  encNewPwGo: async () => {
+    const err = $('#encErr'), a = $('#encPw').value, m = pwCheck(a, $('#encPw2').value); err.textContent = m; if (m || !st.encRaw || !st.enc) return;
+    const btn = $('#dlg [data-act="encNewPwGo"]'); busy(btn, true);
+    try { const vault = { ...st.enc.vault, ...(await pwBox(st.encRaw, a)) }; st.encRaw.fill(0); st.encRaw = null; await encStore(vault, st.enc.key); closeDlg(); toast('Det nya lösenordet gäller för krypterade kopior'); }
+    catch (x) { busy(btn, false); err.textContent = x.message; }
+  },
   importBook: () => { closeFloating(); importDlg(); },
   copyExport: () => {
     const ta = $('#exTxt');
@@ -3491,7 +3794,9 @@ const A = {
     try {
       const f = $('#imFile').files[0]; const txt = f ? await f.text() : $('#imTxt').value;
       if (!txt.trim()) { err.textContent = 'Välj en fil eller klistra in en exporterad bok.'; return; }
-      replaceBook(JSON.parse(txt), 'Före import'); toast('Boken är importerad');
+      const j = JSON.parse(txt);
+      if (j?.format === ENC_FORMAT) { if (!encOk()) throw new Error('Den här webbläsaren kan inte låsa upp krypterade filer.'); encOpenDlg(j); return; }
+      replaceBook(j, 'Före import'); toast('Boken är importerad');
     } catch (e) { err.textContent = e instanceof SyntaxError ? 'Texten är inte giltig JSON. Kontrollera att hela exporten kom med.' : e.message; }
   },
   askNew: () => { closeFloating(); newBookWizard(); },
@@ -3585,6 +3890,7 @@ document.addEventListener('keydown', ev => {
     return;
   }
   if (t.id === 'quickIn' && ev.key === 'Enter') { ev.preventDefault(); shellEnter(); return; }
+  if (t.dataset?.enter && ev.key === 'Enter') { ev.preventDefault(); A[t.dataset.enter]?.(t); return; }
   if (t.id === 'cfType' && ev.key === 'Enter') {
     ev.preventDefault(); const w = t.value.trim().toLowerCase();
     if (t.dataset.words.split(' ').includes(w)) A[t.dataset.actOk]?.(t); else { t.classList.add('bad'); t.select(); toast(`Skriv ${t.dataset.words.split(' ').join(' eller ')} – eller Esc för att avbryta`); }
@@ -4788,7 +5094,7 @@ const SHC = [
   { k: 'status', w: ['aktiv', 'aktivera', 'inaktiv', 'vila', 'avsluta', 'avsl'], g: 'Ändra', t: 'Ändra status', ex: [['avsluta strand', 'avslutar projektet'], ['inaktiv strand', 'sätter det som inaktivt'], ['aktiv strand', 'aktivt igen']] },
   { k: 'ask', w: ['?', 'hjälp'], g: 'Frågor', t: 'Frågor – svaret visas i panelen', ex: [['? strand', 'budget, öppet, senaste tid'], ['? öppet', 'allt att fakturera, äldst först'], ['? saldo', 'kompsaldo och semester'], ['? v43', 'veckans timmar och anteckningar'], ['? okt', 'månadens timmar per projekt']] },
   { k: 'go', w: ['tid', 'tidbok', 'rapp', 'rapporter', 'inst', 'inställningar'], g: 'Gå till', t: 'Sidor', ex: [['tid', 'tidboken'], ['rapp', 'rapporter'], ['inst', 'inställningar']] },
-  { k: 'kopia', w: ['kopia', 'säkerhetskopia'], g: 'Övrigt', t: 'Spara kopia som fil', ex: [['kopia', 'sparar en kopia av boken nu']] },
+  { k: 'kopia', w: ['kopia', 'säkerhetskopia'], g: 'Övrigt', t: 'Spara kopia som fil', ex: [['kopia', 'sparar en kopia av boken nu'], ['kopia krypt', 'krypterad kopia (när krypteringen är på)']] },
   { k: 'look', w: ['mörkt', 'ljust', 'kompakt', 'normalt'], g: 'Övrigt', t: 'Utseende', ex: [['mörkt', 'mörkt tema'], ['ljust', 'ljust tema'], ['kompakt', 'tätare rader, igen för normalt']] },
   { k: 'fork', w: ['förk', 'förkortning'], g: 'Övrigt', t: 'Egna förkortningar', ex: [['förk', 'förkortningar för projekt och uppgifter']] }
 ];
@@ -5135,7 +5441,10 @@ const SH = {
     if (a.length) return { bad: true, html: pg === 'tid' ? 'Gå till en period genom att bara skriva den: <b>v43</b>, <b>okt</b> eller <b>idag</b>.' : 'Skriv bara sidans namn.' };
     return { html: `Enter öppnar <b>${PAGES.find(x => x[0] === pg)[2].replace('­', '')}</b>`, run: () => shPage(pg) };
   },
-  kopia() { return { html: 'Enter sparar en kopia av hela boken som fil', run: () => backupFile() }; },
+  kopia(a) {
+    if ((a || []).some(t => /^(krypt|krypterad|lås)/.test(t.lo))) return st.enc ? { html: 'Enter sparar en <b>krypterad</b> kopia av boken', run: () => encSaveFile() } : { html: 'Krypteringen är inte påslagen – Enter öppnar <b>Slå på kryptering</b>', run: () => encSetupDlg() };
+    return { html: 'Enter sparar en kopia av hela boken som fil', run: () => backupFile() };
+  },
   look(a, w) {
     if (w === 'kompakt' || w === 'normalt') { const on = w === 'kompakt' ? !S.prefs.compact : false; return { html: `Enter ${on ? 'slår på kompakt läge' : 'går tillbaka till normalt läge'}`, run: () => { if (!!S.prefs.compact !== on) A.compact(); } }; }
     const to = w === 'mörkt' ? 'dark' : 'light';

@@ -72,13 +72,26 @@ Varför ingen riktig faktura? En faktura behöver löpnummer i obruten serie som
 - **Autospar till mapp** (Chrome och Edge på dator): välj en mapp – gärna en som säkerhetskopieras eller ligger i en molnmapp – så skriver Sisyfos boken dit vid varje ändring, plus en kopia per dag i undermappen *Säkerhetskopior*.
 - Rensar du webbplatsdata för sidan försvinner boken ur webbläsaren. Då behövs en kopia.
 
+## Kryptering
+
+Sedan 0.12.0 kan boken sparas som en **krypterad kopia** (`.sisyfos`). Slå på krypteringen under *Inställningar → Spara boken → Kryptering*.
+
+- **Två sätt att låsa upp.** Boken krypteras med en slumpad boknyckel (AES-256-GCM i webbläsarens Web Crypto). Boknyckeln låses dels med ditt lösenord (PBKDF2-SHA-256, 600 000 varv, eget salt), dels med en **återställningsnyckel** – 32 tecken som visas en gång och laddas ner som en PDF med QR-kod att skriva ut.
+- **Lösenordet sparas ingenstans.** Byter du lösenord eller skapar en ny återställningsnyckel låses bara boknyckeln om; boken krypteras inte om, och gamla kopior öppnas med det som gällde när de sparades.
+- **Öppna** en krypterad kopia med *Importera bok* – med lösenordet eller återställningsnyckeln. Krypteringen följer med till den nya enheten.
+- Filen innehåller bara krypterad data plus det som behövs för att låsa upp den (salt, antal varv, de låsta nycklarna). Innehållet packas med gzip före krypteringen.
+- Glömmer du både lösenordet och återställningsnyckeln går kopian inte att öppna – inte heller för Agrell Arkitektur.
+- Smartshell: `kopia krypt`.
+
+Samma nyckel används när boken kan sparas krypterad på webben (nästa version): då lämnar varken lösenordet, boknyckeln eller boken i klartext enheten.
+
 ## Data och integritet
 
 Samma text finns i appen under *Sisyfos-menyn → Data och integritet*.
 
 **Vad boken innehåller.** Företagets uppgifter och logga. Kunder: namn, organisations- eller personnummer, referens, kontaktperson, e-post, telefon, adresser och anteckningar. Projekt: namn, nummer, fastighetsbeteckning, budget, timpriser, uppgifter och anteckningar. Tid: datum, timmar, pris och anteckning för varje tidpost, med historik över ändringar, avcheckning och signering. Om dig: namn, initialer, roll och timpris – i fullständigt läge även anställningsform, normtid, kompsaldo och semester. Personnummer, kontaktpersoner och anteckningar om människor är personuppgifter.
 
-**Var den sparas.** Bara i webbläsaren på enheten, tillsammans med automatiska ögonblicksbilder (se ovan). Filer du själv sparar – kopior, autospar till mapp, PDF och CSV – är vanliga, okrypterade filer. Ingen annan kan se boken, inte heller Agrell Arkitektur, och därför kan ingen heller återställa den åt dig.
+**Var den sparas.** Bara i webbläsaren på enheten, tillsammans med automatiska ögonblicksbilder (se ovan). Filer du själv sparar – kopior, autospar till mapp, PDF och CSV – är vanliga, okrypterade filer. Krypterade kopior (`.sisyfos`) kan bara öppnas med ditt lösenord eller din utskrivna återställningsnyckel; glömmer du båda går de inte att öppna, inte heller för oss. Ingen annan kan se boken, inte heller Agrell Arkitektur, och därför kan ingen heller återställa den åt dig.
 
 **Vad som skickas över nätet.** Appen hämtas från agrellarkitektur.se, och webbhotellet för som alla webbservrar tekniska loggar över anrop (IP-adress, tidpunkt, vilken fil) – inget ur boken följer med. Synpunkter skickas bara när du trycker på Skicka: det du skrivit, din e-postadress om du anger den och, om du vill, version och skärmstorlek. `feedback.php` skickar det vidare som e-post och sparar ingenting. Inget annat: ingen statistik, spårning, reklam, AI eller tjänster från andra företag, och typsnitten är inbyggda.
 

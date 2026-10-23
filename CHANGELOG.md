@@ -1,5 +1,15 @@
 # Ändringar i Sisyfos
 
+## 0.12.0
+
+Krypterad kopia – första steget mot lagring på webben. Filformatet för boken är oförändrat (7); den krypterade filen är ett eget, versionerat omslag (`sisyfos-krypterad`, version 1).
+
+- **Kryptering** under *Inställningar → Spara boken*: välj ett lösenord, få en **återställningsnyckel** (visas en gång, PDF med QR-kod att skriva ut) och bekräfta med de fyra sista tecknen.
+- **Spara krypterad kopia** (`.sisyfos`) i avsnittet, i Sisyfos-menyn och med `kopia krypt` i smartshell. AES-256-GCM, lösenordet sträcks med PBKDF2-SHA-256 (600 000 varv), innehållet packas med gzip.
+- **Importera bok** öppnar krypterade kopior med lösenordet eller återställningsnyckeln. Med återställningsnyckeln får du välja ett nytt lösenord direkt. Krypteringen följer med till den nya enheten.
+- **Byt lösenord** (med det gamla eller med återställningsnyckeln), **ny återställningsnyckel** och **stäng av** – utan att boken krypteras om.
+- **Data och integritet** och README beskriver krypteringen.
+
 ## 0.11.2
 
 Rättning efter test. Filformatet är oförändrat (7).

@@ -1,0 +1,3 @@
+# Testnycklar för krypterad-1.sisyfos (bara testdata – boken är Testbok format 7)
+lösenord: sisyfos testlösenord
+återställningsnyckel: PKG9-NZYP-A0T1-PQHG-RY4E-ERRG-YSRR-9Z1M

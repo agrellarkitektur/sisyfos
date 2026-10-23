@@ -8,6 +8,8 @@ lägger boken där en tidigare version skulle ha sparat den och kontrollerar att
   – sidan startar utan JavaScript-fel,
   – boken öppnas (bokens namn syns) och inte ersätts av exempelboken,
   – boken uppgraderas till appens filformat och sparas.
+Dessutom öppnas varje krypterad kopia (test/bocker/*.sisyfos, sedan 0.12.0) via Importera bok –
+en gång med lösenordet och en gång med återställningsnyckeln ur *.nycklar.txt.
 
 Kör:  python3 -m http.server 8765 &  python3 test/oppna_gamla_bocker.py
 Kräver: pip install playwright && python3 -m playwright install chromium
@@ -38,5 +40,22 @@ with sync_playwright() as p:
               + (f", dialog ”{dlg}”" if dlg else '') + (f", JS-fel: {js}" if js else ''))
         fel += not ok
         ctx.close()
+    for fil in sorted((ROT / 'test' / 'bocker').glob('*.sisyfos')):
+        nyck = dict(l.split(': ', 1) for l in (ROT / 'test' / 'bocker' / (fil.stem + '.nycklar.txt')).read_text(encoding='utf-8').splitlines() if ': ' in l and not l.startswith('#'))
+        for sätt in ('lösenord', 'återställningsnyckel'):
+            ctx = b.new_context(viewport={'width': 1280, 'height': 800}, service_workers='block')
+            pg = ctx.new_page(); js = []
+            pg.on('pageerror', lambda e: js.append(str(e)))
+            pg.goto(URL); pg.wait_for_timeout(800)
+            pg.click('#brandBtn'); pg.click('[data-act=importBook]')
+            pg.set_input_files('#imFile', str(fil)); pg.click('#dlg [data-act=doImport]'); pg.wait_for_timeout(300)
+            if sätt == 'lösenord': pg.fill('#ulPw', nyck['lösenord']); pg.press('#ulPw', 'Enter')
+            else: pg.click('[data-act=ulUseRk]'); pg.fill('#ulRk', nyck['återställningsnyckel']); pg.press('#ulRk', 'Enter')
+            pg.wait_for_timeout(3000)
+            visad = pg.inner_text('#bookName'); sparad = json.loads(pg.evaluate("localStorage.getItem('sisyfos.bok')") or '{}')
+            ok = not js and 'Testbok' in visad and sparad.get('version') == appfmt
+            print(('OK  ' if ok else 'FEL ') + f"{fil.name} med {sätt}: visar ”{visad.strip()}”" + (f", JS-fel: {js}" if js else ''))
+            fel += not ok
+            ctx.close()
     b.close()
 sys.exit(1 if fel else 0)
