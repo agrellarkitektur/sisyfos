@@ -4,7 +4,7 @@
  * direkt) och sparas då i cachen; utan nät används den senast sparade. Boken ligger aldrig här –
  * den finns i webbläsarens databas. Inget skickas någonstans.
  */
-const VERSION = '0.12.1';
+const VERSION = '0.13.0';
 const CACHE = 'sisyfos-' + VERSION;
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg', './favicon-32.png', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'];
 
@@ -24,7 +24,8 @@ self.addEventListener('fetch', ev => {
   const scope = new URL(self.registration.scope);
   if (!url.pathname.startsWith(scope.pathname)) return;
   const rel = url.pathname.slice(scope.pathname.length);
-  // Bara appens egna filer – allt annat (t.ex. gamla versioner i undermappar) går direkt till nätet
+  // Bara appens egna filer – allt annat (t.ex. api.php för lagring på webben och gamla versioner i
+  // undermappar) går direkt till nätet och cachas aldrig
   const isPage = req.mode === 'navigate' && (rel === '' || rel === 'index.html');
   const isAsset = ASSETS.includes('./' + rel);
   if (!isPage && !isAsset) return;

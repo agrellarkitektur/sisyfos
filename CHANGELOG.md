@@ -1,5 +1,23 @@
 # Ändringar i Sisyfos
 
+## 0.13.0
+
+Spara på webben – krypterad synk för en person på flera enheter. Filformatet för boken är oförändrat (7), och den krypterade filen är samma omslag som i 0.12.0.
+
+- **Spara på webben** under *Inställningar → Spara boken*: skapa konto med inbjudningskod, e-postadress och lösenord, eller logga in på en ny enhet. Boken krypteras på enheten innan den skickas – servern ser e-postadressen och en krypterad fil, aldrig innehållet eller lösenordet.
+- **Synk** några sekunder efter varje ändring, vid start, när fönstret får fokus och när nätet kommer tillbaka. Fungerar utan nät; ändringarna skickas sedan. Sparindikatorn uppe till höger visar *Synkad 10:42*, *Synkar …*, *Offline – synkas när nätet finns* eller *Inloggningen har gått ut*.
+- **Ändringar på två enheter slås ihop.** Tidposter, projekt, kunder och anteckningar från båda kommer med. Har samma sak ändrats olika behålls den här enhetens version, och en dialog låter dig välja den andra enhetens. En ögonblicksbild tas före sammanslagningen.
+- **Inloggning på en enhet som redan har en bok:** välj att öppna boken från webben (en ögonblicksbild tas först) eller slå ihop dem.
+- **Tidigare versioner:** servern sparar de tio senaste; en äldre version kan öppnas igen.
+- **Byt lösenord** byter också inloggningen på webben, med möjlighet att logga ut dina andra enheter. Ny återställningsnyckel och nytt lösenord följer med till de andra enheterna vid nästa synk.
+- **Logga ut** (boken ligger kvar – eller tas bort med ögonblicksbilder och nycklar) och **radera kontot** med allt på servern.
+- **Administrera servern** (med adminnyckeln, sparas inte): skapa och ta bort inbjudningskoder, se och ta bort konton. Länk i avsnittet och `webb admin` i smartshell.
+- **Smartshell:** `synk` synkar nu, `? synk` visar läget, `webb` öppnar inställningarna.
+- **Servern** `api.php` (publicerad redan före versionen): PHP 8 utan databas, data utanför webbroten, inbjudningskoder, versioner med krockkontroll, kvot 20 MB per konto, broms för felaktiga inloggningar. Se README, *Spara på webben* och *Egen server*.
+- **Data och integritet** och README beskriver vad servern sparar och ser, med ett ärligt förbehåll om att appen hämtas från samma server.
+- Påminnelsen om att spara kopia som fil visas inte när boken synkas med webben.
+- Test: `test/webb_test.py` kör två webbläsare mot `api.php` på en lokal PHP-server – konto, inloggning, sammanslagning, krock, lösenordsbyte, admin, utloggning och radering.
+
 ## 0.12.1
 
 Rättningar efter test. Filformatet är oförändrat (7).

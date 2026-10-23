@@ -180,6 +180,14 @@ button{cursor:pointer}
 .sf-row .v .neg{color:var(--warn-ink)}
 .sf-row>.btn,.sf-row>span+.btn{justify-self:end}
 .sf-row:has(> .btn ~ .btn){grid-template-columns:minmax(150px,200px) minmax(0,1fr) auto auto auto}
+.adm-new{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:end}
+@media (max-width:560px){.adm-new{grid-template-columns:1fr 1fr}}
+.adm-t{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+.adm-t th{text-align:left;font-weight:600;color:var(--muted);border-bottom:1px solid var(--rule);padding:4px 6px}
+.adm-t td{border-bottom:1px solid var(--rule);padding:4px 6px;vertical-align:middle}
+.adm-t td.num{font-family:var(--font-data);text-align:right}
+.inv-code{margin:8px 0 0;font-size:14px}.inv-code b{font-size:18px;letter-spacing:.06em}
+.btn.danger{background:var(--warn-ink);border-color:var(--warn-ink);color:#fff}
 .snaps{list-style:none;margin:6px 0 0;padding:0;border:1px solid var(--rule);border-radius:10px;overflow:hidden;background:var(--chrome)}
 .snaps li{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto auto;gap:4px 12px;align-items:center;padding:6px 8px 6px 12px;border-top:1px solid var(--rule);font-size:13px}
 .snaps li:first-child{border-top:0}
@@ -1154,7 +1162,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 
 /* ───────────── Hjälpfunktioner ───────────── */
 const FORMAT = 'sisyfos', FORMAT_VERSION = 7, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.12.1', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const APP_VERSION = '0.13.0', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 { const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
@@ -1782,7 +1790,7 @@ function writeNow() {
   // Dagens första ändring: spara läget före ändringen som ögonblicksbild
   if (db && prev && !isExample() && st.meta.lastSnapDay !== today()) { metaSet({ lastSnapDay: today() }); snapshot('Dagens första ändring', prev, 'daily'); }
   if (db) {
-    kvSet('bok', { at, raw }).then(() => { st.saved = new Date(); st.saveErr = false; renderSave(); bc?.postMessage({ t: 'saved', at, from: tabId }); })
+    kvSet('bok', { at, raw }).then(() => { st.saved = new Date(); st.saveErr = false; renderSave(); bc?.postMessage({ t: 'saved', at, from: tabId }); if (webOn() && raw !== st.web.base) webQueue(); })
       .catch(() => { st.saveErr = !lsOk; st.saved = lsOk ? new Date() : st.saved; renderSave(); });
   } else { st.saveErr = !lsOk; if (lsOk) st.saved = new Date(); renderSave(); }
   queueDirWrite();
@@ -1795,6 +1803,8 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 // En annan flik sparade – läs in den senaste boken i stället för att skriva över den
 bc && (bc.onmessage = async ev => {
   if (ev.data?.t === 'enc' && ev.data.from !== tabId) { await encLoad(); if (st.page === 'installningar') safetyRender(); return; }
+  if (ev.data?.t === 'web' && ev.data.from !== tabId) { await webLoad(); renderSave(); webRender(); return; }
+  if (ev.data?.t === 'wiped' && ev.data.from !== tabId) { st.noSave = true; clearTimeout(saveT); saveT = null; try { db?.close(); } catch (_) {} db = null; location.reload(); return; }
   if (ev.data?.t !== 'saved' || ev.data.from === tabId || !db) return;
   try {
     const v = await kvGet('bok'); if (!v?.raw || v.raw === lastRaw) return;
@@ -1810,6 +1820,7 @@ async function load() {
     const v = await kvGet('bok'); if (v?.raw) cand.push({ src: 'idb', at: v.at || '', raw: v.raw });
     st.meta = (await kvGet('meta')) || {};
     await encLoad();
+    await webLoad();
   } catch (e) { db = null; st.idbErr = e.message; try { st.meta = JSON.parse(localStorage.getItem(KEY + '.meta') || '{}'); } catch (_) { st.meta = {}; } }
   try { const raw = localStorage.getItem(KEY); if (raw) cand.push({ src: 'ls', at: localStorage.getItem(KEY + '.at') || '', raw }); } catch (_) {}
   // Senast sparade först. Spegeln från 0.6 saknar tid och hamnar sist.
@@ -1843,6 +1854,11 @@ async function load() {
 function renderSave() {
   const el = $('#saveState'); if (!el) return;
   const dir = st.dir, dirBad = dir && !dir.ok;
+  const ws = !st.noSave && !st.saveErr && !dirBad ? webSaveText() : null;
+  if (ws) {
+    el.classList.toggle('err', ws[1] === 'err'); el.classList.toggle('warn', ws[1] === 'warn'); el.dataset.act = 'webGo';
+    $('.t', el).textContent = ws[0]; el.title = 'Boken sparas här och krypterad på webben – inställningar'; renderStatus(); return;
+  }
   el.classList.toggle('err', !!st.saveErr || !!st.noSave);
   el.classList.toggle('warn', !st.saveErr && !!dirBad);
   el.dataset.act = dirBad ? 'dirReconnect' : 'storageInfo';
@@ -1889,7 +1905,7 @@ const backupDays = () => S.prefs.backupDays ?? 7;
 const daysSince = iso => iso ? Math.floor((pd(today()) - pd(iso.slice(0, 10))) / 864e5) : null;
 function backedUp(how) { metaSet({ lastBackup: new Date().toISOString(), lastBackupHow: how }); if (st.page === 'tid') { const a = $('#alerts'); if (a) a.innerHTML = alertsHtml(); } }
 function backupDue() {
-  if (isExample() || st.noSave || !(backupDays() > 0) || !log().length) return false;
+  if (isExample() || st.noSave || !(backupDays() > 0) || !log().length || webOn()) return false;
   if (st.meta.remindUntil && st.meta.remindUntil > today()) return false;
   const n = daysSince(st.meta.lastBackup);
   return n == null ? daysSince(st.meta.firstUse || today()) >= 1 || log().length > 20 : n >= backupDays();
@@ -1944,8 +1960,9 @@ async function rkKek(rk, salt) {
 const aesKey = (raw, use) => crypto.subtle.importKey('raw', raw, 'AES-GCM', false, use);
 async function seal(key, bytes, aad) { const iv = rnd(12); return { iv: b64(iv), ct: b64(await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: te(aad) }, key, bytes)) }; }
 async function unseal(key, box, aad) { return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(box.iv), additionalData: te(aad) }, key, unb64(box.ct))); }
-async function pwBox(raw, pw) {
+async function pwBox(raw, pw, out) {
   const salt = rnd(16), bits = await pwBits(pw, salt, ENC_ITER);
+  if (out) out.login = b64(bits.slice(32));  // inloggningen mot servern (0.13.0)
   return { kdf: { name: 'PBKDF2-SHA-256', iter: ENC_ITER, salt: b64(salt) }, pw: await seal(await aesKey(bits.slice(0, 32), ['encrypt']), raw, AAD_KEY), pwAt: new Date().toISOString() };
 }
 async function rkBox(raw) {
@@ -1954,10 +1971,10 @@ async function rkBox(raw) {
 }
 // Ny boknyckel – returnerar valv, nyckel och återställningsnyckeln (visas en gång)
 async function encCreate(pw) {
-  const raw = rnd(32), r = await rkBox(raw);
-  const vault = { v: 1, id: b64(rnd(9)).replace(/[+/=]/g, ''), created: new Date().toISOString(), ...(await pwBox(raw, pw)), ...r.box };
+  const raw = rnd(32), r = await rkBox(raw), out = {};
+  const vault = { v: 1, id: b64(rnd(9)).replace(/[+/=]/g, ''), created: new Date().toISOString(), ...(await pwBox(raw, pw, out)), ...r.box };
   const key = await aesKey(raw, ['encrypt', 'decrypt']);
-  return { vault, key, raw, rk: r.rkStr };
+  return { vault, key, raw, rk: r.rkStr, login: out.login };
 }
 // Lås upp med lösenord eller återställningsnyckel → { raw, key }
 async function encUnlock(vault, { pw, rk }) {
@@ -2061,7 +2078,7 @@ function encUnlockDlg(what) {
   openDlg(`<h2 id="dlgTitle">${T[0]}</h2><p>${T[1]}</p><div class="form" data-what="${what}">
    <div class="fld full" id="ulPwF"><label for="ulPw">${what === 'pw' ? 'Nuvarande lösenord' : 'Lösenord'}</label><input type="password" id="ulPw" autocomplete="current-password" ${what === 'pw' ? '' : 'data-enter="encUnlockGo"'}></div>
    ${what === 'pw' ? `<div class="fld full" hidden id="ulRkF"><label for="ulRk">Återställningsnyckel</label><input id="ulRk" class="mono" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"></div><div class="fld full"><button type="button" class="linkish" data-act="ulUseRk">Jag har glömt lösenordet – använd återställningsnyckeln</button></div>
-   <div class="fld full"><label for="encPw">Nytt lösenord${REQ}</label><input type="password" id="encPw" autocomplete="new-password"></div><div class="fld full"><label for="encPw2">Samma nya lösenord igen${REQ}</label><input type="password" id="encPw2" autocomplete="new-password" data-enter="encUnlockGo"></div><div class="fld full">${pwHint()}</div>` : ''}
+   <div class="fld full"><label for="encPw">Nytt lösenord${REQ}</label><input type="password" id="encPw" autocomplete="new-password"></div><div class="fld full"><label for="encPw2">Samma nya lösenord igen${REQ}</label><input type="password" id="encPw2" autocomplete="new-password" data-enter="encUnlockGo"></div><div class="fld full">${pwHint()}</div>${webOn() ? `<p class="small fld full">Lösenordet gäller också inloggningen på webben. Dina andra enheter fortsätter att synka.</p><label class="chk fld full"><input type="checkbox" id="wOthers"> Logga ut mina andra enheter från webben</label>` : ''}` : ''}
    <div class="err fld full" id="encErr"></div></div>
    <div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="encUnlockGo" data-what="${what}">${ic('lock')}${T[2]}</button></div>`);
 }
@@ -2147,6 +2164,354 @@ function qrMatrix(text) {
   return best.B;
 }
 
+/* ───────────── Spara på webben (0.13.0: krypterad synk för en person på flera enheter) ─────────────
+   Boken sparas krypterad på servern där Sisyfos ligger (api.php i samma mapp som appen) och nås från flera
+   enheter. Servern ser bara e-postadressen, valvet (boknyckeln låst med lösenordet och återställningsnyckeln)
+   och den krypterade filen – aldrig lösenordet, boknyckeln eller innehållet. Inloggningen mot servern är de
+   sista 256 av de 512 bitar som räknas fram ur lösenordet (pwBits); de första låser upp boknyckeln.
+   På enheten: kv 'web' = { email, token, rev, saved, base, replace, expired, used, quota }. base är boken (JSON)
+   som den såg ut vid senaste synk. När servern har en nyare version slås ändringarna ihop i tre led
+   (base → den här enheten / den andra): tidposternas händelser och allt med id slås ihop utan förlust; där
+   samma sak ändrats olika på båda behålls den här enhetens version, och den andra kan väljas i en dialog.
+   Token ligger bara i IndexedDB – aldrig i localStorage-spegeln eller i boken. */
+const WEB_API = 'api.php', WEB_DEBOUNCE = 5000;
+st.web = null; st.webS = { s: 'off' };
+let webT = null, webP = null, webAgain = false, webLast = 0;
+const webOn = () => !!st.web?.token;
+function devName() {
+  const u = navigator.userAgent;
+  const os = /iPhone/.test(u) ? 'iPhone' : /iPad/.test(u) || (/Macintosh/.test(u) && navigator.maxTouchPoints > 1) ? 'iPad' : /Android/.test(u) ? 'Android' : /Windows/.test(u) ? 'Windows' : /Mac OS X/.test(u) ? 'Mac' : /Linux/.test(u) ? 'Linux' : 'Enhet';
+  const br = /Edg\//.test(u) ? 'Edge' : /Firefox|FxiOS/.test(u) ? 'Firefox' : /CriOS|Chrome/.test(u) ? 'Chrome' : /Safari/.test(u) ? 'Safari' : 'webbläsare';
+  return `${os} · ${br}${standalone() ? ' (app)' : ''}`;
+}
+async function webLoad() { if (!db) return; try { st.web = (await kvGet('web')) || null; } catch (_) {} }
+async function webStore(patch, fresh) {
+  st.web = fresh ? { ...patch } : { ...(st.web || {}), ...patch };
+  if (db) await kvSet('web', st.web).catch(() => {});
+  bc?.postMessage({ t: 'web', from: tabId });
+}
+async function webForget() { clearTimeout(webT); webT = null; st.web = null; st.webInfo = null; if (db) await kvDel('web').catch(() => {}); bc?.postMessage({ t: 'web', from: tabId }); webState('off'); }
+const webDirty = () => webOn() && !isExample() && !st.noSave && (!!st.web.replace || st.web.base !== JSON.stringify(S));
+const unixIso = s => s ? new Date(s * 1000).toISOString() : null;
+
+// Anrop till api.php. Svarar med JSON (eller råtext med o.raw); fel kastas med status och kod.
+async function api(a, o = {}) {
+  const h = { ...(o.headers || {}) }, tok = o.token || st.web?.token;
+  if (tok && !o.noAuth) h['X-Sisyfos-Token'] = tok;
+  if (o.admin) h['X-Sisyfos-Admin'] = o.admin;
+  let body;
+  if (o.body !== undefined) { const s = typeof o.body === 'string'; body = s ? o.body : JSON.stringify(o.body); h['Content-Type'] = s ? 'text/plain;charset=utf-8' : 'application/json'; }
+  let r;
+  try { r = await fetch(`${WEB_API}?a=${a}${o.query || ''}`, { method: body !== undefined ? 'POST' : 'GET', headers: h, body, cache: 'no-store', credentials: 'omit' }); }
+  catch (_) { const x = new Error('Ingen kontakt med servern – kontrollera nätet.'); x.offline = true; throw x; }
+  if (o.raw && r.ok) return { text: await r.text(), rev: +r.headers.get('X-Sisyfos-Rev') || 0, head: +r.headers.get('X-Sisyfos-Head') || 0 };
+  let j = null; try { j = await r.json(); } catch (_) {}
+  if (!r.ok || !j) {
+    const x = new Error(j?.message || (r.ok ? 'Servern svarar inte som väntat – finns api.php här?' : r.status === 404 ? 'Servern för lagring på webben finns inte här.' : `Servern svarade ${r.status}.`));
+    x.status = r.status; x.code = j?.error; x.data = j; throw x;
+  }
+  return j;
+}
+
+/* ── Sammanslagning i tre led ── */
+const isObj = x => x !== null && typeof x === 'object' && !Array.isArray(x);
+const idArr = x => Array.isArray(x) && x.every(y => isObj(y) && y.id != null && y.id !== '') && new Set(x.map(y => y.id)).size === x.length;
+const jeq = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
+function merge3(b, o, t, path, cf) {
+  if (jeq(o, t)) return o;
+  if (b === undefined) { if (o === undefined) return t; if (t === undefined) return o; }
+  else { if (jeq(o, b)) return t; if (jeq(t, b)) return o; }
+  if (isObj(o) && isObj(t)) {
+    const r = {}, bb = isObj(b) ? b : undefined;
+    for (const k of new Set([...Object.keys(o), ...Object.keys(t)])) { const v = merge3(bb?.[k], o[k], t[k], [...path, k], cf); if (v !== undefined) r[k] = v; }
+    return r;
+  }
+  if (idArr(o) && idArr(t)) {
+    const M = a => new Map(a.map(x => [x.id, x])), O = M(o), T = M(t), Bm = idArr(b) ? M(b) : null, r = [];
+    for (const id of new Set([...T.keys(), ...O.keys()])) { const v = merge3(Bm?.get(id), O.get(id), T.get(id), [...path, { id }], cf); if (v !== undefined) r.push(v); }
+    return r;
+  }
+  cf.push({ path, o, t });
+  return o;
+}
+function bookMerge(base, ours, theirs, cf) {
+  const m = merge3(base, ours, theirs, [], cf);
+  // Händelserna i tidsordning (stabilt) – så räknas posterna fram likadant på alla enheter
+  for (const pid in m.logs || {}) { const ev = m.logs[pid]?.events; if (Array.isArray(ev)) m.logs[pid].events = ev.map((x, i) => [x, i]).sort((x, y) => String(x[0].at).localeCompare(String(y[0].at)) || x[1] - y[1]).map(x => x[0]); }
+  // Inställningar för visningen och vem som är inloggad i boken: den här enheten bestämmer, inget att fråga om
+  for (let i = cf.length - 1; i >= 0; i--) if (cf[i].path[0] === 'prefs' || cf[i].path[0] === 'session') cf.splice(i, 1);
+  return m;
+}
+function getAt(root, path) { let c = root; for (const k of path) { if (c == null) return undefined; c = typeof k === 'object' ? (Array.isArray(c) ? c.find(x => x?.id === k.id) : undefined) : c[k]; } return c; }
+function setAt(root, path, val) {
+  let c = root;
+  for (const k of path.slice(0, -1)) { c = typeof k === 'object' ? c?.find?.(x => x?.id === k.id) : c?.[k]; if (c == null) return false; }
+  const k = path[path.length - 1];
+  if (typeof k === 'object') { const i = c.findIndex(x => x?.id === k.id); if (val === undefined) { if (i >= 0) c.splice(i, 1); } else if (i >= 0) c[i] = val; else c.push(val); }
+  else if (val === undefined) delete c[k]; else c[k] = val;
+  return true;
+}
+function cfLabel(p, o, t) {
+  const KIND = { customers: 'Kunden', projects: 'Projektet', roles: 'Rollen', people: 'Personen' };
+  if (p[0] === 'register' && KIND[p[1]] && p[2]?.id) { const x = getAt(o, p.slice(0, 3)) || getAt(t, p.slice(0, 3)); return `${KIND[p[1]]} ”${x?.name || x?.number || '–'}”`; }
+  if (p[0] === 'register') return { book: 'Företagsuppgifter och inställningar', handled: 'Hanterade månader', signed: 'Signerade veckor' }[p[1]] || 'Registret';
+  if (p[0] === 'logs') return 'Tidposter';
+  return 'Boken';
+}
+
+/* ── Synk ── */
+function webState(s, msg) {
+  st.webS = { s, msg: msg || '', at: s === 'ok' ? new Date() : st.webS?.at };
+  if (s === 'err') webQueue(60000);
+  renderSave(); webRender();
+}
+function webQueue(ms = WEB_DEBOUNCE) {
+  if (!webOn()) return;
+  clearTimeout(webT); webT = setTimeout(() => { webT = null; webSync(); }, ms);
+  if (['ok', 'off'].includes(st.webS.s)) { st.webS.s = 'pending'; renderSave(); }
+}
+function webSync() {
+  if (webP) { webAgain = true; return webP; }
+  clearTimeout(webT); webT = null;
+  webP = (async () => { try { do { webAgain = false; await webSyncOnce(); } while (webAgain); } finally { webP = null; } })();
+  return webP;
+}
+// Ändra inte boken under användarens fingrar: vänta om ett fält eller en dialog är öppen
+const webBusyUi = () => { const a = document.activeElement; return !st.webNoWait && (!$('#dlg').hidden || (!!a?.matches?.('input,textarea,select') && a.id !== 'quickIn')); };
+async function webSyncOnce() {
+  if (!db) return;
+  await webLoad();
+  if (!webOn()) { webState(st.web?.expired ? 'auth' : 'off'); return; }
+  if (isExample() || st.noSave) { webState('paused'); return; }
+  if (!st.enc?.key) { webState('locked'); return; }
+  if (navigator.onLine === false) { webState('offline'); return; }
+  flush();
+  const w = st.web, raw = JSON.stringify(S);
+  webState('sync');
+  try {
+    if (w.replace) { const i = await api('info'); await webInfo(i); await webPut(raw, i.rev); await webStore({ replace: false }); }
+    else if (raw !== w.base) {
+      try { await webPut(raw, w.rev || 0); }
+      catch (e) { if (e.status === 409 && e.code === 'conflict') await webPull(); else throw e; }
+    } else {
+      const i = await api('info'); await webInfo(i);
+      if (i.rev !== w.rev) await webPull();
+    }
+    webLast = Date.now(); webState('ok');
+  } catch (e) { webFail(e); }
+}
+async function webInfo(i) {
+  st.webInfo = i;
+  const e = st.enc, v = i.vault;
+  // Lösenordet eller återställningsnyckeln har bytts på en annan enhet: samma boknyckel, nytt valv
+  if (e && v && v.id === e.vault.id && !jeq(vaultPublic(v), vaultPublic(e.vault))) await encStore(vaultPublic(v), e.key);
+  if (e && v && v.id !== e.vault.id) throw Object.assign(new Error('Kontot på webben använder en annan nyckel än den här enheten. Logga ut och logga in igen.'), { code: 'vault' });
+  if (st.web && (i.used !== st.web.used || i.quota !== st.web.quota)) await webStore({ used: i.used, quota: i.quota });
+}
+async function webPut(raw, base) {
+  const r = await api('put', { body: await encBookText(JSON.parse(raw)), headers: { 'X-Sisyfos-Base': String(base) } });
+  await webStore({ rev: r.rev, saved: r.saved, base: raw, used: r.used, quota: r.quota });
+}
+async function webPull(tries = 0) {
+  if (webBusyUi()) { webQueue(3000); throw Object.assign(new Error('väntar'), { defer: true }); }
+  const g = await api('get', { raw: true }), file = JSON.parse(g.text);
+  if (file.vault?.id && file.vault.id !== st.enc.vault.id) throw Object.assign(new Error('Boken på webben är krypterad med en annan nyckel än den här enhetens. Logga ut och logga in igen.'), { code: 'vault' });
+  const theirs = migrate(await decBook(file, st.enc.key)), theirsRaw = JSON.stringify(theirs);
+  const cur = JSON.stringify(S), base = st.web.base ? migrate(JSON.parse(st.web.base)) : undefined, cf = [];
+  const merged = bookMerge(base, JSON.parse(cur), theirs, cf), mergedRaw = JSON.stringify(merged);
+  if (mergedRaw !== cur) { if (cf.length) await snapshot('Före sammanslagning med webben', cur, 'event'); webApply(merged); }
+  if (mergedRaw === theirsRaw) await webStore({ rev: g.rev, base: theirsRaw });
+  else {
+    try { await webPut(mergedRaw, g.rev); }
+    catch (e) { if (e.status === 409 && e.code === 'conflict' && tries < 3) return webPull(tries + 1); throw e; }
+  }
+  if (cf.length) webConflictDlg(cf.map(c => ({ ...c, label: cfLabel(c.path, JSON.parse(cur), theirs) })));
+  else if (mergedRaw !== cur) toast('Boken uppdaterades från webben');
+}
+function webApply(book) { S = book; derive(); lastRaw = null; writeNow(); render(); }
+function webFail(e) {
+  if (e.defer) { st.webS.s = 'pending'; renderSave(); return; }
+  if (e.offline) return webState('offline');
+  if (e.status === 401) { if (st.web) webStore({ token: null, expired: true }); return webState('auth', e.message); }
+  if (/nyare version/.test(e.message)) return webState('newer', e.message);
+  if (e.code === 'vault') return webState('vault', e.message);
+  webState('err', e.message);
+}
+function webSaveText() {
+  const w = st.web; if (!w) return null;
+  if (!w.token) return w.expired ? ['Inloggningen på webben har gått ut – logga in', 'warn'] : null;
+  const at = st.webS.at, hm = at ? `${pad(at.getHours())}:${pad(at.getMinutes())}` : '';
+  switch (st.webS.s) {
+    case 'ok': return [`Synkad ${hm}`, ''];
+    case 'sync': return ['Synkar …', ''];
+    case 'offline': return ['Offline – synkas när nätet finns', 'warn'];
+    case 'locked': return ['Lås upp krypteringen för att synka', 'warn'];
+    case 'paused': return ['Synken vilar – exempelboken visas', 'warn'];
+    case 'newer': return ['Boken på webben kräver en nyare Sisyfos', 'err'];
+    case 'vault': return ['Synken stoppad – fel nyckel', 'err'];
+    case 'err': return ['Synken misslyckades – försöker igen', 'warn'];
+    case 'auth': return ['Inloggningen på webben har gått ut – logga in', 'warn'];
+    default: return [st.saved ? `Sparat ${pad(st.saved.getHours())}:${pad(st.saved.getMinutes())} · synkas strax` : 'Synkas strax', ''];
+  }
+}
+function webStatusLong() {
+  const s = st.webS, m = s.msg ? ` <span class="muted">(${esc(s.msg)})</span>` : '';
+  return { ok: `${ic('check')} Synkad ${s.at ? fwhen(s.at.toISOString()) : ''}`, sync: 'Synkar …', pending: 'Ändringar synkas strax', offline: 'Offline – synkas när nätet finns', locked: '<span class="neg">Krypteringen är låst på den här enheten</span> – logga in igen', paused: 'Vilar medan exempelboken visas', newer: `<span class="neg">Boken på webben kommer från en nyare Sisyfos</span> – ladda om sidan${m}`, vault: `<span class="neg">Stoppad</span>${m}`, err: `<span class="neg">Misslyckades</span>${m}`, auth: '<span class="neg">Inloggningen har gått ut</span>' }[s.s] || 'Väntar';
+}
+
+/* ── Inställningar → Spara boken → Spara på webben ── */
+async function webRender(fetchIt) {
+  const box = $('#webBox'); if (!box) return;
+  if (fetchIt) {
+    if (!st.webSrv || st.webSrv.err) { try { st.webSrv = await api('status', { noAuth: true }); } catch (e) { st.webSrv = { err: e.message }; } }
+    if (webOn() && navigator.onLine !== false) { try { await webInfo(await api('info')); } catch (e) { if (e.status === 401 || e.code === 'vault') webFail(e); } }
+  }
+  const b = $('#webBox'); if (b) b.innerHTML = webSectionHtml();
+}
+function webSectionHtml() {
+  const srv = st.webSrv, w = st.web, row = (k, v, extra = '') => `<div class="sf-row"><span class="k">${k}</span><span class="v">${v}</span>${extra}</div>`;
+  let h = `<h3 class="dsub" id="set-web">Spara på webben</h3>`;
+  if (!encOk()) return h + `<p class="muted small">Kräver att Sisyfos öppnas över https i en uppdaterad webbläsare.</p>`;
+  if (!srv && !webOn()) return h + `<p class="muted small">Kontrollerar servern …</p>`;
+  if (srv?.err && !webOn() && !w?.expired) return h + `<p class="muted small">Servern för lagring på webben svarar inte här: ${esc(srv.err)} Den finns där Sisyfos ligger på agrellarkitektur.se – eller på ett eget webbhotell med filen api.php bredvid appen.</p>`;
+  if (!webOn()) {
+    h += `<p class="muted small">Spara boken <b>krypterad</b> på servern där Sisyfos ligger, så når du den från flera enheter – telefonen och datorn. Boken krypteras på enheten innan den skickas; servern ser din e-postadress och en krypterad fil, aldrig innehållet. ${st.enc ? 'Du loggar in med krypteringens lösenord.' : 'Krypteringen slås på när du skapar kontot.'} Under testperioden krävs en inbjudningskod. <button type="button" class="linkish" data-act="dataInfo">Data och integritet</button></p>`;
+    if (w?.expired) h += `<p class="small"><span class="neg">Inloggningen för ${esc(w.email)} har gått ut.</span> Logga in igen – ändringar som inte har synkats slås ihop med boken på webben.</p>`;
+    h += `<div class="btn-row"><button class="btn primary" data-act="webLogin">${ic('lock')}Logga in …</button><button class="btn" data-act="webReg">Skapa konto …</button></div>`;
+  } else {
+    const i = st.webInfo, used = i?.used ?? w.used, quota = i?.quota ?? w.quota;
+    h += `<div class="sf-grid">${row('Konto', esc(w.email))}${row('Synk', webStatusLong(), `<button class="btn sm" data-act="webSyncNow">Synka nu</button>`)}${row('På webben', w.saved ? `Sparad ${fwhen(unixIso(w.saved))} · version ${w.rev}` : 'Ingen bok sparad än')}${used != null && quota ? row('Utrymme', `${fsize(used)} av ${fsize(quota)} (med tidigare versioner)`) : ''}`;
+    if (i?.devices?.length) h += row('Inloggade enheter', i.devices.slice().sort((a, b) => b.used - a.used).map(d => `${esc(d.device || 'Okänd enhet')}${d.this ? ' <b>(den här)</b>' : ''} <span class="muted">· senast ${fwhen(unixIso(d.used))}</span>`).join('<br>'));
+    h += `</div><div class="btn-row enc-acts"><button class="btn ghost" data-act="webHist">Tidigare versioner …</button><button class="btn ghost" data-act="webOut">Logga ut …</button><button class="btn ghost" data-act="webDel">Radera kontot …</button></div>`;
+  }
+  if (srv?.admin) h += `<p class="small" style="margin-top:8px"><button type="button" class="linkish" data-act="webAdmin">Administrera servern …</button></p>`;
+  return h;
+}
+
+/* ── Dialoger: logga in, skapa konto, logga ut, radera, tidigare versioner, krock, admin ── */
+const emailOk = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+function webLoginDlg(email = st.web?.email || '') {
+  openDlg(`<h2 id="dlgTitle">Logga in på webben</h2><p>Logga in med e-postadressen och lösenordet för ditt Sisyfos-konto. Boken hämtas och låses upp på den här enheten.</p>
+   <div class="form"><div class="fld full"><label for="wEmail">E-postadress</label><input type="email" id="wEmail" autocomplete="username" value="${esc(email)}"></div><div class="fld full"><label for="wPw">Lösenord</label><input type="password" id="wPw" autocomplete="current-password" data-enter="webLoginGo"></div>
+   <div class="fld full"><p class="muted small">Glömt lösenordet? På en enhet där du redan är inloggad: <i>Byt lösenord</i> under Kryptering och välj återställningsnyckeln.</p></div><div class="err fld full" id="encErr"></div></div>
+   <div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="webLoginGo">${ic('lock')}Logga in</button></div>`);
+  if (email) $('#wPw')?.focus();
+}
+function webRegDlg(msg, pre = {}) {
+  const e = st.enc;
+  openDlg(`<h2 id="dlgTitle">Skapa konto på webben</h2><p>Boken sparas krypterad på servern där Sisyfos ligger och kan öppnas från dina andra enheter.${e ? ' Du loggar in med samma lösenord som krypteringen.' : ' Krypteringen slås på samtidigt – du får en återställningsnyckel att skriva ut.'}</p>
+   <div class="form"><div class="fld full"><label for="wInv">Inbjudningskod${REQ}</label><input id="wInv" class="mono" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXXX-XXXXX" value="${esc(pre.invite || '')}"></div>
+   <div class="fld full"><label for="wEmail">E-postadress${REQ}</label><input type="email" id="wEmail" autocomplete="username" value="${esc(pre.email || '')}"></div>
+   ${e ? `<div class="fld full"><label for="wPw">Krypteringens lösenord${REQ}</label><input type="password" id="wPw" autocomplete="current-password" data-enter="webRegGo"></div>` : `<div class="fld full"><label for="encPw">Lösenord${REQ}</label><input type="password" id="encPw" autocomplete="new-password"></div><div class="fld full"><label for="encPw2">Samma lösenord igen${REQ}</label><input type="password" id="encPw2" autocomplete="new-password" data-enter="webRegGo"></div><div class="fld full">${pwHint()}</div>`}
+   <div class="fld full"><p class="muted small">E-postadressen är ditt användarnamn. Den används för inloggningen och för att nå dig om tjänsten ändras eller avvecklas – inget annat.</p></div><div class="err fld full" id="encErr">${msg ? esc(msg) : ''}</div></div>
+   <div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="webRegGo">Skapa konto</button></div>`);
+}
+async function webRegister(o) {
+  const r = await api('register', { body: { invite: o.invite, email: o.email, login: o.login, vault: vaultPublic(o.vault), device: devName() }, noAuth: true });
+  if (!st.enc || st.enc.vault.id !== o.vault.id || !st.enc.key) await encStore(o.vault, o.key);
+  await webStore({ email: r.email, token: r.token, rev: 0, saved: null, base: null, replace: false, used: r.used, quota: r.quota }, true);
+  closeDlg();
+  toast(isExample() ? 'Kontot är skapat. Exempelboken sparas inte på webben – skapa eller importera din bok.' : 'Kontot är skapat – boken sparas nu krypterad på webben');
+  webSync(); if (st.page === 'installningar') safetyRender();
+}
+const bookEmpty = () => !R().customers.length && Object.values(S.logs).every(l => !l.events.length);
+async function webLoginDone(L) {
+  const prev = st.web;
+  // Samma konto som förut (inloggningen hade gått ut): synka som vanligt – osynkade ändringar slås ihop
+  if (prev?.email === L.email && prev.base && st.enc?.vault.id === L.vault.id) {
+    await encStore(vaultPublic(L.vault), L.key);
+    await webStore({ token: L.token, expired: false, used: L.used, quota: L.quota });
+    closeDlg(); toast('Inloggad igen – boken synkas'); webSync(); if (st.page === 'installningar') safetyRender(); return;
+  }
+  if (!L.rev) {
+    await encStore(vaultPublic(L.vault), L.key);
+    await webStore({ email: L.email, token: L.token, rev: 0, saved: null, base: null, replace: false, used: L.used, quota: L.quota }, true);
+    closeDlg(); toast(isExample() ? 'Inloggad – kontot har ingen bok än. Skapa eller importera din bok så sparas den på webben.' : 'Inloggad – boken sparas nu på webben');
+    webSync(); if (st.page === 'installningar') safetyRender(); return;
+  }
+  const g = await api('get', { raw: true, token: L.token }), file = JSON.parse(g.text);
+  const theirs = migrate(await decBook(file, L.key)), theirsRaw = JSON.stringify(theirs);
+  st.webLogin = { ...L, theirs, theirsRaw, rev: g.rev };
+  if (isExample() || st.noSave || bookEmpty() || JSON.stringify(S) === theirsRaw) return webLoginUse('replace');
+  const n = Object.values(S.logs).reduce((s, l) => s + new Set(l.events.map(e => e.entryId).filter(Boolean)).size, 0);
+  openDlg(`<h2 id="dlgTitle">Det finns redan en bok här</h2><p>Den här webbläsaren har boken <b>${esc(R().book.name)}</b> (${n} tidposter). På webben finns <b>${esc(theirs.register?.book?.name || '–')}</b>, sparad ${fwhen(unixIso(L.saved))}.</p>
+   <ul class="small"><li><b>Öppna boken från webben</b> – boken här ersätts. En ögonblicksbild av den tas först, så den kan återställas.</li><li><b>Slå ihop</b> – om det är samma bok som använts på båda ställena: tid, projekt och kunder från båda läggs ihop. Där samma sak ändrats olika behålls den här webbläsarens version.</li></ul>
+   <div class="dlg-foot"><button class="btn ghost" data-act="webLoginCancel">Avbryt</button><button class="btn" data-act="webLoginMerge">Slå ihop</button><button class="btn primary" data-act="webLoginReplace">Öppna boken från webben</button></div>`);
+}
+async function webLoginUse(how) {
+  const L = st.webLogin; if (!L) return; st.webLogin = null;
+  await encStore(vaultPublic(L.vault), L.key);
+  const acc = { email: L.email, token: L.token, saved: L.saved, replace: false, used: L.used, quota: L.quota };
+  if (how === 'replace') {
+    st.webApplying = true; try { replaceBook(L.theirs, 'Före inloggning på webben'); } finally { st.webApplying = false; }
+    await webStore({ ...acc, rev: L.rev, base: L.theirsRaw }, true);
+    toast('Inloggad – boken från webben är öppnad');
+  } else {
+    const cur = JSON.stringify(S), cf = [], merged = bookMerge(undefined, JSON.parse(cur), L.theirs, cf);
+    await snapshot('Före sammanslagning med webben', cur, 'event');
+    await webStore({ ...acc, rev: L.rev, base: L.theirsRaw }, true);
+    webApply(merged); closeDlg();
+    toast('Inloggad – böckerna är ihopslagna');
+  }
+  webSync(); if (st.page === 'installningar') safetyRender();
+}
+function webConflictDlg(cf) {
+  st.webCf = cf;
+  const g = new Map(); cf.forEach(c => g.set(c.label, (g.get(c.label) || 0) + 1));
+  openDlg(`<h2 id="dlgTitle">Ändrat på två enheter</h2><p>Boken har ändrats både här och på en annan enhet sedan förra synken. Allt är ihopslaget, men några saker hade ändrats olika – där behölls <b>den här enhetens</b> version:</p>
+   <ul class="small">${[...g].map(([l, n]) => `<li>${esc(l)}${n > 1 ? ` <span class="muted">(${n} ändringar)</span>` : ''}</li>`).join('')}</ul>
+   <p class="muted small">En ögonblicksbild från före sammanslagningen finns under Spara boken.</p>
+   <div class="dlg-foot"><button class="btn ghost" data-act="webCfTheirs">Använd den andra enhetens</button><button class="btn primary" data-act="webCfKeep">Behåll den här enhetens</button></div>`);
+}
+function webOutDlg() {
+  openDlg(`<h2 id="dlgTitle">Logga ut från webben</h2><p>Den här enheten slutar synka. Boken på webben och på dina andra enheter påverkas inte.</p>
+   <div class="form"><label class="chk fld full"><input type="radio" name="wOut" value="keep" checked> Behåll boken i den här webbläsaren</label><label class="chk fld full"><input type="radio" name="wOut" value="wipe"> Ta bort boken, ögonblicksbilderna och nycklarna från den här webbläsaren – t.ex. på en lånad dator</label>
+   ${webDirty() ? '<p class="small fld full neg">Det finns ändringar som inte är synkade än – Sisyfos synkar dem först.</p>' : ''}<div class="err fld full" id="encErr"></div></div>
+   <div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="webOutGo">Logga ut</button></div>`);
+  st.webForce = false;
+}
+async function wipeLocal() {
+  st.noSave = true; clearTimeout(saveT); saveT = null; clearTimeout(webT);
+  bc?.postMessage({ t: 'wiped', from: tabId });
+  try { for (const k of Object.keys(localStorage)) if (k.startsWith('sisyfos')) localStorage.removeItem(k); } catch (_) {}
+  try { db?.close(); db = null; await new Promise(res => { const r = indexedDB.deleteDatabase(DB_NAME); r.onsuccess = r.onerror = r.onblocked = () => res(); }); } catch (_) {}
+  location.reload();
+}
+function webDelDlg() {
+  openDlg(`<h2 id="dlgTitle">Radera kontot</h2><p>Kontot <b>${esc(st.web.email)}</b>, boken på webben och alla tidigare versioner raderas från servern. Det går inte att ångra. Boken i den här webbläsaren och krypteringen ligger kvar.</p>
+   <div class="form"><div class="fld full"><label for="wPw">Lösenord${REQ}</label><input type="password" id="wPw" autocomplete="current-password" data-enter="webDelGo"></div><div class="err fld full" id="encErr"></div></div>
+   <div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn danger" data-act="webDelGo">Radera kontot</button></div>`);
+}
+async function webHistDlg() {
+  openDlg(`<h2 id="dlgTitle">Tidigare versioner på webben</h2><div id="whBox"><p class="muted small">Hämtar …</p></div><div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Stäng</button></div>`);
+  try {
+    const h = await api('history'), li = (x, cur) => `<li><span class="sn-w">${fwhen(unixIso(x.saved))}</span><span class="sn-r">Version ${x.rev}${cur ? ' <span class="muted">· den senaste</span>' : ''}</span><span class="sn-s mono muted">${fsize(x.size)}</span>${cur ? '' : `<button class="btn sm" data-act="webHistAsk" data-rev="${x.rev}">Öppna …</button>`}</li>`;
+    $('#whBox').innerHTML = `<p class="muted small">Servern sparar de ${h.history.length ? 'tio senaste versionerna' : 'senaste versionerna'} av boken. En äldre version öppnas här och sparas sedan som den nya versionen på webben.</p>${h.rev ? `<ul class="snaps">${li({ rev: h.rev, saved: h.saved, size: h.size }, true)}${h.history.map(x => li(x)).join('')}</ul>` : '<p class="small">Ingen bok sparad än.</p>'}`;
+  } catch (e) { $('#whBox').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+}
+function webAdminDlg() {
+  openDlg(`<h2 id="dlgTitle">Administrera servern</h2><p class="small">Med adminnyckeln (hemligheten <span class="mono">SISYFOS_ADMIN_KEY</span> på GitHub) skapar du inbjudningskoder och ser konton. Nyckeln sparas inte – den glöms när sidan laddas om.</p>
+   <div class="form"><div class="fld full"><label for="wAdm">Adminnyckel</label><input type="password" id="wAdm" autocomplete="off" data-enter="webAdmGo" value="${esc(st.webAdminKey || '')}"></div><div class="err fld full" id="encErr"></div></div><div id="admBox"></div>
+   <div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Stäng</button><button class="btn primary" data-act="webAdmGo">Visa koder och konton</button></div>`, 'wide');
+  if (st.webAdminKey) A.webAdmGo();
+}
+async function webAdmLoad() {
+  const box = $('#admBox'), err = $('#encErr'); if (!box) return;
+  const k = st.webAdminKey;
+  const [iv, ac] = await Promise.all([api('invites', { admin: k, noAuth: true }), api('accounts', { admin: k, noAuth: true })]);
+  const day = s => s ? sdate(ymd(new Date(s * 1000))) + ' ' + new Date(s * 1000).getFullYear() : '–';
+  box.innerHTML = `<h3 class="dsub">Ny inbjudningskod</h3><div class="form adm-new"><div class="fld"><label for="aNote">Till vem (anteckning)</label><input id="aNote" maxlength="80" placeholder="t.ex. Anna, testare"></div><div class="fld"><label for="aMax">Antal konton</label><input id="aMax" type="number" min="1" max="100" value="1"></div><div class="fld"><label for="aDays">Giltig i dagar</label><input id="aDays" type="number" min="1" max="365" value="30"></div><div class="fld"><button class="btn primary" data-act="webAdmInvite">Skapa kod</button></div></div><div id="aNew"></div>
+   <h3 class="dsub">Inbjudningskoder</h3>${iv.invites.length ? `<table class="adm-t"><thead><tr><th>Kod</th><th>Anteckning</th><th>Använd</th><th>Gäller till</th><th></th></tr></thead><tbody>${iv.invites.map(x => `<tr><td class="mono">${esc(x.code)}</td><td>${esc(x.note || '')}</td><td class="num">${x.used} av ${x.max}</td><td>${day(x.until)}</td><td><button class="btn sm ghost" data-act="webAdmUninvite" data-code="${esc(x.code)}">Ta bort</button></td></tr>`).join('')}</tbody></table>` : '<p class="muted small">Inga koder.</p>'}
+   <h3 class="dsub">Konton</h3>${ac.accounts.length ? `<table class="adm-t"><thead><tr><th>E-post</th><th>Skapat</th><th>Senast sparad</th><th>Utrymme</th><th>Enheter</th><th></th></tr></thead><tbody>${ac.accounts.map(x => `<tr><td>${esc(x.email)}</td><td>${day(x.created)}</td><td>${x.saved ? fwhen(unixIso(x.saved)) : '–'}</td><td class="num">${fsize(x.used)}</td><td class="num">${x.devices}</td><td><button class="btn sm ghost" data-act="webAdmRemove" data-email="${esc(x.email)}">Ta bort …</button></td></tr>`).join('')}</tbody></table>` : '<p class="muted small">Inga konton.</p>'}`;
+  if (err) err.textContent = '';
+}
+// Före lösenordsbyte eller ny återställningsnyckel: skicka det nya valvet till servern först – går det inte ändras inget
+async function webVault(vault, login, logoutOthers) {
+  if (!webOn()) return;
+  try { await api('vault', { body: { vault: vaultPublic(vault), ...(login ? { login } : {}), ...(logoutOthers ? { logoutOthers: true } : {}) } }); }
+  catch (e) { throw new Error((e.offline ? 'Ingen kontakt med servern' : e.message) + ' Bytet är inte gjort – försök igen när du har nät.'); }
+}
+
 /* ── Autospar till mapp (File System Access API – Chrome och Edge på dator) ── */
 const dirSupported = () => 'showDirectoryPicker' in window && window.isSecureContext && !narrow();
 async function dirRestore() {
@@ -2211,10 +2576,13 @@ async function safetyRender() {
   h += row('Som app', standalone() ? `${ic('check')} Installerad – startar utan nät` : isIOS() ? 'Lägg till på hemskärmen via Dela. Hemskärmsappen har en egen lagring – flytta boken med en fil.' : 'Kan installeras och startar då utan nät.', standalone() ? '' : `<button class="btn sm" data-act="installApp">Så gör du …</button>`);
   h += `</div>`;
   h += encSectionHtml();
+  h += `<div id="webBox">${webSectionHtml()}</div>`;
   h += `<h3 class="dsub">Ögonblicksbilder</h3><p class="muted small">Sisyfos sparar läget automatiskt före varje dags första ändring (${SNAP_DAILY} dagar bakåt) och före stora ändringar som import, ny bok och uppgradering (${SNAP_EVENT} st). De ligger bara i den här webbläsaren – de ersätter inte en kopia som fil.</p>`;
   h += snaps.length ? `<ul class="snaps">${snaps.map(x => `<li><span class="sn-w">${fwhen(x.at)}</span><span class="sn-r">${esc(x.reason)}${x.name ? ` <span class="muted">· ${esc(x.name)}</span>` : ''}</span><span class="sn-s mono muted">${x.posts} poster · ${fsize(x.size)}</span><button class="btn sm ghost" data-act="snapDl" data-id="${esc(x.id)}" title="Ladda ner som fil">${ic('export')}</button><button class="btn sm" data-act="snapAsk" data-id="${esc(x.id)}">Återställ …</button></li>`).join('')}</ul>` : `<p class="muted small">${db ? 'Inga ögonblicksbilder än – den första tas när du ändrar något en ny dag.' : 'Inte tillgängligt i den här webbläsaren.'}</p>`;
   box.innerHTML = h;
   if (st.toBook) { st.toBook = false; $('#set-book')?.scrollIntoView({ block: 'start' }); }
+  await webRender(true);
+  if (st.toWeb) { st.toWeb = false; $('#set-web')?.scrollIntoView({ block: 'start' }); }
 }
 async function snapGet(id) { return idb('snaps', 'readonly', os => os.get(id)); }
 async function snapRestore(id) {
@@ -2604,13 +2972,13 @@ function renderStatus() {
   if (st.view === 'month' && st.page === 'tid') {
     const f = `${st.month}-01`, l = ymLast(st.month); let tot = 0, nm = 0; for (const e of live()) if (e.date >= f && e.date <= l) tot += e.hours; for (let d = f; d <= l; d = addD(d, 1)) nm += norm(d);
     const cb = compBalance();
-    $('#status').innerHTML = `<span><span class="label">${cap(MONL[+st.month.slice(5, 7) - 1])}</span><span class="value">${fh(tot)}</span>${hasNorm() ? ` / ${fh(nm)}` : ''} h</span>${cb != null ? `<span><span class="label">Komp</span><span class="value">${sgn(cb)}</span> h</span>` : ''}${(vi => vi ? `<span><span class="label">Sem<span class="hide-narrow">ester</span></span><span class="value">${vi.view === 'split' && vi.savedLeft > 0.05 && vi.left >= 0 ? fdays(vi.yearLeft) + ' + ' + fdays(vi.savedLeft) : fdays(vi.left)}</span> d</span>` : '')(vacInfo())}<span class="end hide-narrow">format ${FORMAT_VERSION} · lokalt</span>`;
+    $('#status').innerHTML = `<span><span class="label">${cap(MONL[+st.month.slice(5, 7) - 1])}</span><span class="value">${fh(tot)}</span>${hasNorm() ? ` / ${fh(nm)}` : ''} h</span>${cb != null ? `<span><span class="label">Komp</span><span class="value">${sgn(cb)}</span> h</span>` : ''}${(vi => vi ? `<span><span class="label">Sem<span class="hide-narrow">ester</span></span><span class="value">${vi.view === 'split' && vi.savedLeft > 0.05 && vi.left >= 0 ? fdays(vi.yearLeft) + ' + ' + fdays(vi.savedLeft) : fdays(vi.left)}</span> d</span>` : '')(vacInfo())}<span class="end hide-narrow">format ${FORMAT_VERSION} · ${webOn() ? 'synkas' : 'lokalt'}</span>`;
     return;
   }
   const wk = st.view === 'day' ? monday(st.day) : st.week, days = visDays(wk), { w } = isoWeek(wk);
   const tot = days.reduce((s, d) => s + dayTotal(d), 0), nm = days.reduce((s, d) => s + norm(d), 0);
   const cb = compBalance(), ws = weekState(wk);
-  $('#status').innerHTML = `<span><span class="label">Vecka ${w}</span><span class="value">${fh(tot)}</span>${hasNorm() ? ` / ${fh(nm)}` : ''} h${ws.signed ? ' · signerad' : ws.checked ? ' · avcheckad' : ''}</span>${cb != null ? `<span><span class="label">Komp</span><span class="value">${sgn(cb)}</span> h</span>` : ''}${(vi => vi ? `<span><span class="label">Sem<span class="hide-narrow">ester</span></span><span class="value">${vi.view === 'split' && vi.savedLeft > 0.05 && vi.left >= 0 ? fdays(vi.yearLeft) + ' + ' + fdays(vi.savedLeft) : fdays(vi.left)}</span> d</span>` : '')(vacInfo())}<span class="hide-narrow"><span class="label">Poster</span><span class="value">${live().length}</span></span><span class="hide-narrow"><span class="label">Händelser</span><span class="value">${log().length}</span></span><span class="end hide-narrow">format ${FORMAT_VERSION} · lokalt</span>`;
+  $('#status').innerHTML = `<span><span class="label">Vecka ${w}</span><span class="value">${fh(tot)}</span>${hasNorm() ? ` / ${fh(nm)}` : ''} h${ws.signed ? ' · signerad' : ws.checked ? ' · avcheckad' : ''}</span>${cb != null ? `<span><span class="label">Komp</span><span class="value">${sgn(cb)}</span> h</span>` : ''}${(vi => vi ? `<span><span class="label">Sem<span class="hide-narrow">ester</span></span><span class="value">${vi.view === 'split' && vi.savedLeft > 0.05 && vi.left >= 0 ? fdays(vi.yearLeft) + ' + ' + fdays(vi.savedLeft) : fdays(vi.left)}</span> d</span>` : '')(vacInfo())}<span class="hide-narrow"><span class="label">Poster</span><span class="value">${live().length}</span></span><span class="hide-narrow"><span class="label">Händelser</span><span class="value">${log().length}</span></span><span class="end hide-narrow">format ${FORMAT_VERSION} · ${webOn() ? 'synkas' : 'lokalt'}</span>`;
 }
 
 /* ───────────── Förslag (utan AI: ur egna anteckningar i projektet) ───────────── */
@@ -3010,7 +3378,7 @@ function repPanelHtml() {
 }
 function setPanelHtml() {
   const secs = [...document.querySelectorAll('#main .sset[id]')].map(s => [s.id, s.querySelector('h2')?.textContent || '']).filter(x => x[1]);
-  return pHead('Inställningar', 'Allt sparas direkt') + `<div class="p-body"><section class="psec"><h3>Innehåll</h3><ul class="toc">${secs.map(([id, t]) => `<li><button data-act="toSec" data-id="${id}">${esc(t)}</button></li>`).join('')}</ul></section>` + helpSec(['Ändringar <b>sparas direkt</b> – det finns ingen spara-knapp.', 'Boken finns bara i den här webbläsaren. <b>Spara kopior</b> under Spara boken.', 'Ändrade timpriser gäller tid från och med nu – gammal tid behåller sitt pris.']) + `</div>`;
+  return pHead('Inställningar', 'Allt sparas direkt') + `<div class="p-body"><section class="psec"><h3>Innehåll</h3><ul class="toc">${secs.map(([id, t]) => `<li><button data-act="toSec" data-id="${id}">${esc(t)}</button></li>`).join('')}</ul></section>` + helpSec(['Ändringar <b>sparas direkt</b> – det finns ingen spara-knapp.', webOn() ? 'Boken sparas här och <b>krypterad på webben</b>. Servern sparar de tio senaste versionerna.' : 'Boken finns bara i den här webbläsaren. <b>Spara kopior</b> – eller spara den krypterad på webben – under Spara boken.', 'Ändrade timpriser gäller tid från och med nu – gammal tid behåller sitt pris.']) + `</div>`;
 }
 
 /* ───────────── Panelens läge ───────────── */
@@ -3451,7 +3819,7 @@ function aboutDlg() {
 }
 // Data och integritet – vilken data Sisyfos hanterar, var den finns och vad som skickas
 function dataDlg() {
-  openDlg(`<div class="about data-info"><h2 id="dlgTitle">Data och integritet</h2><p class="muted small">Gäller Sisyfos ${APP_VERSION} (alfa). Texten uppdateras när något ändras – nästa gång när boken kan sparas krypterad på webben.</p>
+  openDlg(`<div class="about data-info"><h2 id="dlgTitle">Data och integritet</h2><p class="muted small">Gäller Sisyfos ${APP_VERSION} (alfa). Texten uppdateras när något ändras. ${webOn() ? `Du har ett konto på webben (${esc(st.web.email)}).` : 'Du har inget konto på webben – boken finns bara på dina enheter.'}</p>
   <h3>Vad boken innehåller</h3>
   <ul><li><b>Företaget:</b> namn, organisationsnummer, adress, e-post, telefon, webbplats och logga.</li>
   <li><b>Kunder:</b> namn, organisations- eller personnummer, referens, kontaktperson, e-post, telefon, adresser och anteckningar.</li>
@@ -3461,16 +3829,19 @@ function dataDlg() {
   <li><b>Inställningar</b> för hur appen visas.</li></ul>
   <p class="small">Personnummer, kontaktpersoner och anteckningar om människor är personuppgifter.</p>
   <h3>Var den sparas</h3>
-  <ul><li><b>Bara i den här webbläsaren, på den här enheten</b> (IndexedDB med en kopia i webbläsarens lokala lagring), tillsammans med automatiska ögonblicksbilder. En app installerad på iPhones hemskärm har en egen, separat lagring.</li>
+  <ul><li><b>I den här webbläsaren, på den här enheten</b> (IndexedDB med en kopia i webbläsarens lokala lagring), tillsammans med automatiska ögonblicksbilder. En app installerad på iPhones hemskärm har en egen, separat lagring.</li>
   <li><b>Filer du själv sparar</b> – kopior av boken, autospar till en mapp, PDF- och CSV-rapporter – är vanliga, okrypterade filer. Hantera dem som andra affärshandlingar.</li>
   <li><b>Krypterade kopior</b> (.sisyfos, när du slagit på kryptering under <i>Spara boken</i>) kan bara öppnas med ditt lösenord eller din utskrivna återställningsnyckel. Lösenordet sparas ingenstans. Glömmer du båda går kopian inte att öppna – inte heller för oss.</li>
-  <li><b>Ingen annan kan se boken</b> – inte heller Agrell Arkitektur, som gör Sisyfos. Det betyder också att ingen kan återställa den åt dig: rensar du webbplatsdata eller tappar enheten är boken borta om du inte har en kopia.</li></ul>
+  <li><b>På webben – bara om du skapar ett konto</b> under <i>Spara boken → Spara på webben</i>. Boken krypteras på enheten innan den skickas till servern där Sisyfos ligger (agrellarkitektur.se, ett webbhotell hos Loopia i Sverige). Servern sparar din e-postadress, när kontot skapades, vilka enheter som är inloggade (t.ex. ”iPhone · Safari”) och när de senast användes, och den krypterade boken med de tio senaste versionerna, deras storlek och tidpunkter. Lösenordet, boknyckeln och innehållet lämnar aldrig enheten okrypterade. Du kan logga ut och radera kontot med allt på servern när du vill.</li>
+  <li><b>Ingen annan kan läsa boken</b> – inte heller Agrell Arkitektur, som gör Sisyfos och driver servern. Det betyder också att ingen kan återställa den åt dig: glömmer du både lösenordet och återställningsnyckeln, eller rensar du webbplatsdata utan konto eller kopia, är boken borta.</li>
+  <li><b>Ett ärligt förbehåll:</b> krypteringen görs av appen, som hämtas från samma server. Den som kontrollerar servern skulle i teorin kunna byta ut appen mot en som läser lösenordet. Sisyfos är öppen källkod och läggs bara ut på servern från GitHub, där varje ändring syns; en installerad app minskar risken ytterligare.</li></ul>
   <h3>Vad som skickas över nätet</h3>
   <ul><li><b>Appen hämtas</b> från agrellarkitektur.se. Webbhotellet för, som alla webbservrar, tekniska loggar över anrop (IP-adress, tidpunkt, vilken fil). Inget ur boken följer med.</li>
   <li><b>Synpunkter</b> – bara när du trycker på Skicka: det du skrivit i formuläret, din e-postadress om du anger den och, om du kryssat i det, version och skärmstorlek. Skriptet skickar det vidare som e-post och sparar ingenting.</li>
+  <li><b>Med konto på webben:</b> den krypterade boken när den ändras, e-postadressen och en inloggning som räknas fram ur lösenordet (servern sparar bara ett hashvärde av den). Webbhotellets loggar visar då också IP-adress och tidpunkt för synken.</li>
   <li><b>Inget annat.</b> Ingen statistik, spårning, reklam, AI eller tjänster från andra företag. Typsnitten är inbyggda.</li></ul>
   <h3>Ditt ansvar</h3>
-  <ul><li>Du ansvarar för personuppgifterna du för in i boken, på samma sätt som för ett eget kalkylark eller pappersarkiv. Eftersom inget ur boken når Agrell Arkitektur behandlar vi inga personuppgifter åt dig.</li>
+  <ul><li>Du ansvarar för personuppgifterna du för in i boken, på samma sätt som för ett eget kalkylark eller pappersarkiv. Utan konto på webben når inget ur boken Agrell Arkitektur. Med konto sparar vi din e-postadress och den krypterade boken – som vi inte kan läsa – bara för att tjänsten ska fungera. Lagringen på webben är ett test utan garanti; ändras eller avvecklas den får du besked till e-postadressen, och boken finns kvar på dina enheter.</li>
   <li>Skriv inte mer om människor än uppdraget kräver, och inga känsliga uppgifter som hälsa i anteckningarna.</li>
   <li>Sisyfos är en <b>alfaversion</b> och fri programvara under GPL, <b>utan garanti</b>. Kontrollera rapporter och underlag innan de används, och spara kopior av boken regelbundet.</li></ul>
   <div class="dlg-foot"><button class="btn ghost" data-act="about">${ic('info')}Om Sisyfos</button><button class="btn primary" data-act="closeDlg">Stäng</button></div></div>`);
@@ -3541,6 +3912,7 @@ function replaceBook(b, reason = 'Före byte av bok') {
   const prev = JSON.stringify(S), wasEx = isExample() || st.noSave;
   S = migrate(b); derive();
   if (reason && !wasEx) snapshot(reason, prev, 'event');
+  if (webOn() && !st.webApplying) webStore({ replace: true });
   st.noSave = false; st.loadErr = null; st.newer = false; lastRaw = null; st.sel = null; st.week = monday(today()); st.day = today(); st.month = ymOf(today()); st.page = 'tid'; closeDlg(); save(); if (!isExample()) storageInfo(); render(); }
 
 /* ───────────── Toast ───────────── */
@@ -3559,7 +3931,7 @@ function openOrg() {
 }
 function brandMenu(btn) {
   const m = $('#menu');
-  m.innerHTML = `<div class="mh">${esc(R().book.name)}</div><hr><button role="menuitem" data-act="page" data-page="installningar">${ic('settings')}Inställningar …</button>${simple() ? '' : `<button role="menuitem" data-act="personDlg">${ic('person')}Anställning, saldo och semester …</button>`}<button role="menuitem" data-act="numbering">${ic('hash')}Projektnummer …</button><button role="menuitem" data-act="quickHelp">${ic('bolt')}Smartshell och förkortningar …</button><hr><button role="menuitem" data-act="backupFile">${ic('save')}Spara kopia som fil</button>${st.enc ? `<button role="menuitem" data-act="encSave">${ic('lock')}Spara krypterad kopia</button>` : ''}<button role="menuitem" data-act="storageInfo">${ic('folder')}Spara och återställ …</button><button role="menuitem" data-act="exportBook">${ic('export')}Exportera boken …</button><button role="menuitem" data-act="importBook">${ic('import')}Importera bok …</button><hr><button role="menuitem" data-act="askNew">${ic('newbook')}Ny tom bok</button><button role="menuitem" data-act="askSample">${ic('sample')}Ladda exempelboken</button><hr><button role="menuitem" data-act="about">${ic('info')}Om Sisyfos</button><button role="menuitem" data-act="dataInfo">${ic('lock')}Data och integritet</button><button role="menuitem" data-act="feedback">${ic('mail')}Skicka synpunkter …</button>${standalone() ? '' : `<button role="menuitem" data-act="installApp">${ic('import')}Installera som app …</button>`}<hr><div class="mh">Allt sparas bara på den här enheten. Ingen server, inget moln.</div>`;
+  m.innerHTML = `<div class="mh">${esc(R().book.name)}</div><hr><button role="menuitem" data-act="page" data-page="installningar">${ic('settings')}Inställningar …</button>${simple() ? '' : `<button role="menuitem" data-act="personDlg">${ic('person')}Anställning, saldo och semester …</button>`}<button role="menuitem" data-act="numbering">${ic('hash')}Projektnummer …</button><button role="menuitem" data-act="quickHelp">${ic('bolt')}Smartshell och förkortningar …</button><hr><button role="menuitem" data-act="backupFile">${ic('save')}Spara kopia som fil</button>${st.enc ? `<button role="menuitem" data-act="encSave">${ic('lock')}Spara krypterad kopia</button>` : ''}${webOn() ? `<button role="menuitem" data-act="webSyncNow">${ic('save')}Synka med webben</button>` : `<button role="menuitem" data-act="webGo">${ic('lock')}Spara på webben …</button>`}<button role="menuitem" data-act="storageInfo">${ic('folder')}Spara och återställ …</button><button role="menuitem" data-act="exportBook">${ic('export')}Exportera boken …</button><button role="menuitem" data-act="importBook">${ic('import')}Importera bok …</button><hr><button role="menuitem" data-act="askNew">${ic('newbook')}Ny tom bok</button><button role="menuitem" data-act="askSample">${ic('sample')}Ladda exempelboken</button><hr><button role="menuitem" data-act="about">${ic('info')}Om Sisyfos</button><button role="menuitem" data-act="dataInfo">${ic('lock')}Data och integritet</button><button role="menuitem" data-act="feedback">${ic('mail')}Skicka synpunkter …</button>${standalone() ? '' : `<button role="menuitem" data-act="installApp">${ic('import')}Installera som app …</button>`}<hr><div class="mh">${webOn() ? 'Boken sparas här och krypterad på webben.' : 'Allt sparas bara på den här enheten. Ingen server, inget moln.'}</div>`;
   m.hidden = false; btn.setAttribute('aria-expanded', 'true');
   const r = btn.getBoundingClientRect(); m.style.left = Math.max(8, r.left) + 'px'; m.style.top = (r.bottom + 6) + 'px';
   $('button', m).focus();
@@ -3740,6 +4112,107 @@ const A = {
   brandMenu: el => { if (!$('#menu').hidden) { closeFloating(); return; } brandMenu(el); },
   exportBook: () => { closeFloating(); exportDlg(); },
   encSetup: () => { closeFloating(); encSetupDlg(); },
+  webGo: () => { closeFloating(); st.page = 'installningar'; st.pid = null; st.cid = null; st.toWeb = true; render(); },
+  webLogin: () => { closeFloating(); webLoginDlg(); },
+  webReg: () => { closeFloating(); webRegDlg(); },
+  webLoginGo: async () => {
+    const err = $('#encErr'), email = $('#wEmail').value.trim().toLowerCase(), pw = $('#wPw').value; err.textContent = '';
+    if (!emailOk(email) || !pw) { err.textContent = 'Skriv e-postadressen och lösenordet.'; return; }
+    const btn = $('#dlg [data-act="webLoginGo"]'); busy(btn, true, 'Loggar in …');
+    try {
+      const k = await api('kdf', { body: { email }, noAuth: true });
+      const bits = await pwBits(pw, unb64(k.kdf.salt), k.kdf.iter);
+      const r = await api('login', { body: { email, login: b64(bits.slice(32)), device: devName() }, noAuth: true });
+      let raw; try { raw = await unseal(await aesKey(bits.slice(0, 32), ['decrypt']), r.vault.pw, AAD_KEY); } catch (_) { throw new Error('Inloggningen gick igenom men bokens nyckel kunde inte låsas upp med lösenordet.'); }
+      bits.fill(0); const key = await aesKey(raw, ['encrypt', 'decrypt']); raw.fill(0);
+      await webLoginDone({ email, token: r.token, vault: r.vault, key, rev: r.rev, saved: r.saved, used: r.used, quota: r.quota });
+    } catch (x) { busy(btn, false); if ($('#encErr')) $('#encErr').textContent = x instanceof SyntaxError ? 'Boken på webben gick att låsa upp men innehållet är skadat.' : x.message; else toast(x.message); }
+  },
+  webLoginReplace: () => webLoginUse('replace').catch(e => toast('Inloggningen avbröts: ' + e.message)),
+  webLoginMerge: () => webLoginUse('merge').catch(e => toast('Inloggningen avbröts: ' + e.message)),
+  webLoginCancel: () => { const L = st.webLogin; st.webLogin = null; closeDlg(); if (L) api('logout', { body: {}, token: L.token }).catch(() => {}); },
+  webRegGo: async () => {
+    const err = $('#encErr'); err.textContent = '';
+    const invite = $('#wInv').value.trim(), email = $('#wEmail').value.trim().toLowerCase();
+    if (!invite) { err.textContent = 'Skriv inbjudningskoden.'; $('#wInv').focus(); return; }
+    if (!emailOk(email)) { err.textContent = 'E-postadressen ser inte rätt ut.'; $('#wEmail').focus(); return; }
+    const btn = $('#dlg [data-act="webRegGo"]');
+    if (st.enc) {
+      const pw = $('#wPw').value; if (!pw) { err.textContent = 'Skriv lösenordet.'; return; }
+      busy(btn, true, 'Skapar konto …');
+      try {
+        const v = st.enc.vault, bits = await pwBits(pw, unb64(v.kdf.salt), v.kdf.iter);
+        let raw; try { raw = await unseal(await aesKey(bits.slice(0, 32), ['decrypt']), v.pw, AAD_KEY); } catch (_) { throw new Error('Fel lösenord – använd samma lösenord som för krypteringen.'); }
+        const key = st.enc.key || await aesKey(raw, ['encrypt', 'decrypt']); raw.fill(0);
+        await webRegister({ invite, email, login: b64(bits.slice(32)), vault: v, key }); bits.fill(0);
+      } catch (x) { busy(btn, false); err.textContent = x.message; }
+    } else {
+      const a = $('#encPw').value, m = pwCheck(a, $('#encPw2').value); if (m) { err.textContent = m; return; }
+      busy(btn, true, 'Skapar nycklar …');
+      try { const n = await encCreate(a); st.encNew = { ...n, web: { invite, email } }; rkShowDlg(n.rk, true); } catch (x) { busy(btn, false); err.textContent = x.message; }
+    }
+  },
+  webSyncNow: async () => { closeFloating(); if (!webOn()) { A.webGo(); return; } await webSync(); toast(st.webS.s === 'ok' ? 'Boken är synkad' : (webSaveText()?.[0] || 'Synken gick inte')); },
+  webOut: () => webOutDlg(),
+  webOutGo: async () => {
+    const wipe = $('input[name="wOut"]:checked')?.value === 'wipe', err = $('#encErr'), btn = $('#dlg [data-act="webOutGo"]'); err.textContent = '';
+    busy(btn, true, 'Loggar ut …');
+    if (webDirty() && !st.webForce) {
+      st.webNoWait = true; try { await webSync(); } finally { st.webNoWait = false; }
+      if (webDirty()) { busy(btn, false); st.webForce = true; err.textContent = `Ändringarna kunde inte synkas (${st.webS.msg || webSaveText()?.[0] || 'okänt fel'}). ${wipe ? 'Tar du bort boken här försvinner de.' : 'De finns kvar i boken här.'} Tryck på Logga ut igen för att logga ut ändå.`; return; }
+    }
+    try { await api('logout', { body: {} }); } catch (_) {}
+    await webForget();
+    if (wipe) return wipeLocal();
+    closeDlg(); toast('Utloggad från webben – boken finns kvar i den här webbläsaren'); if (st.page === 'installningar') safetyRender();
+  },
+  webDel: () => webDelDlg(),
+  webDelGo: async () => {
+    const err = $('#encErr'), pw = $('#wPw').value, btn = $('#dlg [data-act="webDelGo"]'); err.textContent = '';
+    if (!pw) { err.textContent = 'Skriv lösenordet.'; return; }
+    busy(btn, true, 'Raderar …');
+    try {
+      const k = await api('kdf', { body: { email: st.web.email }, noAuth: true }), bits = await pwBits(pw, unb64(k.kdf.salt), k.kdf.iter);
+      await api('delete', { body: { login: b64(bits.slice(32)) } }); bits.fill(0);
+      await webForget(); closeDlg(); toast('Kontot och allt på servern är raderat. Boken finns kvar här.'); if (st.page === 'installningar') safetyRender();
+    } catch (x) { busy(btn, false); err.textContent = x.message; }
+  },
+  webHist: () => webHistDlg(),
+  webHistAsk: el => { st.webHistRev = +el.dataset.rev; confirmPlain('Öppna en tidigare version', `Version ${st.webHistRev} ersätter boken här och sparas sedan som den senaste versionen på webben. En ögonblicksbild av den nuvarande boken tas först.`, 'Öppna versionen', 'webHistGo'); },
+  webHistGo: async () => {
+    try {
+      const g = await api('get', { raw: true, query: '&rev=' + st.webHistRev }), book = await decBook(JSON.parse(g.text), st.enc.key), before = JSON.stringify(S);
+      replaceBook(book, 'Före tidigare version från webben');
+      toast(`Version ${st.webHistRev} från webben är öppnad`, { label: 'Ångra', fn: () => replaceBook(JSON.parse(before), null) });
+    } catch (e) { closeDlg(); toast('Versionen kunde inte öppnas: ' + e.message); }
+  },
+  webCfKeep: () => { st.webCf = null; closeDlg(); },
+  webCfTheirs: () => {
+    const cf = st.webCf || []; st.webCf = null; closeDlg();
+    const before = JSON.stringify(S);
+    for (const c of cf) setAt(S, c.path, c.t === undefined ? undefined : JSON.parse(JSON.stringify(c.t)));
+    derive(); save(); render();
+    toast('Den andra enhetens version används', { label: 'Ångra', fn: () => { S = JSON.parse(before); derive(); save(); render(); } });
+  },
+  webAdmin: () => { closeFloating(); webAdminDlg(); },
+  webAdmGo: async () => {
+    const k = $('#wAdm')?.value.trim(), err = $('#encErr'); if (!k) { err.textContent = 'Skriv adminnyckeln.'; return; }
+    st.webAdminKey = k;
+    try { await webAdmLoad(); } catch (e) { err.textContent = e.message; if (e.status === 403) st.webAdminKey = null; }
+  },
+  webAdmInvite: async () => {
+    try {
+      const r = await api('invite', { admin: st.webAdminKey, noAuth: true, body: { note: $('#aNote').value, max: +$('#aMax').value || 1, days: +$('#aDays').value || 30 } });
+      await webAdmLoad();
+      $('#aNew').innerHTML = `<p class="inv-code">Ny kod: <b class="mono">${esc(r.code)}</b> <span class="muted small">gäller till ${sdate(ymd(new Date(r.until * 1000)))}</span> <button class="btn sm ghost" data-act="webAdmCopy" data-code="${esc(r.code)}">${ic('copy')}Kopiera</button></p>`;
+    } catch (e) { $('#encErr').textContent = e.message; }
+  },
+  webAdmCopy: el => { try { navigator.clipboard.writeText(el.dataset.code).then(() => toast('Koden är kopierad'), () => toast('Kunde inte kopiera')); } catch (_) { toast('Kunde inte kopiera'); } },
+  webAdmUninvite: async el => { try { await api('uninvite', { admin: st.webAdminKey, noAuth: true, body: { code: el.dataset.code } }); await webAdmLoad(); } catch (e) { $('#encErr').textContent = e.message; } },
+  webAdmRemove: async el => {
+    if (el.dataset.sure !== '1') { el.dataset.sure = '1'; el.textContent = 'Säkert? Klicka igen'; return; }
+    try { await api('remove', { admin: st.webAdminKey, noAuth: true, body: { email: el.dataset.email } }); await webAdmLoad(); toast(`Kontot ${el.dataset.email} är borttaget`); } catch (e) { $('#encErr').textContent = e.message; }
+  },
   encCreate: async () => {
     const err = $('#encErr'), a = $('#encPw').value, m = pwCheck(a, $('#encPw2').value); err.textContent = m; if (m) return;
     const btn = $('#dlg [data-act="encCreate"]'); busy(btn, true, 'Skapar nycklar …');
@@ -3750,15 +4223,18 @@ const A = {
   rkConfirm: async () => {
     const n = st.encNew, err = $('#encErr'); if (!n) return;
     if ($('#rkLast').value.trim().toUpperCase() !== n.rk.slice(-4)) { err.textContent = 'Tecknen stämmer inte med slutet av nyckeln.'; $('#rkLast').select(); return; }
-    const first = !n.renew; n.raw?.fill?.(0);
+    const first = !n.renew;
+    if (n.renew && webOn()) { const btn = $('#dlg [data-act="rkConfirm"]'); busy(btn, true, 'Sparar …'); try { await webVault(n.vault); } catch (x) { busy(btn, false); err.textContent = x.message; return; } }
+    n.raw?.fill?.(0);
     await encStore(n.vault, n.key); st.encNew = null; closeDlg();
+    if (n.web) { try { await webRegister({ ...n.web, login: n.login, vault: n.vault, key: n.key }); } catch (x) { webRegDlg(x.message + ' Krypteringen är påslagen – skriv krypteringens lösenord.', n.web); } if (st.page === 'installningar') safetyRender(); return; }
     toast(first ? 'Krypteringen är på' : 'Den nya återställningsnyckeln gäller', first ? { label: 'Spara krypterad kopia', fn: () => encSaveFile() } : null);
     if (st.page === 'installningar') safetyRender();
   },
   encSave: () => { closeFloating(); encSaveFile(); },
   encPw: () => { closeFloating(); encUnlockDlg('pw'); },
   encRk: () => { closeFloating(); encUnlockDlg('rk'); },
-  encOff: () => confirmPlain('Stäng av krypteringen', 'Nycklarna tas bort från den här webbläsaren. Krypterade kopior som redan finns går fortfarande att öppna med lösenordet eller återställningsnyckeln. Boken påverkas inte.', 'Stäng av', 'encOffGo'),
+  encOff: () => webOn() ? confirmPlain('Stäng av krypteringen', 'Boken sparas krypterad på webben med de här nycklarna. Logga ut från webben först – under Spara på webben.', 'Stäng', 'closeDlg') : confirmPlain('Stäng av krypteringen', 'Nycklarna tas bort från den här webbläsaren. Krypterade kopior som redan finns går fortfarande att öppna med lösenordet eller återställningsnyckeln. Boken påverkas inte.', 'Stäng av', 'encOffGo'),
   encOffGo: async () => { await encForget(); closeDlg(); toast('Krypteringen är avstängd på den här enheten'); if (st.page === 'installningar') safetyRender(); },
   ulUseRk: el => { const rk = $('#ulRkF'), pw = $('#ulPwF'); if (!rk) return; const on = rk.hidden; rk.hidden = !on; pw.hidden = on; el.textContent = on ? 'Använd lösenordet i stället' : 'Jag har glömt lösenordet – använd återställningsnyckeln'; (on ? $('#ulRk') : $('#ulPw')).focus(); },
   encUnlockGo: async () => {
@@ -3767,7 +4243,7 @@ const A = {
     const btn = $('#dlg [data-act="encUnlockGo"]'); busy(btn, true);
     try {
       const u = await encUnlock(e.vault, useRk ? { rk: $('#ulRk').value } : { pw: $('#ulPw').value });
-      if (what === 'pw') { const vault = { ...e.vault, ...(await pwBox(u.raw, np)) }; u.raw.fill(0); await encStore(vault, u.key); closeDlg(); toast('Lösenordet är bytt'); }
+      if (what === 'pw') { const out = {}, vault = { ...e.vault, ...(await pwBox(u.raw, np, out)) }; await webVault(vault, out.login, $('#wOthers')?.checked); u.raw.fill(0); await encStore(vault, u.key); closeDlg(); toast(webOn() ? 'Lösenordet är bytt – även för inloggningen på webben' : 'Lösenordet är bytt'); }
       else if (what === 'rk') { const r = await rkBox(u.raw); u.raw.fill(0); st.encNew = { vault: { ...e.vault, ...r.box }, key: u.key, rk: r.rkStr, renew: true }; rkShowDlg(r.rkStr, false); return; }
       else { u.raw.fill(0); await encStore(e.vault, u.key); closeDlg(); encSaveFile(); }
       if (st.page === 'installningar') safetyRender();
@@ -3778,16 +4254,18 @@ const A = {
     const btn = $('#dlg [data-act="encOpenGo"]'); busy(btn, true, 'Låser upp …');
     try {
       const u = await encUnlock(f.vault, useRk ? { rk: $('#ulRk').value } : { pw: $('#ulPw').value });
-      const book = await decBook(f, u.key);
+      const book = await decBook(f, u.key), webOther = webOn() && f.vault.id !== st.enc?.vault.id;
       replaceBook(book, 'Före import'); st.encFile = null;
       if (encOk()) { await encStore({ ...f.vault }, u.key); }
-      if (useRk) { st.encRaw = u.raw; encNewPwDlg(); } else { u.raw.fill(0); toast('Den krypterade boken är öppnad – krypteringen följer med'); }
+      if (webOther) { api('logout', { body: {} }).catch(() => {}); await webForget(); }
+      const msg = webOther ? 'Den krypterade boken är öppnad. Den har en annan nyckel än kontot på webben, så den här enheten är utloggad därifrån.' : 'Den krypterade boken är öppnad – krypteringen följer med';
+      if (useRk) { st.encRaw = u.raw; encNewPwDlg(); if (webOther) toast(msg); } else { u.raw.fill(0); toast(msg); }
     } catch (x) { busy(btn, false); err.textContent = x instanceof SyntaxError ? 'Filen gick att låsa upp men innehållet är skadat.' : x.message; }
   },
   encNewPwGo: async () => {
     const err = $('#encErr'), a = $('#encPw').value, m = pwCheck(a, $('#encPw2').value); err.textContent = m; if (m || !st.encRaw || !st.enc) return;
     const btn = $('#dlg [data-act="encNewPwGo"]'); busy(btn, true);
-    try { const vault = { ...st.enc.vault, ...(await pwBox(st.encRaw, a)) }; st.encRaw.fill(0); st.encRaw = null; await encStore(vault, st.enc.key); closeDlg(); toast('Det nya lösenordet gäller för krypterade kopior'); }
+    try { const out = {}, vault = { ...st.enc.vault, ...(await pwBox(st.encRaw, a, out)) }; await webVault(vault, out.login); st.encRaw.fill(0); st.encRaw = null; await encStore(vault, st.enc.key); closeDlg(); toast('Det nya lösenordet gäller för krypterade kopior'); }
     catch (x) { busy(btn, false); err.textContent = x.message; }
   },
   importBook: () => { closeFloating(); importDlg(); },
@@ -4079,7 +4557,7 @@ function settingsHtml() {
   h += `<section class="sset" id="set-num"><h2>Nya projekt, nummer och förkortningar</h2><div class="form">${fmtEditorHtml('setFmt', b.numberFormat || DEF_NUMFMT)}
     ${nf.serial && !nf.err ? `<div class="fld"><label for="setStart">Nästa löpnummer</label><input id="setStart" class="mono" inputmode="numeric" value="${nf.n}"><span class="fld-hint" id="setStartHint">Lägst ${nf.minN}. Höj det om du har projektnummer från tiden före Sisyfos.</span></div>` : ''}
     <div class="fld"><label for="s_tasks">Uppgifter i nya projekt</label><input id="s_tasks" data-set="book.defaultTasks" value="${esc(defTasks().join(', '))}"><span class="fld-hint">Kommaseparerade, till exempel Utredning eller Skiss, Bygglov</span></div><div class="fld"><label for="s_idle">Nya projekt blir inaktiva efter</label>${idleSel('s_idle', b.idleDays ?? 90)}<span class="fld-hint">Kan ändras per projekt</span></div><div class="fld full"><div><button class="btn sm" data-act="quickHelp">${ic('bolt')}Förkortningar i smartshell …</button></div></div></div></section>`;
-  h += `<section class="sset" id="set-book"><h2>Spara boken</h2><p class="muted small">Boken sparas bara på den här enheten, i den här webbläsaren. Ingenting skickas någonstans. Rensar du webbplatsdata försvinner den – därför: spara kopior. <button type="button" class="linkish" data-act="dataInfo">Data och integritet</button></p><div id="safeBox" class="safe-box"><p class="muted small">Läser in …</p></div><h3 class="dsub">Hela boken</h3><div class="btn-row"><button class="btn" data-act="exportBook">${ic('export')}Exportera boken …</button><button class="btn" data-act="importBook">${ic('import')}Importera bok …</button><button class="btn ghost" data-act="askNew">${ic('newbook')}Ny tom bok</button><button class="btn ghost" data-act="askSample">${ic('sample')}Ladda exempelboken</button></div></section>`;
+  h += `<section class="sset" id="set-book"><h2>Spara boken</h2><p class="muted small">${webOn() ? `Boken sparas i den här webbläsaren och krypterad på webben (${esc(st.web.email)}), så att du når den från dina andra enheter. Kopior som fil är ändå bra att ha.` : 'Boken sparas bara på den här enheten, i den här webbläsaren. Ingenting skickas någonstans. Rensar du webbplatsdata försvinner den – därför: spara kopior eller spara den krypterad på webben.'} <button type="button" class="linkish" data-act="dataInfo">Data och integritet</button></p><div id="safeBox" class="safe-box"><p class="muted small">Läser in …</p></div><h3 class="dsub">Hela boken</h3><div class="btn-row"><button class="btn" data-act="exportBook">${ic('export')}Exportera boken …</button><button class="btn" data-act="importBook">${ic('import')}Importera bok …</button><button class="btn ghost" data-act="askNew">${ic('newbook')}Ny tom bok</button><button class="btn ghost" data-act="askSample">${ic('sample')}Ladda exempelboken</button></div></section>`;
   return h + `</div>`;
 }
 function setSetting(key, raw, el) {
@@ -5102,6 +5580,7 @@ const SHC = [
   { k: 'status', w: ['aktiv', 'aktivera', 'inaktiv', 'vila', 'avsluta', 'avsl'], g: 'Ändra', t: 'Ändra status', ex: [['avsluta strand', 'avslutar projektet'], ['inaktiv strand', 'sätter det som inaktivt'], ['aktiv strand', 'aktivt igen']] },
   { k: 'ask', w: ['?', 'hjälp'], g: 'Frågor', t: 'Frågor – svaret visas i panelen', ex: [['? strand', 'budget, öppet, senaste tid'], ['? öppet', 'allt att fakturera, äldst först'], ['? saldo', 'kompsaldo och semester'], ['? v43', 'veckans timmar och anteckningar'], ['? okt', 'månadens timmar per projekt']] },
   { k: 'go', w: ['tid', 'tidbok', 'rapp', 'rapporter', 'inst', 'inställningar'], g: 'Gå till', t: 'Sidor', ex: [['tid', 'tidboken'], ['rapp', 'rapporter'], ['inst', 'inställningar']] },
+  { k: 'synk', w: ['synk', 'synka', 'webb', 'webben'], g: 'Övrigt', t: 'Spara på webben', ex: [['synk', 'synkar boken med webben nu'], ['? synk', 'visar läget'], ['webb', 'inställningarna för webben'], ['webb admin', 'inbjudningskoder (kräver adminnyckeln)']] },
   { k: 'kopia', w: ['kopia', 'säkerhetskopia'], g: 'Övrigt', t: 'Spara kopia som fil', ex: [['kopia', 'sparar en kopia av boken nu'], ['kopia krypt', 'krypterad kopia (när krypteringen är på)']] },
   { k: 'look', w: ['mörkt', 'ljust', 'kompakt', 'normalt'], g: 'Övrigt', t: 'Utseende', ex: [['mörkt', 'mörkt tema'], ['ljust', 'ljust tema'], ['kompakt', 'tätare rader, igen för normalt']] },
   { k: 'fork', w: ['förk', 'förkortning'], g: 'Övrigt', t: 'Egna förkortningar', ex: [['förk', 'förkortningar för projekt och uppgifter']] }
@@ -5437,6 +5916,7 @@ const SH = {
     if (!a.length || a[0].lo === '') return { html: 'Enter visar alla kommandon', run: () => shAnswer(null), keep: true };
     const w = a[0].lo;
     if (a.length === 1 && (w === 'öppet' || w === 'öppen')) return { html: 'Enter visar allt att fakturera, äldst först', run: () => shAnswer(shAnsOpen()), keep: true };
+    if (a.length === 1 && ['synk', 'webb', 'webben'].includes(w)) return { html: 'Enter visar läget för synken med webben', run: () => shAnswer({ t: 'Spara på webben', sub: webOn() ? esc(st.web.email) : 'Inte inloggad', body: `<section class="psec">${webOn() ? pkv('Synk', webSaveText()?.[0] || '–') + pkv('På webben', st.web.saved ? `version ${st.web.rev} · ${fwhen(unixIso(st.web.saved))}` : 'ingen bok än') + (st.web.quota ? pkv('Utrymme', `${fsize(st.web.used)} av ${fsize(st.web.quota)}`) : '') : '<p class="p-note">Boken sparas bara i den här webbläsaren.</p>'}</section><section class="psec"><div class="p-acts">${webOn() ? `<button class="btn sm" data-act="webSyncNow">Synka nu</button>` : ''}<button class="btn sm" data-act="webGo">Spara på webben …</button></div></section>` }), keep: true };
     if (a.length === 1 && ['saldo', 'komp', 'sem', 'semester'].includes(w)) return hasNorm() || vacInfo() ? { html: 'Enter visar kompsaldo och semester', run: () => shAnswer(shAnsSaldo()), keep: true } : { info: true, html: 'Timanställda har inget kompsaldo eller semesterkonto.' };
     if (w === 'kund') { const cr = shFindCust(a.slice(1)); return cr ? { html: `Enter visar kunden ${B(cr.C.name)}`, run: () => shAnswer(shAnsCust(cr.C)), keep: true } : { info: true, html: 'Skriv kundens namn.' }; }
     const p = shPeriod(a, 0); if (p?.err) return { bad: true, html: esc(p.err) };
@@ -5448,6 +5928,12 @@ const SH = {
     const pg = w.startsWith('tid') ? 'tid' : w.startsWith('rapp') ? 'rapporter' : 'installningar';
     if (a.length) return { bad: true, html: pg === 'tid' ? 'Gå till en period genom att bara skriva den: <b>v43</b>, <b>okt</b> eller <b>idag</b>.' : 'Skriv bara sidans namn.' };
     return { html: `Enter öppnar <b>${PAGES.find(x => x[0] === pg)[2].replace('­', '')}</b>`, run: () => shPage(pg) };
+  },
+  synk(a, w) {
+    if (a[0]?.lo === 'admin') return { html: 'Enter öppnar <b>Administrera servern</b> – inbjudningskoder och konton', run: () => webAdminDlg() };
+    if (a.length) return { bad: true, html: 'Skriv bara <b>synk</b>, <b>webb</b> eller <b>webb admin</b>.' };
+    if (!webOn() || w.startsWith('webb')) return { html: `Enter öppnar <b>Spara på webben</b> under Inställningar${webOn() ? '' : ' – logga in eller skapa konto'}`, run: () => A.webGo() };
+    return { html: `Enter synkar boken med webben nu · <span class="muted">${esc(webSaveText()?.[0] || '')}</span>`, run: () => A.webSyncNow() };
   },
   kopia(a) {
     if ((a || []).some(t => /^(krypt|krypterad|lås)/.test(t.lo))) return st.enc ? { html: 'Enter sparar en <b>krypterad</b> kopia av boken', run: () => encSaveFile() } : { html: 'Krypteringen är inte påslagen – Enter öppnar <b>Slå på kryptering</b>', run: () => encSetupDlg() };
@@ -5689,6 +6175,12 @@ I.more = '<circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circ
   if (S.prefs.theme && !document.documentElement.dataset.theme) document.documentElement.dataset.theme = S.prefs.theme;
   if (narrow()) st.view = 'day';
   render();
+  if (webOn()) webSync();
+  addEventListener('online', () => { if (webOn()) webSync(); });
+  addEventListener('offline', () => { if (webOn()) webState('offline'); });
+  const webWake = () => { if (webOn() && document.visibilityState === 'visible' && Date.now() - webLast > 15000) webSync(); };
+  addEventListener('focus', webWake); document.addEventListener('visibilitychange', webWake);
+  setInterval(() => { if (Date.now() - webLast > 110000) webWake(); }, 120000);
   if (st.newer) openDlg(`<h2 id="dlgTitle">Boken är sparad i en nyare version</h2><p>${esc(st.loadErr)}</p><p>Den här versionen (${APP_VERSION}) skriver <b>inte</b> över den. Ladda om sidan så hämtas den nya versionen – exempelboken visas så länge.</p><div class="dlg-foot"><button class="btn ghost" data-act="badRawDl">${ic('export')}Spara boken som fil</button><button class="btn primary" data-act="reloadApp">Ladda om</button></div>`);
   else if (st.loadErr) openDlg(`<h2 id="dlgTitle">Boken kunde inte öppnas</h2><p>${esc(st.loadErr)}</p><p>Ingenting har skrivits över. Spara den oöppnade boken som fil och skicka gärna en synpunkt – eller återställ en ögonblicksbild under Inställningar → Spara boken. Exempelboken visas, men sparas inte förrän du väljer en annan bok.</p><div class="dlg-foot"><button class="btn ghost" data-act="storageInfo">Ögonblicksbilder</button><button class="btn primary" data-act="badRawDl">${ic('export')}Spara boken som fil</button></div>`);
 })();

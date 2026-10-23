@@ -1,6 +1,6 @@
 # Sisyfos
 
-Tidrapport och projektdagbok för en- och fåmansföretag. Körs helt lokalt i webbläsaren – ingen server, inget konto, inget moln, ingen AI.
+Tidrapport och projektdagbok för en- och fåmansföretag. Körs i webbläsaren, även utan nät – inget konto behövs, ingen AI, ingen spårning. Vill du nå boken från flera enheter kan den sparas krypterad på webben, utan att servern kan läsa den.
 
 ## Om Sisyfos
 
@@ -9,6 +9,7 @@ Tidrapport och projektdagbok för en- och fåmansföretag. Körs helt lokalt i w
   · tidrapport + projektdagbok, en- och fåmansföretag
   · kunder, projekt, tid per dag med anteckning
   · helt lokal: ingen server, inget konto, inget moln, ingen AI, ingen spårning
+  · valfritt: krypterad lagring på webben för flera enheter – servern kan inte läsa boken
   · inte bokföring/fakturering – PDF-underlag till egna system
   · löpande mot budget, påminnelser 50/75/90 %, öppet vs hanterat
   · smartshell: tid, kommandon och frågor på en rad, överst på alla sidor (nytt i 0.9)
@@ -65,7 +66,7 @@ Varför ingen riktig faktura? En faktura behöver löpnummer i obruten serie som
 
 ## Var boken sparas
 
-- Boken sparas **bara på din enhet**, i webbläsarens databas (IndexedDB) med en spegel i localStorage. Ingenting skickas någonstans.
+- Boken sparas **på din enhet**, i webbläsarens databas (IndexedDB) med en spegel i localStorage. Ingenting skickas någonstans – om du inte skapar ett konto och sparar den krypterad på webben (se nedan).
 - Sisyfos ber webbläsaren om **beständig lagring**, så att boken inte rensas när utrymmet tryter.
 - **Ögonblicksbilder** tas automatiskt före dagens första ändring (14 dagar bakåt) och före stora ändringar som import, ny bok och uppgradering. De kan återställas under *Inställningar → Spara boken*.
 - **Kopia som fil**: *Spara kopia som fil* laddar ner hela boken som JSON. Sisyfos påminner om det efter en vecka (kan ändras).
@@ -83,7 +84,40 @@ Sedan 0.12.0 kan boken sparas som en **krypterad kopia** (`.sisyfos`). Slå på 
 - Glömmer du både lösenordet och återställningsnyckeln går kopian inte att öppna – inte heller för Agrell Arkitektur.
 - Smartshell: `kopia krypt`.
 
-Samma nyckel används när boken kan sparas krypterad på webben (nästa version): då lämnar varken lösenordet, boknyckeln eller boken i klartext enheten.
+Samma nyckel används när boken sparas krypterad på webben: då lämnar varken lösenordet, boknyckeln eller boken i klartext enheten.
+
+## Spara på webben
+
+Sedan 0.13.0 kan boken sparas **krypterad på servern** där Sisyfos ligger, så att du når den från flera enheter – telefonen och datorn. Under *Inställningar → Spara boken → Spara på webben*:
+
+- **Skapa konto** med en inbjudningskod, din e-postadress och ett lösenord. Är krypteringen inte på slås den på samtidigt, och du får en återställningsnyckel att skriva ut. Är den på loggar du in med krypteringens lösenord.
+- **Logga in** på en annan enhet med e-postadressen och lösenordet. Boken hämtas och låses upp där. Finns redan en annan bok i webbläsaren frågar Sisyfos om den ska ersättas eller slås ihop med boken på webben.
+- **Synk.** Varje ändring skickas krypterad några sekunder efter att den sparats, och boken hämtas vid start, när fönstret får fokus och när nätet kommer tillbaka. Utan nät fortsätter du som vanligt; ändringarna skickas när nätet finns. Sparindikatorn uppe till höger visar läget (*Synkad 10:42*, *Synkar …*, *Offline …*).
+- **Två enheter samtidigt.** Har boken ändrats på båda sedan förra synken slås ändringarna ihop: tidposter, projekt, kunder och anteckningar från båda kommer med. Har samma sak ändrats olika på båda behålls den här enhetens version, och en dialog låter dig välja den andra enhetens i stället. En ögonblicksbild tas före sammanslagningen.
+- **Tidigare versioner.** Servern sparar de tio senaste versionerna av boken. Under *Tidigare versioner …* kan en äldre version öppnas igen.
+- **Byt lösenord** under Kryptering byter också inloggningen på webben – med möjlighet att logga ut dina andra enheter. Glömt lösenordet? Byt det med återställningsnyckeln på en enhet där du är inloggad.
+- **Logga ut** den här enheten (boken ligger kvar, eller tas bort tillsammans med ögonblicksbilderna och nycklarna – t.ex. på en lånad dator) och **radera kontot** med allt på servern.
+- Smartshell: `synk` synkar nu, `? synk` visar läget, `webb` öppnar inställningarna.
+
+**Vad servern ser.** E-postadressen, när kontot skapades, vilka enheter som är inloggade och när de senast användes, och den krypterade boken med storlek och tidpunkter. Lösenordet lämnar aldrig enheten: ur det räknas 512 bitar fram med PBKDF2 – de första 256 låser upp boknyckeln, de sista 256 blir inloggningen, och servern sparar bara ett hashvärde (`password_hash`) av dem. Utan lösenordet eller återställningsnyckeln kan ingen läsa boken, inte heller den som driver servern.
+
+**Ett ärligt förbehåll.** Krypteringen görs av appen, och appen hämtas från samma server. Den som kontrollerar servern skulle i teorin kunna byta ut appen. Sisyfos är öppen källkod och läggs bara ut på agrellarkitektur.se från det här repot via GitHub Actions; en installerad app minskar risken ytterligare.
+
+### Servern
+
+`api.php` är hela servern: PHP 8 utan databas, med JSON-filer och fillås. Den lägger sina data i mappen `sisyfos-data` två nivåer ovanför sig själv – utanför webbroten hos de flesta webbhotell – och annars i `data/` bredvid sig, spärrad med `.htaccess`. Kontots mapp får ett namn som inte går att gissa (HMAC av e-postadressen). Inga cookies, inga anrop från andra webbplatser (bara samma ursprung), och inget innehåll loggas. Gränser: 10 MB per bok, 20 MB per konto inklusive tidigare versioner, inloggningen gäller 90 dagar från senaste användning, och upprepade felaktiga inloggningar bromsas.
+
+**Administratör.** Med adminnyckeln skapar du inbjudningskoder och ser och tar bort konton – i appen via länken *Administrera servern …* eller `webb admin` i smartshell. Nyckeln sparas aldrig i appen; servern har bara dess sha256 i `api-config.php`.
+
+### Egen server
+
+Vill du ha boken på ditt eget webbhotell: lägg Sisyfos med `api.php` i en mapp där (PHP 8.1 eller senare, https), och skapa `api-config.php` bredvid:
+
+```php
+<?php return ['admin' => '<sha256 av din adminnyckel>'];
+```
+
+Öppna Sisyfos från den adressen – appen använder alltid `api.php` i samma mapp. Kontrollera med `api.php?a=status` att `storage` är `outside`; är den `inside`, se till att `data/` inte går att läsa från webben.
 
 ## Data och integritet
 
@@ -91,11 +125,11 @@ Samma text finns i appen under *Sisyfos-menyn → Data och integritet*.
 
 **Vad boken innehåller.** Företagets uppgifter och logga. Kunder: namn, organisations- eller personnummer, referens, kontaktperson, e-post, telefon, adresser och anteckningar. Projekt: namn, nummer, fastighetsbeteckning, budget, timpriser, uppgifter och anteckningar. Tid: datum, timmar, pris och anteckning för varje tidpost, med historik över ändringar, avcheckning och signering. Om dig: namn, initialer, roll och timpris – i fullständigt läge även anställningsform, normtid, kompsaldo och semester. Personnummer, kontaktpersoner och anteckningar om människor är personuppgifter.
 
-**Var den sparas.** Bara i webbläsaren på enheten, tillsammans med automatiska ögonblicksbilder (se ovan). Filer du själv sparar – kopior, autospar till mapp, PDF och CSV – är vanliga, okrypterade filer. Krypterade kopior (`.sisyfos`) kan bara öppnas med ditt lösenord eller din utskrivna återställningsnyckel; glömmer du båda går de inte att öppna, inte heller för oss. Ingen annan kan se boken, inte heller Agrell Arkitektur, och därför kan ingen heller återställa den åt dig.
+**Var den sparas.** I webbläsaren på enheten, tillsammans med automatiska ögonblicksbilder (se ovan). **Med konto på webben** dessutom krypterad på servern där Sisyfos ligger (agrellarkitektur.se, ett webbhotell hos Loopia i Sverige): e-postadressen, när kontot skapades, inloggade enheter och när de senast användes, och den krypterade boken med de tio senaste versionerna, deras storlek och tidpunkter. Lösenordet, boknyckeln och innehållet lämnar aldrig enheten okrypterade, och kontot med allt på servern kan raderas när du vill. Krypteringen görs av appen, som hämtas från samma server – se förbehållet under *Spara på webben*. Filer du själv sparar – kopior, autospar till mapp, PDF och CSV – är vanliga, okrypterade filer. Krypterade kopior (`.sisyfos`) kan bara öppnas med ditt lösenord eller din utskrivna återställningsnyckel; glömmer du båda går de inte att öppna, inte heller för oss. Ingen annan kan läsa boken, inte heller Agrell Arkitektur, och därför kan ingen heller återställa den åt dig.
 
-**Vad som skickas över nätet.** Appen hämtas från agrellarkitektur.se, och webbhotellet för som alla webbservrar tekniska loggar över anrop (IP-adress, tidpunkt, vilken fil) – inget ur boken följer med. Synpunkter skickas bara när du trycker på Skicka: det du skrivit, din e-postadress om du anger den och, om du vill, version och skärmstorlek. `feedback.php` skickar det vidare som e-post och sparar ingenting. Inget annat: ingen statistik, spårning, reklam, AI eller tjänster från andra företag, och typsnitten är inbyggda.
+**Vad som skickas över nätet.** Appen hämtas från agrellarkitektur.se, och webbhotellet för som alla webbservrar tekniska loggar över anrop (IP-adress, tidpunkt, vilken fil) – inget ur boken följer med. Synpunkter skickas bara när du trycker på Skicka: det du skrivit, din e-postadress om du anger den och, om du vill, version och skärmstorlek. `feedback.php` skickar det vidare som e-post och sparar ingenting. Med konto på webben: den krypterade boken när den ändras, e-postadressen och en inloggning som räknas fram ur lösenordet (servern sparar bara ett hashvärde av den); webbhotellets loggar visar då också IP-adress och tidpunkt för synken. Inget annat: ingen statistik, spårning, reklam, AI eller tjänster från andra företag, och typsnitten är inbyggda.
 
-**Ditt ansvar.** Du ansvarar för personuppgifterna du för in, som för ett eget kalkylark. Eftersom inget ur boken når Agrell Arkitektur behandlar vi inga personuppgifter åt dig. Skriv inte mer om människor än uppdraget kräver. Sisyfos är en alfaversion och fri programvara under GPL, utan garanti – kontrollera underlagen och spara kopior.
+**Ditt ansvar.** Du ansvarar för personuppgifterna du för in, som för ett eget kalkylark. Utan konto på webben når inget ur boken Agrell Arkitektur. Med konto sparar vi din e-postadress och den krypterade boken – som vi inte kan läsa – bara för att tjänsten ska fungera. Lagringen på webben är ett test utan garanti; ändras eller avvecklas den får du besked till e-postadressen, och boken finns kvar på dina enheter. Skriv inte mer om människor än uppdraget kräver. Sisyfos är en alfaversion och fri programvara under GPL, utan garanti – kontrollera underlagen och spara kopior.
 
 ## Installera som app
 
@@ -124,17 +158,19 @@ python3 test/oppna_gamla_bocker.py
 | `sw.js` | Service worker – gör att appen startar utan nät |
 | `manifest.webmanifest`, `icon.svg`, `*.png` | Appikon och installation |
 | `feedback.php` | Tar emot synpunktsformuläret och skickar det som e-post. Sparar ingenting |
-| `test/` | Gamla böcker och kontrollen att de öppnas |
+| `api.php` | Servern för lagring på webben – tar bara emot krypterade böcker |
+| `test/` | Gamla böcker och kontrollen att de öppnas (`oppna_gamla_bocker.py`), test av servern (`api_test.py`) och av synken mellan två enheter (`webb_test.py`, körs för hand) |
 
 ## Publicera på ett webbhotell
 
-Lägg alla filer i roten (utom `test/`, README och LICENSE) i samma mapp, till exempel `/sisyfos/`. Appen behöver https för att fungera offline. `feedback.php` kräver att PHP:s `mail()` fungerar; peka `FEEDBACK_URL` i `index.html` dit.
+Lägg alla filer i roten (utom `test/`, README och LICENSE) i samma mapp, till exempel `/sisyfos/`. Appen behöver https för att fungera offline. `feedback.php` kräver att PHP:s `mail()` fungerar; peka `FEEDBACK_URL` i `index.html` dit. `api.php` kräver PHP 8.1 eller senare – se *Egen server*.
 
 ### Arbetsflöden
 
 - **Publicera på webbhotellet** – laddar upp appen via FTPS vid varje push till `main`. Aktiveras när hemligheterna `FTP_SERVER`, `FTP_USERNAME` och `FTP_PASSWORD` finns (frivilligt `FTP_DIR`, standard `/sisyfos/`, och `FTP_PROTOCOL`, standard `ftps`).
 - **Release-zip** – när en release publiceras på GitHub (tagg `vX.Y.Z`) läggs `sisyfos-vX.Y.Z.zip` till, färdig att lägga på webbhotellet. Taggen måste stämma med `APP_VERSION` i `index.html`.
-- **Test – gamla böcker öppnas** – se ovan.
+- **Publicera på webbhotellet** skriver också `api-config.php` med sha256 av hemligheten `SISYFOS_ADMIN_KEY` (adminnyckeln för inbjudningskoder) och kontrollerar efteråt att `api.php?a=status` svarar och att datamappen inte går att läsa från webben.
+- **Test – gamla böcker öppnas** – se ovan. Kör också `test/api_test.py` (servern i båda lagringslägena).
 
 ## Licens
 
