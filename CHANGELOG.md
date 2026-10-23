@@ -1,5 +1,13 @@
 # Ändringar i Sisyfos
 
+## 0.9.1
+
+Småjusteringar. Filformatet är oförändrat (7).
+
+- **Inställningar är lika breda som övriga sidor**, så att innehållet inte hoppar när man byter sida.
+- **Asterisk för det som krävs** i guiden för ny bok, Ny kund, Nytt projekt, Redigera projekt och Inställningar, med en förklarande rad i varje formulär.
+- **"Spara" i stället för "säkerhetskopia"**: menyn har *Spara kopia som fil* (direkt) och *Spara och återställ …*, avsnittet i Inställningar heter *Spara boken*, och knapparna har en diskett i stället för hänglås.
+
 ## 0.9.0
 
 Smartshell. Filformatet är oförändrat (7).

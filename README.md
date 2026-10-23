@@ -23,7 +23,7 @@ Tidrapport och projektdagbok för en- och fåmansföretag. Körs helt lokalt i w
 
 Öppna **https://agrellarkitektur.se/sisyfos/**. Sisyfos startar med en exempelbok; skapa din egen bok under menyn *Sisyfos → Ny tom bok*.
 
-Sisyfos är en **alfaversion**. Den fungerar, men ändras fortfarande. Spara en kopia av boken som fil regelbundet (menyn *Sisyfos → Säkerhetskopior*).
+Sisyfos är en **alfaversion**. Den fungerar, men ändras fortfarande. Spara en kopia av boken som fil regelbundet (menyn *Sisyfos → Spara kopia som fil*).
 
 ## Smartshell
 
@@ -47,7 +47,7 @@ Perioder: `idag`, `tor`, `mån-fre`, `15/10-22/10`, `v40-43`, `fv` (förra vecka
 
 - Boken sparas **bara på din enhet**, i webbläsarens databas (IndexedDB) med en spegel i localStorage. Ingenting skickas någonstans.
 - Sisyfos ber webbläsaren om **beständig lagring**, så att boken inte rensas när utrymmet tryter.
-- **Ögonblicksbilder** tas automatiskt före dagens första ändring (14 dagar bakåt) och före stora ändringar som import, ny bok och uppgradering. De kan återställas under *Inställningar → Säkerhetskopior*.
+- **Ögonblicksbilder** tas automatiskt före dagens första ändring (14 dagar bakåt) och före stora ändringar som import, ny bok och uppgradering. De kan återställas under *Inställningar → Spara boken*.
 - **Kopia som fil**: *Spara kopia som fil* laddar ner hela boken som JSON. Sisyfos påminner om det efter en vecka (kan ändras).
 - **Autospar till mapp** (Chrome och Edge på dator): välj en mapp – gärna en som säkerhetskopieras eller ligger i en molnmapp – så skriver Sisyfos boken dit vid varje ändring, plus en kopia per dag i undermappen *Säkerhetskopior*.
 - Rensar du webbplatsdata för sidan försvinner boken ur webbläsaren. Då behövs en kopia.

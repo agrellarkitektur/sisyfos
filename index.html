@@ -249,7 +249,6 @@ button{cursor:pointer}
 .quick-hint.bad{color:var(--warn-ink)}
 /* Smartshell: överst på alla sidor, fäst när man rullar (på dator) */
 .sh-dock{max-width:1240px;margin:0 auto 12px;position:sticky;top:-12px;z-index:6;padding-top:12px;margin-top:-12px;background:linear-gradient(var(--paper) 80%,transparent)}
-.sh-dock.set{max-width:980px}
 @media (width <= 760px){.sh-dock{position:static;padding-top:0;margin-top:0;background:none}}
 .quick-hint .sh-warn{color:var(--warn-ink);font-weight:560}
 .quick-hint .sh-alt{color:var(--muted)}
@@ -612,6 +611,8 @@ button.stat:hover{border-color:var(--rule)}
 .fld{display:flex;flex-direction:column;gap:4px;min-width:0}
 .fld.full{grid-column:1 / -1}
 .fld label,.fld .lbl{font-size:12px;color:var(--muted);font-weight:550}
+.req{color:var(--accent);font-weight:700;margin-left:2px}
+.req-note{margin:0;font-size:12px;color:var(--muted)}
 .dsub{margin:8px 0 0;font-size:13px;font-weight:650;padding-top:10px;border-top:1px solid var(--rule)}
 .vacnow{min-height:38px;display:flex;align-items:center;flex-wrap:wrap;gap:0 4px;font-size:12.5px;color:var(--muted)}
 .vacnow b.neg{color:var(--alarm-ink)}
@@ -678,7 +679,6 @@ button.stat:hover{border-color:var(--rule)}
 .n-in[readonly]{background:transparent;resize:none}
 
 /* ── Inställningar ── */
-.view.set{max-width:980px}
 .set-nav{display:flex;flex-wrap:wrap;gap:6px;position:sticky;top:-12px;z-index:3;padding:8px 0;background:var(--paper)}
 .sset{background:var(--chrome);border:1px solid var(--rule);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;scroll-margin-top:56px}
 .sset h2{margin:0;font-size:16px;font-weight:650}
@@ -1123,7 +1123,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 
 /* ───────────── Hjälpfunktioner ───────────── */
 const FORMAT = 'sisyfos', FORMAT_VERSION = 7, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.9.0', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const APP_VERSION = '0.9.1', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 { const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
@@ -1183,6 +1183,7 @@ const I = {
   pmin: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M14.5 4.5v15M8 10l2 2-2 2"/>',
   pmax: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M14.5 4.5v15M10 10l-2 2 2 2"/>',
   snooze: '<circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 1.5M5 4.5 3 6.5M19 4.5l2 2"/>',
+  save: '<path d="M5 4.5h11.5l3 3V19a1 1 0 0 1-1 1H5.5a1 1 0 0 1-1-1V5.5a1 1 0 0 1 .5-1z"/><path d="M8 4.5v4.5h7.5V4.5"/><rect x="8" y="13" width="8.5" height="7" rx=".5"/>',
   lock: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>',
   unlock: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 6.8-1.2"/>',
   sign: '<path d="M4 19.5h16"/><path d="M6.5 16 15.8 6.7a1.8 1.8 0 0 1 2.5 2.5L9 18.5H6.5z"/>',
@@ -1815,7 +1816,7 @@ function renderSave() {
     : dirBad ? `Mappen ”${dir.name}” behöver godkännas – klicka`
     : st.saved ? `Sparat ${pad(st.saved.getHours())}:${pad(st.saved.getMinutes())}${dir?.ok ? ` · även i ”${dir.name}”` : ' i webbläsaren'}`
     : dir?.ok ? `Sparas i webbläsaren och i ”${dir.name}”` : 'Sparas i den här webbläsaren';
-  $('.t', el).textContent = t; el.title = 'Var boken sparas och säkerhetskopior';
+  $('.t', el).textContent = t; el.title = 'Var boken sparas – spara en kopia';
   renderStatus();
 }
 
@@ -1861,7 +1862,7 @@ function backupDue() {
 function backupAlertHtml() {
   if (!backupDue()) return '';
   const n = daysSince(st.meta.lastBackup);
-  return `<div class="alert soft backup" role="status">${ic('export')}<div class="txt"><b>${n == null ? 'Boken är inte säkerhetskopierad än.' : `Senaste säkerhetskopian är ${n} dagar gammal.`}</b> Boken finns bara i den här webbläsaren – spara en kopia som fil${dirSupported() ? ' eller låt Sisyfos autospara till en mapp' : ''}.</div><button class="btn sm" data-act="backupFile">${ic('export')}Spara kopia som fil</button>${dirSupported() && !st.dir ? `<button class="btn sm" data-act="dirPick">${ic('folder')}Autospara till mapp …</button>` : ''}<button class="btn sm ghost" data-act="backupSnooze">Påminn om en vecka</button></div>`;
+  return `<div class="alert soft backup" role="status">${ic('export')}<div class="txt"><b>${n == null ? 'Du har inte sparat någon kopia av boken än.' : `Senaste sparade kopian är ${n} dagar gammal.`}</b> Boken finns bara i den här webbläsaren – spara en kopia som fil${dirSupported() ? ' eller låt Sisyfos autospara till en mapp' : ''}.</div><button class="btn sm" data-act="backupFile">${ic('save')}Spara kopia som fil</button>${dirSupported() && !st.dir ? `<button class="btn sm" data-act="dirPick">${ic('folder')}Autospara till mapp …</button>` : ''}<button class="btn sm ghost" data-act="backupSnooze">Påminn om en vecka</button></div>`;
 }
 async function backupFile() {
   const name = fileSafe(`${R().book.name} ${today()}.sisyfos.json`);
@@ -1924,10 +1925,10 @@ async function safetyRender() {
   h += row('Lagras i', db ? `Webbläsarens databas (IndexedDB) med en spegel i localStorage${st.mirrorErr ? ' – <span class="neg">spegeln fick inte plats</span>' : ''}` : `Bara localStorage – ${esc(st.idbErr || 'IndexedDB saknas')}. Ögonblicksbilder fungerar inte här.`);
   h += row('Beständig lagring', st.persisted ? `${ic('check')} Ja – webbläsaren rensar inte boken när utrymmet tryter` : st.persisted === false ? `Nej – webbläsaren kan rensa boken om utrymmet tryter. Installera Sisyfos som app eller tillåt beständig lagring.` : 'Okänt i den här webbläsaren', st.persisted === false ? `<button class="btn sm" data-act="askPersist">Be om beständig lagring</button>` : '');
   if (st.usage) h += row('Utrymme', `${fsize(st.usage.used)} använt av ${fsize(st.usage.quota)}`);
-  h += row('Senaste säkerhetskopia', m.lastBackup ? `${fwhen(m.lastBackup)} · ${m.lastBackupHow === 'mapp' ? 'autospar till mapp' : 'sparad som fil'}${n >= backupDays() && backupDays() > 0 ? ' · <span class="neg">dags igen</span>' : ''}` : '<span class="neg">Ingen än</span>', `<button class="btn sm" data-act="backupFile">${ic('export')}Spara kopia som fil</button>`);
-  h += `<div class="sf-row"><label class="k" for="bkDays">Påminn om säkerhetskopia</label><span class="v"><select id="bkDays">${[[7, 'efter en vecka'], [14, 'efter två veckor'], [30, 'efter en månad'], [0, 'aldrig']].map(([v, l]) => `<option value="${v}" ${backupDays() === v ? 'selected' : ''}>${l}</option>`).join('')}</select></span></div>`;
+  h += row('Senast sparade kopia', m.lastBackup ? `${fwhen(m.lastBackup)} · ${m.lastBackupHow === 'mapp' ? 'autospar till mapp' : 'sparad som fil'}${n >= backupDays() && backupDays() > 0 ? ' · <span class="neg">dags igen</span>' : ''}` : '<span class="neg">Ingen än</span>', `<button class="btn sm" data-act="backupFile">${ic('save')}Spara kopia som fil</button>`);
+  h += `<div class="sf-row"><label class="k" for="bkDays">Påminn om att spara kopia</label><span class="v"><select id="bkDays">${[[7, 'efter en vecka'], [14, 'efter två veckor'], [30, 'efter en månad'], [0, 'aldrig']].map(([v, l]) => `<option value="${v}" ${backupDays() === v ? 'selected' : ''}>${l}</option>`).join('')}</select></span></div>`;
   if (dirSupported() || st.dir) {
-    h += row('Autospar till mapp', dir ? `${dir.ok ? ic('check') : ic('alert')} ”${esc(dir.name)}”${dir.ok ? (dir.last ? ` · senast ${fwhen(dir.last.toISOString())}` : '') : ' – behöver godkännas igen'}${dir.err ? ` · <span class="neg">${esc(dir.err)}</span>` : ''}` : 'Av. Välj en mapp som säkerhetskopieras (t.ex. i Dokument eller en molnmapp) så sparar Sisyfos boken där vid varje ändring, plus en kopia per dag.',
+    h += row('Autospar till mapp', dir ? `${dir.ok ? ic('check') : ic('alert')} ”${esc(dir.name)}”${dir.ok ? (dir.last ? ` · senast ${fwhen(dir.last.toISOString())}` : '') : ' – behöver godkännas igen'}${dir.err ? ` · <span class="neg">${esc(dir.err)}</span>` : ''}` : 'Av. Välj en mapp (t.ex. i Dokument eller en molnmapp) så sparar Sisyfos boken där vid varje ändring, plus en kopia per dag.',
       dir ? `${dir.ok ? '' : `<button class="btn sm" data-act="dirReconnect">Godkänn mappen</button>`}<button class="btn sm ghost" data-act="dirPick">Byt mapp …</button><button class="btn sm ghost" data-act="dirStop">Stäng av</button>` : `<button class="btn sm" data-act="dirPick">${ic('folder')}Välj mapp …</button>`);
   } else h += row('Autospar till mapp', 'Finns i Chrome och Edge på dator. Här: spara kopia som fil regelbundet.');
   h += row('Som app', standalone() ? `${ic('check')} Installerad – startar utan nät` : isIOS() ? 'Lägg till på hemskärmen via Dela. Hemskärmsappen har en egen lagring – flytta boken med en fil.' : 'Kan installeras och startar då utan nät.', standalone() ? '' : `<button class="btn sm" data-act="installApp">Så gör du …</button>`);
@@ -2728,7 +2729,7 @@ function repPanelHtml() {
 }
 function setPanelHtml() {
   const secs = [...document.querySelectorAll('#main .sset[id]')].map(s => [s.id, s.querySelector('h2')?.textContent || '']).filter(x => x[1]);
-  return pHead('Inställningar', 'Allt sparas direkt') + `<div class="p-body"><section class="psec"><h3>Innehåll</h3><ul class="toc">${secs.map(([id, t]) => `<li><button data-act="toSec" data-id="${id}">${esc(t)}</button></li>`).join('')}</ul></section>` + helpSec(['Ändringar <b>sparas direkt</b> – det finns ingen spara-knapp.', 'Boken finns bara i den här webbläsaren. <b>Spara kopior</b> under Boken och säkerhetskopior.', 'Ändrade timpriser gäller tid från och med nu – gammal tid behåller sitt pris.']) + `</div>`;
+  return pHead('Inställningar', 'Allt sparas direkt') + `<div class="p-body"><section class="psec"><h3>Innehåll</h3><ul class="toc">${secs.map(([id, t]) => `<li><button data-act="toSec" data-id="${id}">${esc(t)}</button></li>`).join('')}</ul></section>` + helpSec(['Ändringar <b>sparas direkt</b> – det finns ingen spara-knapp.', 'Boken finns bara i den här webbläsaren. <b>Spara kopior</b> under Spara boken.', 'Ändrade timpriser gäller tid från och med nu – gammal tid behåller sitt pris.']) + `</div>`;
 }
 
 /* ───────────── Panelens läge ───────────── */
@@ -2983,7 +2984,7 @@ const idleSel = (id, v) => `<select id="${id}">${IDLE.map(([n, l]) => `<option v
 function newProjectDlg(pre) {
   const fmt = R().book.numberFormat || DEF_NUMFMT;
   openDlg(`<h2 id="dlgTitle">Nytt projekt</h2><p>Budgeten anges i kronor. Timpriset hämtas från din roll.</p><form class="form" id="npForm" novalidate>
-   <div class="fld full"><label for="npName">Projektnamn</label><input id="npName" required placeholder="Kv. Exempel"></div>
+   <div class="fld full"><label for="npName">Projektnamn${REQ}</label><input id="npName" required aria-required="true" placeholder="Kv. Exempel"></div>
    <div class="fld"><label for="npNum">Projektnummer</label><input id="npNum" class="mono" value="${esc(numFmt(fmt).next)}" data-numdup="" autocomplete="off"><span class="fld-msg" id="npNumMsg" aria-live="polite"></span><button type="button" class="linkish fmt-tog" data-act="npFmtTog" aria-expanded="false">Format <span class="mono">${esc(fmt)}</span> · Ändra</button></div>
    <div class="fld"><label for="npProp">Fastighetsbeteckning</label><input id="npProp" placeholder="Exempel 1:23"></div>
    <div class="fld"><label for="npCust">Kund</label>${custAcHtml('npCust', pre?.customer || '')}</div>
@@ -2993,7 +2994,7 @@ function newProjectDlg(pre) {
    <div class="fld full" data-ext><span class="lbl">Färg</span>${swatchesHtml(nextColor())}</div>
    <div class="form fld full fmt-box" id="npFmtBox" hidden>${fmtEditorHtml('npFmt', fmt)}<p class="small muted fld full" style="margin:0">Det nya formatet sparas för kommande projekt när du skapar projektet.</p></div>
    <label class="chk fld full"><input type="checkbox" id="npInt" data-sync="np"> Internt projekt (ej debiterbart)</label>
-   <div class="err fld full" id="npErr"></div>
+   ${REQNOTE}<div class="err fld full" id="npErr"></div>
    <div class="dlg-foot fld full"><button type="button" class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" type="submit">${ic('plus')}Skapa projekt</button></div></form>`);
 }
 function createProject() {
@@ -3022,14 +3023,15 @@ function createProject() {
 const WIZ = ['Företaget', 'Personal och arbetstid', 'Projektnummer', 'Klart'];
 const wizDefaults = () => ({ company: '', name: '', orgNr: '', email: '', phone: '', web: '', address: '', logo: null, team: 'solo', emp: 'full', pct: 100, person: '', initials: '', dayH: 8, vac: 25, vacStart: '04-01', savedVac: 'no', sv1: 0, sv2: 0, sv3: 0, sv4: 0, sv5: 0, roleName: 'Konsult', rate: 900, vat: 25, fmt: DEF_NUMFMT, start: 1, idle: 90 });
 function newBookWizard() { st.wiz = { step: 0, d: wizDefaults() }; wizRender(); }
-const wf = (key, label, o = {}) => { const v = st.wiz.d[key]; return `<div class="fld${o.full ? ' full' : ''}"${o.hide ? ' data-hide="' + o.hide + '"' : ''}><label for="w_${key}">${label}</label>${o.ta ? `<textarea id="w_${key}" class="ta" data-w="${key}" rows="3" placeholder="${o.ph || ''}">${esc(v)}</textarea>` : `<input id="w_${key}" data-w="${key}" value="${esc(v)}" ${o.num ? 'inputmode="decimal" data-num="1" class="mono"' : ''} ${o.type ? `type="${o.type}"` : ''} placeholder="${o.ph || ''}" autocomplete="off">`}${o.hint ? `<span class="fld-hint">${o.hint}</span>` : ''}</div>`; };
+const REQ = '<span class="req" title="Krävs" aria-hidden="true">*</span>', REQNOTE = `<p class="req-note fld full">${REQ} krävs – resten kan lämnas tomt eller fyllas i senare.</p>`;
+const wf = (key, label, o = {}) => { const v = st.wiz.d[key]; return `<div class="fld${o.full ? ' full' : ''}"${o.hide ? ' data-hide="' + o.hide + '"' : ''}><label for="w_${key}">${label}${o.req ? REQ : ''}</label>${o.ta ? `<textarea id="w_${key}" class="ta" data-w="${key}" rows="3" placeholder="${o.ph || ''}">${esc(v)}</textarea>` : `<input id="w_${key}" data-w="${key}" value="${esc(v)}" ${o.req ? 'aria-required="true"' : ''} ${o.num ? 'inputmode="decimal" data-num="1" class="mono"' : ''} ${o.type ? `type="${o.type}"` : ''} placeholder="${o.ph || ''}" autocomplete="off">`}${o.hint ? `<span class="fld-hint">${o.hint}</span>` : ''}</div>`; };
 const wRadio = (key, opts) => `<div class="wz-opts">${opts.map(([v, t, sub]) => `<label class="wz-opt"><input type="radio" name="w_${key}" data-w="${key}" value="${v}" ${String(st.wiz.d[key]) === String(v) ? 'checked' : ''}><span><b>${t}</b>${sub ? `<small>${sub}</small>` : ''}</span></label>`).join('')}</div>`;
 function wizNum() { const d = st.wiz.d, f0 = numFmt(d.fmt || DEF_NUMFMT, today(), { projects: [] }); return f0.err ? f0 : numFmt(d.fmt || DEF_NUMFMT, today(), { projects: [], start: { re: f0.re, n: Math.max(1, Math.floor(+d.start) || 1) } }); }
 function wizRender() {
   const w = st.wiz, d = w.d, step = w.step;
   let h = `<div class="wz-head"><h2 id="dlgTitle">Ny bok</h2><ol class="wz-steps">${WIZ.map((t, i) => `<li class="${i === step ? 'on' : i < step ? 'done' : ''}"><span>${i < step ? ic('check') : i + 1}</span>${t}</li>`).join('')}</ol></div><form class="form" id="wzForm" novalidate>`;
   if (step === 0) {
-    h += `<p class="fld full">Uppgifterna hamnar i sidhuvudet på projektdagböcker och sammanställningar. Allt kan ändras senare under Inställningar.</p>`
+    h += `<p class="fld full">Uppgifterna hamnar i sidhuvudet på projektdagböcker och sammanställningar. Inget här krävs – allt kan fyllas i eller ändras senare under Inställningar.</p>`
       + wf('company', 'Företagsnamn', { ph: 'Ditt företag AB' }) + wf('name', 'Bokens namn', { ph: d.company || 'Min bok', hint: 'Visas överst i appen. Tomt = företagsnamnet.' })
       + wf('orgNr', 'Organisationsnummer', { ph: '556000-0000' }) + wf('email', 'E-post', { type: 'email', ph: 'info@foretaget.se' }) + wf('phone', 'Telefon', { type: 'tel' }) + wf('web', 'Webbplats', { ph: 'foretaget.se' })
       + wf('address', 'Adress', { ta: 1, full: 1, ph: 'Gatan 1\n123 45 Orten' })
@@ -3039,24 +3041,24 @@ function wizRender() {
     h += `<div class="fld full"><span class="lbl">Hur många är ni?</span>${wRadio('team', [['solo', 'Bara jag', 'Ensamföretagare – du är både administratör och den som rapporterar tid'], ['team', 'Vi är flera', 'Du är administratör. Medarbetare med egna filer kommer i en senare version av Sisyfos']])}</div>`
       + wf('person', 'Ditt namn', { ph: 'Förnamn Efternamn' }) + wf('initials', 'Initialer', { ph: 'FE', hint: 'Står i dagböckerna när flera rapporterar' })
       + `<div class="fld full"><span class="lbl" data-team-lbl>${d.team === 'team' ? 'Huvudsaklig anställningsform i företaget' : 'Din arbetstid'}</span>${wRadio('emp', [['full', 'Heltid', 'Normtid varje dag, kompsaldo och semester'], ['part', 'Deltid', 'En andel av normtiden'], ['hourly', 'Timanställd', 'Ingen normtid, inget kompsaldo eller semesterkonto']])}${d.team === 'team' ? '<span class="fld-hint">Gäller dig från början och blir standard för medarbetare som läggs till senare.</span>' : ''}</div>`
-      + wf('pct', 'Omfattning, % av heltid', { num: 1, hide: 'part' }) + wf('dayH', 'Normal arbetsdag, timmar', { num: 1, hide: 'norm', hint: 'Måndag–fredag. Röda dagar räknas bort automatiskt.' })
-      + wf('vac', 'Semesterdagar per år', { num: 1, hide: 'norm' }) + `<div class="fld" data-hide="norm"><label for="w_vacStart">Semesteråret börjar</label><select id="w_vacStart" data-w="vacStart"><option value="04-01" ${d.vacStart === '04-01' ? 'selected' : ''}>1 april (semesterlagen)</option><option value="01-01" ${d.vacStart === '01-01' ? 'selected' : ''}>1 januari (kalenderår)</option></select></div>`
+      + wf('pct', 'Omfattning, % av heltid', { num: 1, hide: 'part', req: 1 }) + wf('dayH', 'Normal arbetsdag, timmar', { num: 1, hide: 'norm', req: 1, hint: 'Måndag–fredag. Röda dagar räknas bort automatiskt.' })
+      + wf('vac', 'Semesterdagar per år', { num: 1, hide: 'norm', req: 1 }) + `<div class="fld" data-hide="norm"><label for="w_vacStart">Semesteråret börjar</label><select id="w_vacStart" data-w="vacStart"><option value="04-01" ${d.vacStart === '04-01' ? 'selected' : ''}>1 april (semesterlagen)</option><option value="01-01" ${d.vacStart === '01-01' ? 'selected' : ''}>1 januari (kalenderår)</option></select></div>`
       + `<div class="fld full" data-hide="norm"><span class="lbl">Har du sparad semester från tidigare år?</span>${wRadio('savedVac', [['no', 'Nej'], ['yes', 'Ja', 'Ange dagarna per år – sedan räknar Sisyfos själv']])}</div>`
       + [1, 2, 3, 4, 5].map(n => wf('sv' + n, `Sparade år ${n} · ${semLabel(+semStart(today(), d.vacStart).slice(0, 4) - n, d.vacStart)}`, { num: 1, hide: 'saved' })).join('')
-      + `<h3 class="fld full dsub">Timpris</h3>` + wf('roleName', 'Din roll', { ph: 'Arkitekt, konsult …' }) + wf('rate', 'Timpris, kr exkl. moms', { num: 1 }) + wf('vat', 'Momssats i rapporter, %', { num: 1 })
-      + `<p class="small muted fld" style="margin:0;align-self:end">Fler roller och priser per projekt lägger du till under Inställningar.</p>`;
+      + `<h3 class="fld full dsub">Timpris</h3>` + wf('roleName', 'Din roll', { ph: 'Arkitekt, konsult …' }) + wf('rate', 'Timpris, kr exkl. moms', { num: 1, req: 1 }) + wf('vat', 'Momssats i rapporter, %', { num: 1, req: 1 })
+      + `<p class="small muted fld" style="margin:0;align-self:end">Fler roller och priser per projekt lägger du till under Inställningar.</p>` + REQNOTE;
   } else if (step === 2) {
     const f = wizNum();
     h += `<p class="fld full">Projektnumret sätts ihop av fri text och taggar. Tre siffror i löpnumret är standard, så att numret inte förväxlas med en månad: <span class="mono">2026-007</span> i stället för <span class="mono">2026-07</span>.</p>`
-      + `<div class="fld full"><label for="wzFmt">Format för projektnummer</label><input id="wzFmt" class="mono" data-w="fmt" data-numfmt value="${esc(d.fmt)}" autocomplete="off" spellcheck="false"></div><div class="fld full"><div class="tagrow">${NUM_TAGS.map(([t, k, ex]) => `<button type="button" class="chip tag" data-act="insTag" data-target="wzFmt" data-tag="${t}" title="${k}, t.ex. ${ex}">${t}</button>`).join('')}</div></div>`
+      + `<div class="fld full"><label for="wzFmt">Format för projektnummer${REQ}</label><input id="wzFmt" class="mono" data-w="fmt" data-numfmt value="${esc(d.fmt)}" autocomplete="off" spellcheck="false"></div><div class="fld full"><div class="tagrow">${NUM_TAGS.map(([t, k, ex]) => `<button type="button" class="chip tag" data-act="insTag" data-target="wzFmt" data-tag="${t}" title="${k}, t.ex. ${ex}">${t}</button>`).join('')}</div></div>`
       + wf('start', 'Första löpnummer', { num: 1, hint: 'Har du redan projektnummer från tiden före Sisyfos? Börja efter det senaste, till exempel 15 om du är uppe i 2026-014.' })
       + `<div class="fld"><span class="lbl">Första projektet får numret</span><div class="wz-next mono" id="wzNext">${f.err ? `<span class="bad">${esc(f.err)}</span>` : esc(f.next)}</div><span class="fld-hint" id="wzNextInfo">${f.err ? '' : !f.serial ? 'Utan {löpnummer} blir alla nummer likadana' : f.monthTag ? 'Löpnumret börjar om varje månad' : f.yearTag ? 'Löpnumret börjar om på 1 varje nytt år' : ''}</span></div>`
-      + `<div class="fld"><label for="w_idle">Projekt blir inaktiva efter</label><select id="w_idle" data-w="idle">${IDLE.map(([n, l]) => `<option value="${n}" ${+d.idle === n ? 'selected' : ''}>${n ? cap(l) + ' utan tid' : 'Aldrig av sig självt'}</option>`).join('')}</select><span class="fld-hint">Standard för nya projekt. Inaktiva hamnar sist i listorna.</span></div>`;
+      + `<div class="fld"><label for="w_idle">Projekt blir inaktiva efter</label><select id="w_idle" data-w="idle">${IDLE.map(([n, l]) => `<option value="${n}" ${+d.idle === n ? 'selected' : ''}>${n ? cap(l) + ' utan tid' : 'Aldrig av sig självt'}</option>`).join('')}</select><span class="fld-hint">Standard för nya projekt. Inaktiva hamnar sist i listorna.</span></div>` + REQNOTE;
   } else {
     const f = wizNum(), emp = d.emp === 'hourly' ? 'Timanställd' : d.emp === 'part' ? `Deltid ${d.pct} %` : 'Heltid';
     const rows = [['Företaget', [d.company || '–', d.orgNr && 'org.nr ' + d.orgNr].filter(Boolean).join(', ')], ['Kontakt', [d.email, d.phone, d.web].filter(Boolean).join(' · ') || '–'], ['Logga', d.logo ? 'Ja' : 'Ingen'], ['Personal', d.team === 'team' ? 'Flera – du är administratör' : 'Bara du'], ['Du', `${d.person || 'Jag'} (${(d.initials || initialsFrom(d.person || 'Jag'))}) · ${emp}`], ...(d.emp === 'hourly' ? [] : [['Arbetstid', `${fh(+d.dayH || 8)} h per dag, ${fh((+d.dayH || 8) * 5)} h per vecka · ${d.vac} semesterdagar`]]), ['Timpris', `${d.roleName || 'Konsult'} ${fkr(+d.rate || 0)}/h exkl. moms · moms ${d.vat} %`], ['Projektnummer', `${d.fmt} → första blir ${f.next}`], ['Inaktiva efter', +d.idle ? cap(idleLabel(+d.idle)) + ' utan tid' : 'Aldrig']];
     h += `<dl class="dfacts fld full wz-sum">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
-      <div class="alert soft fld full">${ic('alert')}<div class="txt">Den nya boken <b>ersätter</b> boken som finns i den här webbläsaren nu${R().book.example ? ' (exempelboken)' : ` – <b>${esc(R().book.name)}</b>`}. Spara en kopia först om du vill behålla den.</div><button type="button" class="btn sm" data-act="wzExport">${ic('export')}Spara kopia som fil</button></div>`;
+      <div class="alert soft fld full">${ic('alert')}<div class="txt">Den nya boken <b>ersätter</b> boken som finns i den här webbläsaren nu${R().book.example ? ' (exempelboken)' : ` – <b>${esc(R().book.name)}</b>`}. Spara en kopia först om du vill behålla den.</div><button type="button" class="btn sm" data-act="wzExport">${ic('save')}Spara kopia som fil</button></div>`;
   }
   h += `<div class="err fld full" id="wzErr"></div><div class="dlg-foot fld full">${step ? `<button type="button" class="btn ghost" data-act="wzStep" data-d="-1" style="margin-right:auto">${ic('left')}Tillbaka</button>` : ''}<button type="button" class="btn ghost" data-act="closeDlg">Avbryt</button>${step < WIZ.length - 1 ? `<button class="btn primary" type="submit">Nästa${ic('right')}</button>` : `<button class="btn primary" type="submit">${ic('check')}Skapa boken</button>`}</div></form>`;
   openDlg(h, 'wide wiz'); wizSync();
@@ -3243,7 +3245,7 @@ function openOrg() {
 }
 function brandMenu(btn) {
   const m = $('#menu');
-  m.innerHTML = `<div class="mh">${esc(R().book.name)}</div><hr><button role="menuitem" data-act="page" data-page="installningar">${ic('settings')}Inställningar …</button><button role="menuitem" data-act="personDlg">${ic('person')}Anställning, saldo och semester …</button><button role="menuitem" data-act="numbering">${ic('hash')}Projektnummer …</button><button role="menuitem" data-act="quickHelp">${ic('bolt')}Smartshell och förkortningar …</button><hr><button role="menuitem" data-act="storageInfo">${ic('lock')}Säkerhetskopior …</button><button role="menuitem" data-act="exportBook">${ic('export')}Exportera boken …</button><button role="menuitem" data-act="importBook">${ic('import')}Importera bok …</button><hr><button role="menuitem" data-act="askNew">${ic('newbook')}Ny tom bok</button><button role="menuitem" data-act="askSample">${ic('sample')}Ladda exempelboken</button><hr><button role="menuitem" data-act="about">${ic('info')}Om Sisyfos</button><button role="menuitem" data-act="feedback">${ic('mail')}Skicka synpunkter …</button>${standalone() ? '' : `<button role="menuitem" data-act="installApp">${ic('import')}Installera som app …</button>`}<hr><div class="mh">Allt sparas bara på den här enheten. Ingen server, inget moln.</div>`;
+  m.innerHTML = `<div class="mh">${esc(R().book.name)}</div><hr><button role="menuitem" data-act="page" data-page="installningar">${ic('settings')}Inställningar …</button><button role="menuitem" data-act="personDlg">${ic('person')}Anställning, saldo och semester …</button><button role="menuitem" data-act="numbering">${ic('hash')}Projektnummer …</button><button role="menuitem" data-act="quickHelp">${ic('bolt')}Smartshell och förkortningar …</button><hr><button role="menuitem" data-act="backupFile">${ic('save')}Spara kopia som fil</button><button role="menuitem" data-act="storageInfo">${ic('folder')}Spara och återställ …</button><button role="menuitem" data-act="exportBook">${ic('export')}Exportera boken …</button><button role="menuitem" data-act="importBook">${ic('import')}Importera bok …</button><hr><button role="menuitem" data-act="askNew">${ic('newbook')}Ny tom bok</button><button role="menuitem" data-act="askSample">${ic('sample')}Ladda exempelboken</button><hr><button role="menuitem" data-act="about">${ic('info')}Om Sisyfos</button><button role="menuitem" data-act="feedback">${ic('mail')}Skicka synpunkter …</button>${standalone() ? '' : `<button role="menuitem" data-act="installApp">${ic('import')}Installera som app …</button>`}<hr><div class="mh">Allt sparas bara på den här enheten. Ingen server, inget moln.</div>`;
   m.hidden = false; btn.setAttribute('aria-expanded', 'true');
   const r = btn.getBoundingClientRect(); m.style.left = Math.max(8, r.left) + 'px'; m.style.top = (r.bottom + 6) + 'px';
   $('button', m).focus();
@@ -3655,7 +3657,7 @@ function calSave() {
 
 /* ───────────── Inställningar ───────────── */
 const ROUND = [[0, 'Ingen avrundning'], [0.1, '0,1 h (6 min)'], [0.25, '0,25 h (15 min)'], [0.5, '0,5 h (30 min)'], [1, '1 h']];
-const SET_NAV = [['set-company', 'Företaget'], ['set-time', 'Arbetstid'], ['set-cal', 'Årsarbetstid'], ['set-roles', 'Roller och priser'], ['set-person', 'Du'], ['set-num', 'Projektnummer'], ['set-book', 'Säkerhetskopior']];
+const SET_NAV = [['set-company', 'Företaget'], ['set-time', 'Arbetstid'], ['set-cal', 'Årsarbetstid'], ['set-roles', 'Roller och priser'], ['set-person', 'Du'], ['set-num', 'Projektnummer'], ['set-book', 'Spara boken']];
 function roleUse(id) {
   let n = 0; for (const e of E.values()) if (!e.deleted && e.roleId === id) n++;
   const ppl = R().people.filter(p => p.defaultRoleId === id).length;
@@ -3672,8 +3674,8 @@ function settingsHtml() {
   const f = (key, label, val, extra = '', cls = '') => `<div class="fld ${cls}"><label for="s_${key}">${label}</label><input id="s_${key}" data-set="${key}" value="${esc(val ?? '')}" ${extra}></div>`;
   let h = `<div class="view set"><div class="wk-head"><h1>Inställningar</h1><span class="spacer"></span><span class="small muted">Ändringar sparas direkt</span></div>
   <nav class="set-nav" aria-label="Avsnitt">${SET_NAV.map(([id, l]) => `<button class="chip txt" data-act="setNav" data-to="${id}">${l}</button>`).join('')}</nav>`;
-  h += `<section class="sset" id="set-company"><h2>Företaget</h2><p class="muted small">Visas i rapporternas sidhuvud. Loggan skalas ner i webbläsaren och sparas i boken.</p><div class="form">
-    ${f('book.name', 'Bokens namn', b.name)}${f('book.company', 'Företagsnamn', b.company)}${f('book.orgNr', 'Organisationsnummer', b.orgNr, 'autocomplete="off"')}${f('book.email', 'E-post', b.email, 'type="email"')}${f('book.phone', 'Telefon', b.phone, 'type="tel"')}${f('book.web', 'Webbplats', b.web)}
+  h += `<section class="sset" id="set-company"><h2>Företaget</h2><p class="muted small">Visas i rapporternas sidhuvud. Loggan skalas ner i webbläsaren och sparas i boken. Fält med ${REQ} krävs.</p><div class="form">
+    ${f('book.name', 'Bokens namn' + REQ, b.name)}${f('book.company', 'Företagsnamn', b.company)}${f('book.orgNr', 'Organisationsnummer', b.orgNr, 'autocomplete="off"')}${f('book.email', 'E-post', b.email, 'type="email"')}${f('book.phone', 'Telefon', b.phone, 'type="tel"')}${f('book.web', 'Webbplats', b.web)}
     <div class="fld full"><label for="s_book.address">Adress</label><textarea id="s_book.address" class="ta" data-set="book.address" rows="3">${esc(b.address || '')}</textarea></div>
     <div class="fld full"><span class="lbl">Logga</span><div class="logo-row" id="logoRow">${logoHtml()}</div></div></div></section>`;
   h += `<section class="sset" id="set-time"><h2>Arbetstid</h2><p class="muted small">Normtid per veckodag för heltid. Deltid räknas som andel av den, timanställda har ingen normtid.</p>
@@ -3683,7 +3685,7 @@ function settingsHtml() {
   h += `<section class="sset" id="set-roles"><h2>Roller och timpriser</h2><p class="muted small">Centralt pris per roll, exklusive moms. Priset kan överstyras per projekt i projektets inställningar. Varje tidpost behåller priset som gällde när den registrerades – ändringar gäller tid från och med nu.</p>
     <ul class="role-list">${R().roles.map(r => { const u = roleUse(r.id); return `<li data-role="${r.id}"><input data-rolef="name" value="${esc(r.name)}" aria-label="Rollens namn"><span class="rate-in"><input class="mono" data-rolef="rate" inputmode="numeric" value="${r.rate}" aria-label="Timpris för ${esc(r.name)}"><span class="muted small">kr/h</span></span><span class="small muted ru">${u.n ? `${u.n} tidposter` : 'oanvänd'}</span><button class="icon-btn" data-act="delRole" data-r="${r.id}" ${u.any || R().roles.length < 2 ? 'disabled title="Rollen används och kan inte tas bort"' : 'title="Ta bort rollen"'} aria-label="Ta bort ${esc(r.name)}">${ic('trash')}</button></li>`; }).join('')}</ul>
     <div class="form" style="margin-top:8px"><div><button class="btn sm" data-act="addRole">${ic('plus')}Ny roll</button></div><div class="fld"><label for="s_vat">Momssats i rapporter, %</label><input id="s_vat" class="mono" data-set="book.vatRate" inputmode="decimal" value="${fhs(+b.vatRate || 0)}"></div></div></section>`;
-  h += `<section class="sset" id="set-person"><h2>Du</h2><div class="form">${f('person.name', 'Namn', p.name)}${f('person.initials', 'Initialer', p.initials, 'maxlength="4" class="mono"')}
+  h += `<section class="sset" id="set-person"><h2>Du</h2><div class="form">${f('person.name', 'Namn' + REQ, p.name)}${f('person.initials', 'Initialer', p.initials, 'maxlength="4" class="mono"')}
     <div class="fld"><label for="s_prole">Standardroll</label><select id="s_prole" data-set="person.defaultRoleId">${R().roles.map(r => `<option value="${r.id}" ${p.defaultRoleId === r.id ? 'selected' : ''}>${esc(r.name)} · ${fkr(r.rate)}/h</option>`).join('')}</select></div>
     <div class="fld"><span class="lbl">Anställning</span><div class="vacnow">${p.employment === 'hourly' ? 'Timanställd' : p.employment === 'part' ? `Deltid ${p.pct} %` : 'Heltid'}${cb != null ? ` · komp ${sgn(cb)} h` : ''}${vi ? ` · semester ${fdays(vi.left)} d kvar` : ''}</div></div>
     <div class="fld full"><div><button class="btn sm" data-act="personDlg">${ic('person')}Anställning, saldo och semester …</button></div></div></div></section>`;
@@ -3691,7 +3693,7 @@ function settingsHtml() {
   h += `<section class="sset" id="set-num"><h2>Projektnummer och förkortningar</h2><div class="form">${fmtEditorHtml('setFmt', b.numberFormat || DEF_NUMFMT)}
     ${nf.serial && !nf.err ? `<div class="fld"><label for="setStart">Nästa löpnummer</label><input id="setStart" class="mono" inputmode="numeric" value="${nf.n}"><span class="fld-hint" id="setStartHint">Lägst ${nf.minN}. Höj det om du har projektnummer från tiden före Sisyfos.</span></div>` : ''}
     <div class="fld"><label for="s_idle">Nya projekt blir inaktiva efter</label>${idleSel('s_idle', b.idleDays ?? 90)}<span class="fld-hint">Kan ändras per projekt</span></div><div class="fld full"><div><button class="btn sm" data-act="quickHelp">${ic('bolt')}Förkortningar i smartshell …</button></div></div></div></section>`;
-  h += `<section class="sset" id="set-book"><h2>Boken och säkerhetskopior</h2><p class="muted small">Boken sparas bara på den här enheten, i den här webbläsaren. Ingenting skickas någonstans. Rensar du webbplatsdata försvinner den – därför: spara kopior.</p><div id="safeBox" class="safe-box"><p class="muted small">Läser in …</p></div><h3 class="dsub">Hela boken</h3><div class="btn-row"><button class="btn" data-act="exportBook">${ic('export')}Exportera boken …</button><button class="btn" data-act="importBook">${ic('import')}Importera bok …</button><button class="btn ghost" data-act="askNew">${ic('newbook')}Ny tom bok</button><button class="btn ghost" data-act="askSample">${ic('sample')}Ladda exempelboken</button></div></section>`;
+  h += `<section class="sset" id="set-book"><h2>Spara boken</h2><p class="muted small">Boken sparas bara på den här enheten, i den här webbläsaren. Ingenting skickas någonstans. Rensar du webbplatsdata försvinner den – därför: spara kopior.</p><div id="safeBox" class="safe-box"><p class="muted small">Läser in …</p></div><h3 class="dsub">Hela boken</h3><div class="btn-row"><button class="btn" data-act="exportBook">${ic('export')}Exportera boken …</button><button class="btn" data-act="importBook">${ic('import')}Importera bok …</button><button class="btn ghost" data-act="askNew">${ic('newbook')}Ny tom bok</button><button class="btn ghost" data-act="askSample">${ic('sample')}Ladda exempelboken</button></div></section>`;
   return h + `</div>`;
 }
 function setSetting(key, raw, el) {
@@ -3725,7 +3727,7 @@ function custDlg(id) {
   const c = id ? cust(id) : {}, n = id ? R().projects.filter(p => p.customerId === id).length : 0;
   st.editCust = id || null;
   openDlg(`<h2 id="dlgTitle">${id ? esc(c.name) : 'Ny kund'}</h2><p>Uppgifterna används i projektdagböckerna.</p><form class="form" id="cuForm" novalidate>
-   <div class="fld full"><label for="cuName">Namn</label><input id="cuName" value="${esc(c.name)}" required placeholder="Företag, förening eller person"></div>
+   <div class="fld full"><label for="cuName">Namn${REQ}</label><input id="cuName" value="${esc(c.name)}" required aria-required="true" placeholder="Företag, förening eller person"></div>
    <div class="fld"><label for="cuOrg">Org.- eller personnummer</label><input id="cuOrg" class="mono" value="${esc(c.orgNr)}" autocomplete="off"></div>
    <div class="fld"><label for="cuRef">Kundens referens</label><input id="cuRef" value="${esc(c.ref)}" placeholder="Anges på underlagen"></div>
    <div class="fld"><label for="cuContact">Kontaktperson</label><input id="cuContact" value="${esc(c.contact)}"></div>
@@ -3734,7 +3736,7 @@ function custDlg(id) {
    <div class="fld full"><label for="cuAddr">Adress</label><textarea id="cuAddr" class="ta" rows="3">${esc(c.address)}</textarea></div>
    <label class="chk fld full"><input type="checkbox" id="cuInvTog" ${c.invoiceAddress ? 'checked' : ''}> Annan fakturaadress</label>
    <div class="fld full" id="cuInvF" ${c.invoiceAddress ? '' : 'hidden'}><label for="cuInv">Fakturaadress</label><textarea id="cuInv" class="ta" rows="3">${esc(c.invoiceAddress)}</textarea></div>
-   <div class="err fld full" id="cuErr"></div>
+   ${REQNOTE}<div class="err fld full" id="cuErr"></div>
    <div class="dlg-foot fld full">${id ? `<button type="button" class="btn ghost" data-act="custArchive" style="margin-right:auto" title="${c.archived ? 'Kunden blir aktiv igen' : 'Kunden visas bland de inaktiva tills du ändrar det'}">${c.archived ? `${ic('sample')}Gör aktiv igen` : `${ic('hide')}Sätt som inaktiv`}</button>${n ? '' : `<button type="button" class="btn ghost" data-act="custDelete">${ic('trash')}Ta bort</button>`}` : ''}<button type="button" class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" type="submit">${ic('check')}Spara</button></div></form>`);
 }
 function saveCust() {
@@ -3932,7 +3934,7 @@ function projDlg(id) {
   const abs = P.kind === 'absence', c = cust(P.customerId), myRole = P.memberRoles?.[me()] || '', canDel = !abs && !hasTime(P.id);
   const colors = [0, 1, 2, 3, 4, 5, 6, 7];
   let h = `<h2 id="dlgTitle">${abs ? 'Frånvaro' : esc(P.name)}</h2><p>${abs ? 'Frånvarotyper och deras förkortningar. All frånvaro fyller ut dagen mot normtiden och behöver ingen anteckning.' : 'Ändringar sparas när du trycker Spara.'}</p><form class="form" id="pjForm" novalidate>`;
-  if (!abs) h += `<div class="fld full"><label for="pjName">Projektnamn</label><input id="pjName" value="${esc(P.name)}"></div>
+  if (!abs) h += `<div class="fld full"><label for="pjName">Projektnamn${REQ}</label><input id="pjName" value="${esc(P.name)}" aria-required="true"></div>
    <div class="fld"><label for="pjNum">Projektnummer</label><input id="pjNum" class="mono" value="${esc(P.number)}" data-numdup="${P.id}" autocomplete="off"><span class="fld-msg" id="pjNumMsg" aria-live="polite"></span></div>
    <div class="fld"><label for="pjStatus">Status</label><select id="pjStatus">${Object.entries(STATUS1).map(([k, l]) => `<option value="${k}" ${P.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select>${pState(P) === 'idle' ? `<span class="fld-hint">Inaktivt just nu – ingen tid på ${idleLabel(idleOf(P))}</span>` : ''}</div>
    <div class="fld" data-ext><label for="pjIdle">Blir inaktivt efter</label>${idleSel('pjIdle', idleOf(P))}<span class="fld-hint">utan registrerad tid</span></div>
@@ -3942,7 +3944,7 @@ function projDlg(id) {
    <div class="fld"><label for="pjAbbr">Förkortningar i smartshell</label><input id="pjAbbr" class="mono" value="${esc(P.abbr || '')}" placeholder="t.ex. vs, strand" autocapitalize="off"></div>
    <div class="fld full" data-ext><span class="lbl">Färg</span>${swatchesHtml(P.color)}</div>
    <label class="chk fld full"><input type="checkbox" id="pjInt" ${P.internal ? 'checked' : ''}> Internt projekt (ingen kund, ingen budget, räknas inte som debiterbart)</label>`;
-  h += `<h3 class="fld full dsub">Uppgifter</h3><ul class="tk-list fld full" id="pjTasks">${P.tasks.map(t => taskRowHtml(P, t)).join('')}</ul>
+  h += `<h3 class="fld full dsub">Uppgifter${REQ}</h3><ul class="tk-list fld full" id="pjTasks">${P.tasks.map(t => taskRowHtml(P, t)).join('')}</ul>
    <div class="fld full"><div><button type="button" class="btn sm" data-act="pjAddTask">${ic('plus')}${abs ? 'Ny frånvarotyp' : 'Ny uppgift'}</button></div><p class="small muted" style="margin:4px 0 0">Uppgifter med registrerad tid kan inte tas bort, bara arkiveras. Arkiverade syns inte i radväljaren.</p></div>`;
   if (!abs) {
     h += `<h3 class="fld full dsub" data-ext>Timpriser i projektet</h3><div class="fld full" data-ext><div class="rt"><span class="rt-h">Roll</span><span class="rt-h">Centralt</span><span class="rt-h">I projektet</span><span class="rt-h">Ditt pris</span>
@@ -3950,7 +3952,7 @@ function projDlg(id) {
      <div class="fld" data-ext><label for="pjRole">Din roll i projektet</label><select id="pjRole"><option value="">Standard (${esc(role(person().defaultRoleId)?.name || '')})</option>${R().roles.map(r => `<option value="${r.id}" ${myRole === r.id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select></div>
      <p class="small muted fld" data-ext style="margin:0;align-self:end">Mest specifika priset gäller. Tomt fält = nästa nivå. Ändrade priser gäller tid som registreras från och med nu.</p>`;
   }
-  h += `<div class="err fld full" id="pjErr"></div><div class="dlg-foot fld full">${canDel ? `<button type="button" class="btn ghost" data-act="projDelete" style="margin-right:auto">${ic('trash')}Ta bort projektet</button>` : ''}<button type="button" class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" type="submit">${ic('check')}Spara</button></div></form>`;
+  h += `${REQNOTE.replace('resten kan lämnas tomt eller fyllas i senare', 'minst en aktiv uppgift, och varje uppgift behöver ett namn')}<div class="err fld full" id="pjErr"></div><div class="dlg-foot fld full">${canDel ? `<button type="button" class="btn ghost" data-act="projDelete" style="margin-right:auto">${ic('trash')}Ta bort projektet</button>` : ''}<button type="button" class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" type="submit">${ic('check')}Spara</button></div></form>`;
   openDlg(h, 'wide'); syncProjDlg();
 }
 function syncProjDlg() { const i = $('#pjInt'); if (i) $$('#pjForm [data-ext]').forEach(x => x.hidden = i.checked); }
@@ -4516,7 +4518,7 @@ const SHC = [
   { k: 'status', w: ['aktiv', 'aktivera', 'inaktiv', 'vila', 'avsluta', 'avsl'], g: 'Ändra', t: 'Ändra status', ex: [['avsluta strand', 'avslutar projektet'], ['inaktiv strand', 'sätter det som inaktivt'], ['aktiv strand', 'aktivt igen']] },
   { k: 'ask', w: ['?', 'hjälp'], g: 'Frågor', t: 'Frågor – svaret visas i panelen', ex: [['? strand', 'budget, öppet, senaste tid'], ['? öppet', 'allt att fakturera, äldst först'], ['? saldo', 'kompsaldo och semester'], ['? v43', 'veckans timmar och anteckningar'], ['? okt', 'månadens timmar per projekt']] },
   { k: 'go', w: ['tid', 'tidbok', 'rapp', 'rapporter', 'inst', 'inställningar'], g: 'Gå till', t: 'Sidor', ex: [['tid', 'tidboken'], ['rapp', 'rapporter'], ['inst', 'inställningar']] },
-  { k: 'kopia', w: ['kopia', 'säkerhetskopia'], g: 'Övrigt', t: 'Säkerhetskopia som fil', ex: [['kopia', 'sparar en kopia av boken nu']] },
+  { k: 'kopia', w: ['kopia', 'säkerhetskopia'], g: 'Övrigt', t: 'Spara kopia som fil', ex: [['kopia', 'sparar en kopia av boken nu']] },
   { k: 'look', w: ['mörkt', 'ljust', 'kompakt', 'normalt'], g: 'Övrigt', t: 'Utseende', ex: [['mörkt', 'mörkt tema'], ['ljust', 'ljust tema'], ['kompakt', 'tätare rader, igen för normalt']] },
   { k: 'fork', w: ['förk', 'förkortning'], g: 'Övrigt', t: 'Egna förkortningar', ex: [['förk', 'förkortningar för projekt och uppgifter']] }
 ];
@@ -5062,7 +5064,7 @@ I.more = '<circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circ
   if (narrow()) st.view = 'day';
   render();
   if (st.newer) openDlg(`<h2 id="dlgTitle">Boken är sparad i en nyare version</h2><p>${esc(st.loadErr)}</p><p>Den här versionen (${APP_VERSION}) skriver <b>inte</b> över den. Ladda om sidan så hämtas den nya versionen – exempelboken visas så länge.</p><div class="dlg-foot"><button class="btn ghost" data-act="badRawDl">${ic('export')}Spara boken som fil</button><button class="btn primary" data-act="reloadApp">Ladda om</button></div>`);
-  else if (st.loadErr) openDlg(`<h2 id="dlgTitle">Boken kunde inte öppnas</h2><p>${esc(st.loadErr)}</p><p>Ingenting har skrivits över. Spara den oöppnade boken som fil och skicka gärna en synpunkt – eller återställ en ögonblicksbild under Inställningar → Säkerhetskopior. Exempelboken visas, men sparas inte förrän du väljer en annan bok.</p><div class="dlg-foot"><button class="btn ghost" data-act="storageInfo">Ögonblicksbilder</button><button class="btn primary" data-act="badRawDl">${ic('export')}Spara boken som fil</button></div>`);
+  else if (st.loadErr) openDlg(`<h2 id="dlgTitle">Boken kunde inte öppnas</h2><p>${esc(st.loadErr)}</p><p>Ingenting har skrivits över. Spara den oöppnade boken som fil och skicka gärna en synpunkt – eller återställ en ögonblicksbild under Inställningar → Spara boken. Exempelboken visas, men sparas inte förrän du väljer en annan bok.</p><div class="dlg-foot"><button class="btn ghost" data-act="storageInfo">Ögonblicksbilder</button><button class="btn primary" data-act="badRawDl">${ic('export')}Spara boken som fil</button></div>`);
 })();
 })();
 </script>
