@@ -708,7 +708,14 @@ button.stat:hover{border-color:var(--rule)}
 .rk-qr{width:132px;height:132px;flex:none;border-radius:6px}
 .rk-txt{display:flex;flex-direction:column;gap:12px;min-width:0;flex:1}
 .rk-key{display:grid;grid-template-columns:repeat(4,auto);justify-content:start;gap:4px 14px;font:600 19px var(--font-data);letter-spacing:.06em;color:var(--ink);user-select:all}
-@media (max-width:420px){.rk-key{font-size:16px;gap:4px 10px}.rk-qr{width:110px;height:110px}}
+@media (max-width:560px){.rk-box{flex-direction:column;align-items:stretch;gap:14px;padding:12px}.rk-qr{width:150px;height:150px;align-self:center}.rk-key{justify-content:center;font-size:17px;gap:4px 12px}.rk-txt .btn-row>.btn{flex:1 1 100%;justify-content:center}}
+@media (max-width:360px){.rk-key{font-size:15px;gap:4px 8px}}
+.file-pick{display:flex;align-items:center;gap:10px;min-height:38px;padding:4px 4px 4px 4px;border:1px dashed var(--rule);border-radius:9px;background:var(--paper)}
+.fld .file-pick label.btn{position:relative;flex:none;cursor:pointer;font-size:12.5px;font-weight:560;color:var(--ink)}
+.file-pick label.btn:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.file-pick input[type=file]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.file-pick .file-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:13px}
+.file-pick .file-name.on{color:var(--ink)}
 .role-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .role-list li{display:grid;grid-template-columns:minmax(0,1fr) 150px 110px 36px;align-items:center;gap:8px}
 .role-list input{height:36px;padding:0 10px;border:1px solid var(--rule);border-radius:9px;background:var(--paper);min-width:0;width:100%}
@@ -1147,7 +1154,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 
 /* ───────────── Hjälpfunktioner ───────────── */
 const FORMAT = 'sisyfos', FORMAT_VERSION = 7, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.12.0', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const APP_VERSION = '0.12.1', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 { const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
@@ -3519,7 +3526,7 @@ function exportDlg() {
   openDlg(`<h2 id="dlgTitle">Exportera boken</h2><p>Hela boken som JSON (register och tidlogg, okrypterad). Spara den som fil eller kopiera texten.</p><div class="fld"><label for="exTxt">Boken</label><textarea id="exTxt" readonly>${esc(json)}</textarea></div><div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Stäng</button><button class="btn" data-act="copyExport">${ic('copy')}Kopiera</button><button class="btn primary" data-act="wzExport">${ic('export')}Spara som fil</button></div>`);
 }
 function importDlg() {
-  openDlg(`<h2 id="dlgTitle">Importera bok</h2><p>Välj en exporterad fil eller en krypterad kopia (.sisyfos), eller klistra in innehållet. Den nuvarande boken i den här webbläsaren ersätts.</p><div class="form"><div class="fld full"><label for="imFile">Fil</label><input type="file" id="imFile" accept=".json,.sisyfos,application/json"></div><div class="fld full"><label for="imTxt">eller klistra in</label><textarea id="imTxt" placeholder='{"format":"sisyfos", …}'></textarea></div><div class="err fld full" id="imErr"></div></div><div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="doImport">${ic('import')}Importera</button></div>`);
+  openDlg(`<h2 id="dlgTitle">Importera bok</h2><p>Välj en exporterad fil eller en krypterad kopia (.sisyfos), eller klistra in innehållet. Den nuvarande boken i den här webbläsaren ersätts.</p><div class="form"><div class="fld full"><span class="lbl" id="imFileLbl">Fil</span><div class="file-pick"><label class="btn sm">${ic('import')}Välj fil …<input type="file" id="imFile" accept=".json,.sisyfos,application/json" aria-labelledby="imFileLbl"></label><span class="file-name" id="imFileName">Ingen fil vald</span></div></div><div class="fld full"><label for="imTxt">eller klistra in</label><textarea id="imTxt" placeholder='{"format":"sisyfos", …}'></textarea></div><div class="err fld full" id="imErr"></div></div><div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="doImport">${ic('import')}Importera</button></div>`);
 }
 function confirmDlg(title, text, okLabel, act) {
   openDlg(`<h2 id="dlgTitle">${title}</h2><p>${text}</p><div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn" data-act="exportBook">${ic('export')}Exportera först</button><button class="btn primary" data-act="${act}">${okLabel}</button></div>`);
@@ -5034,7 +5041,8 @@ document.addEventListener('input', ev => {
   }
   acOpen(t, typed);
 });
-document.addEventListener('change', ev => { if (ev.target.id === 'pjColorFree') { const l = ev.target.closest('.sw-free'); l.style.setProperty('--free', ev.target.value); $('input[type=radio]', l).checked = true; } });
+document.addEventListener('change', ev => { if (ev.target.id === 'imFile') { const f = ev.target.files[0], n = $('#imFileName'); if (n) { n.textContent = f ? f.name : 'Ingen fil vald'; n.classList.toggle('on', !!f); } }
+  if (ev.target.id === 'pjColorFree') { const l = ev.target.closest('.sw-free'); l.style.setProperty('--free', ev.target.value); $('input[type=radio]', l).checked = true; } });
 document.addEventListener('focusin', ev => { if (ev.target.matches?.('.ac-in')) acOpen(ev.target); else if (!ev.target.closest?.('#acList')) acClose(); });
 document.addEventListener('focusout', ev => { if (ev.target.matches?.('.ac-in')) setTimeout(() => { if (!document.activeElement?.matches?.('.ac-in')) acClose(); }, 150); });
 document.addEventListener('mousedown', ev => { if (ev.target.closest('#acList')) ev.preventDefault(); });

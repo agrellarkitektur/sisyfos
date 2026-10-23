@@ -1,5 +1,12 @@
 # Ändringar i Sisyfos
 
+## 0.12.1
+
+Rättningar efter test. Filformatet är oförändrat (7).
+
+- **Återställningsnyckeln ryms på telefon.** På smala skärmar ligger QR-koden överst, nyckeln centrerad under och knapparna i full bredd – inget sticker ut ur rutan längre.
+- **Filväljaren i Importera bok följer temat.** Webbläsarens egen knapp är ersatt av en knapp i appens stil (*Välj fil …*) med filnamnet bredvid, rätt placerad i fältet och läsbar även i mörkt tema.
+
 ## 0.12.0
 
 Krypterad kopia – första steget mot lagring på webben. Filformatet för boken är oförändrat (7); den krypterade filen är ett eget, versionerat omslag (`sisyfos-krypterad`, version 1).
