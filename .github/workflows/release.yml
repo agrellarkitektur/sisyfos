@@ -24,10 +24,12 @@ jobs:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
       REF: ${{ inputs.ref || github.event.release.tag_name || inputs.tag }}
     steps:
+      # Hela historiken, så att taggar och förkortade commit-id (t.ex. dcdbb20) går att välja i nästa steg
       - uses: actions/checkout@v7
         with:
-          ref: ${{ env.REF }}
           fetch-depth: 0
+      - name: Välj taggen eller commiten
+        run: git checkout -q --detach "$REF" && git log -1 --format='%h %s' | cut -c1-100
       - name: Kontrollera versionen
         run: |
           APP=$(grep -oP "APP_VERSION = '\K[^']+" index.html)
@@ -37,7 +39,7 @@ jobs:
           if [ "$APP" != "$V" ]; then
             RATT=$(git log --all --reverse --format='%h (%s)' -S"APP_VERSION = '$V'" -- index.html | head -1 | cut -c1-90)
             if [ -n "$RATT" ]; then
-              echo "::error::Taggen $TAG ligger på commit $HERE, där index.html har version $APP. Version $V finns i commit $RATT. Ta bort releasen och taggen $TAG i GitHub och skapa releasen igen med Target = den commiten (Recent commits) – eller skapa releasen v$APP i stället."
+              echo "::error::Taggen $TAG ligger på commit $HERE, där index.html har version $APP. Version $V finns i commit $RATT. Ta bort releasen och taggen $TAG i GitHub och skapa releasen igen med Target = den commiten (Recent commits), eller kör Release-zip för hand med tag $TAG och ref = den commiten – eller skapa releasen v$APP i stället."
             else
               echo "::error::Taggen $TAG stämmer inte med APP_VERSION $APP i index.html, och ingen commit har version $V."
             fi
