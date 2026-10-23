@@ -1,5 +1,15 @@
 # Ändringar i Sisyfos
 
+## 0.10.0
+
+Fakturaunderlag. Filformatet är oförändrat (7).
+
+- **Ny rapport: Fakturaunderlag.** Öppen debiterbar tid för en kund (alla projekt) eller ett projekt, summerad per uppgift, roll och timpris, med moms och summa inkl. moms och kundens fakturaadress, org.nr och referens. Som standard tas all äldre öppen tid med.
+- **PDF och CSV.** CSV-filen har semikolon och decimalkomma och öppnas rätt i Excel – en rad per projekt, uppgift och pris, färdig att föra in i bokföringsprogrammet.
+- **Markera som hanterat** direkt från underlaget låser alla månader som helt ingår i det, med en Ångra. Månader där projektet har tid utanför underlaget hanteras inte och visas för sig.
+- Genvägar: knappen *Fakturaunderlag* på kund- och projektsidan och i månadsmenyn. Panelen visar vad underlaget innehåller och vilka kunder som har öppen tid.
+- **Smartshell:** `fakt strand`, `fakt kund smeden`, `fakt ner fm strand` (PDF), `fakt csv öppet strand`. Även `fu`.
+
 ## 0.9.1
 
 Småjusteringar. Filformatet är oförändrat (7).

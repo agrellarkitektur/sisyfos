@@ -36,12 +36,24 @@ Fältet överst på alla sidor. Raden under fältet säger vad Enter gör innan 
 | `ch` · `ch v43` · `öppna v43` · `sign v43` | checkar av, öppnar, signerar |
 | `db okt strand` · `db ner okt strand` · `db ner öppet strand` | visar eller laddar ner projektdagboken |
 | `pers fv` · `översikt 2025` | personsammanställning, månadsöversikt |
+| `fakt strand` · `fakt kund smeden` · `fakt ner fm strand` · `fakt csv öppet strand` | visar eller laddar ner fakturaunderlaget (PDF eller CSV) |
 | `hant fm strand` · `häv okt strand` | markerar som hanterad och låser, eller häver |
 | `proj strand` · `proj Kv. Lärkan 2 100000 Diamanten` | öppnar eller skapar projekt (budget och kund valfritt) |
 | `kund Diamanten Bygg` · `uppg strand Bygglov` · `ant strand …` · `budget strand 180k` · `avsluta strand` | kunder, uppgifter, anteckningar, budget, status |
 | `? strand` · `? öppet` · `? saldo` · `? v43` | frågor – svaret visas i panelen |
 
 Perioder: `idag`, `tor`, `mån-fre`, `15/10-22/10`, `v40-43`, `fv` (förra veckan), `okt`, `sept-okt`, `fm` (förra månaden), `sept-`, `2026`, `öppet`. Ett projekt anges med ett ord ur namnet, numret eller en egen förkortning; namn med siffror kan skrivas inom citattecken.
+
+## Fakturaunderlag
+
+Sisyfos gör inga fakturor, men ett **underlag** att föra in i bokföringsprogrammet: *Rapporter → Fakturaunderlag*, eller knappen *Fakturaunderlag* på kund- och projektsidan.
+
+- Underlaget tar med **öppen debiterbar tid** för en kund (alla projekt) eller ett projekt, till och med vald månad – som standard även äldre öppen tid. Tid i hanterade månader ingår inte.
+- Tiden summeras per projekt, uppgift, roll och timpris, med summa exkl. moms, moms och summa inkl. moms. Kundens fakturaadress, org.nr och referens står med.
+- **PDF** att läsa eller bifoga och **CSV** (semikolon, decimalkomma, UTF-8) att öppna i Excel eller föra in i bokföringsprogrammet. Projektdagboken är specifikationen.
+- **Markera som hanterat** låser de månader som helt ingår i underlaget, så att tiden inte kommer med nästa gång.
+
+Varför ingen riktig faktura? En faktura behöver löpnummer i obruten serie som aldrig återanvänds, kan inte ändras eller tas bort när den är utfärdad (bara krediteras) och ska arkiveras oförändrad. Det kräver ett eget, låst fakturaregister – det kan komma i en senare version.
 
 ## Var boken sparas
 
