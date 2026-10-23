@@ -159,7 +159,7 @@ python3 test/oppna_gamla_bocker.py
 | `manifest.webmanifest`, `icon.svg`, `*.png` | Appikon och installation |
 | `feedback.php` | Tar emot synpunktsformuläret och skickar det som e-post. Sparar ingenting |
 | `api.php` | Servern för lagring på webben – tar bara emot krypterade böcker |
-| `test/` | Gamla böcker och kontrollen att de öppnas (`oppna_gamla_bocker.py`), test av servern (`api_test.py`) och av synken mellan två enheter (`webb_test.py`, körs för hand) |
+| `test/` | Gamla böcker och kontrollen att de öppnas (`oppna_gamla_bocker.py`), test av servern (`api_test.py`) och av synken mellan två enheter (`webb_test.py`, körs för hand). För hand vid omskrivningar: `stor_bok.py` bygger en testbok på tio år, `prestanda.py` mäter vanliga åtgärder med den och `jamfor_versioner.py` kontrollerar att skärmarna är lika med en tidigare version |
 
 ## Publicera på ett webbhotell
 
@@ -168,7 +168,7 @@ Lägg alla filer i roten (utom `test/`, README och LICENSE) i samma mapp, till e
 ### Arbetsflöden
 
 - **Publicera på webbhotellet** – laddar upp appen via FTPS vid varje push till `main`. Aktiveras när hemligheterna `FTP_SERVER`, `FTP_USERNAME` och `FTP_PASSWORD` finns (frivilligt `FTP_DIR`, standard `/sisyfos/`, och `FTP_PROTOCOL`, standard `ftps`).
-- **Release-zip** – när en release publiceras på GitHub (tagg `vX.Y.Z`) läggs `sisyfos-vX.Y.Z.zip` till, färdig att lägga på webbhotellet. Taggen måste stämma med `APP_VERSION` i `index.html`.
+- **Release-zip** – när en release publiceras på GitHub (tagg `vX.Y.Z`) läggs `sisyfos-vX.Y.Z.zip` till, färdig att lägga på webbhotellet (appen, `feedback.php` och `api.php`). Taggen måste ligga på en commit där `APP_VERSION` i `index.html` är samma version – GitHub föreslår `main` som *Target*, så har `main` hunnit få en nyare version väljs rätt commit under *Target → Recent commits*. Blir det fel säger körningen vilken commit som har versionen. Arbetsflödet kan också köras för hand med taggen och en annan commit (`ref`).
 - **Publicera på webbhotellet** skriver också `api-config.php` med sha256 av hemligheten `SISYFOS_ADMIN_KEY` (adminnyckeln för inbjudningskoder) och kontrollerar efteråt att `api.php?a=status` svarar och att datamappen inte går att läsa från webben.
 - **Test – gamla böcker öppnas** – se ovan. Kör också `test/api_test.py` (servern i båda lagringslägena).
 

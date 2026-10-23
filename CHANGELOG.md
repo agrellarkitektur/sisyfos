@@ -1,5 +1,15 @@
 # Ändringar i Sisyfos
 
+## 0.13.2
+
+Småjusteringar efter test och snabbare med stora böcker. Filformatet är oförändrat (7) – det som sparas om löpande-tipset ligger i projektets befintliga fält `notices`.
+
+- **Menyknappen ligger till höger på telefon**, efter knappen *Alfa · Skicka synpunkter*. Stängknappen i menyn som öppnas sitter på samma ställe.
+- **Löpande räkning – påminn senare eller visa inte.** Tipset om att skicka en budget (panelen och projektsidan) har knapparna *Påminn senare* (om en vecka, en månad eller tre månader) och *Visa inte i projektet*, båda med Ångra. Medan tipset vilar visas bara en diskret rad med upparbetat belopp och *Visa tipset nu*/*Visa tipset igen*. När påminnelsen kommer visas den överst i tidboken med *Ange budget*, *Påminn senare* och *Visa inte igen*.
+- **Snabbare med många års tid.** Summorna per projekt och per dag räknas nu i ett svep över boken och sparas tills något ändras, i stället för ett svep per projekt och dag. Med en testbok på tio år (11 500 tidposter, 250 projekt) gick Projekt-sidan från cirka 210 till 60 ms, Kunder från 150 till 40 ms och ett tangenttryck i en anteckning från 50 till 16 ms. Uppslag av projekt, kunder och roller på id går också snabbare. Allt som visas är oförändrat – kontrollerat genom att jämföra skärmarna i 0.13.1 och 0.13.2 med samma böcker.
+- **Release-zip:** zippen innehåller nu också `api.php`. Ligger taggen på fel commit (GitHub föreslår main, som kan ha hunnit få en nyare version) säger körningen vilken commit som har versionen och hur releasen rättas. Kan köras för hand med en annan commit.
+- **Arbetsflödena** använder versioner av GitHubs actions som kör på Node 24, och testerna körs på Ubuntu 24.04. Publiceringen visar om webbhotellet skickar `index.html` komprimerad.
+
 ## 0.13.1
 
 - **Adminnyckeln får innehålla å, ä, ö och andra tecken.** Nyckeln skickas nu URL-kodad till servern. Förut gav å, ä och ö *Fel adminnyckel*, och tecken som € eller typografiska citattecken gav *Ingen kontakt med servern*. Mellanslag och radbrytningar före och efter nyckeln (t.ex. när den klistrats in i GitHub) räknas inte.

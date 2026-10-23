@@ -202,6 +202,7 @@ button{cursor:pointer}
   .snaps .sn-s{display:none}
 }
 .hamb{display:none}
+.topbar .hamb{margin-right:-4px}
 /* Temaknappen visar läget man byter till: måne i ljust läge, sol i mörkt */
 .th-btn .th-sun{display:none}
 /* Lägesknappen visar båda lägena, det aktuella markerat */
@@ -908,6 +909,11 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 .runbox>.ic{color:var(--accent-ink);margin-top:1px}
 .runbox b{font-weight:620}
 .runbox.big{font-size:13.5px;padding:12px 14px}
+.runbox .run-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.runbox.quiet{background:transparent;border-color:var(--rule);color:var(--muted)}
+.runbox.quiet>.ic{color:var(--muted)}
+.runbox.quiet b{color:var(--ink)}
+.runbox .linkish{font-size:inherit}
 .neg{color:var(--alarm-ink)}
 .open-t{color:var(--warn-ink);font-weight:650}
 .open-t.due{color:var(--due-ink)}
@@ -1129,7 +1135,6 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 <body>
 <div class="app" id="app">
   <header class="topbar">
-    <button class="icon-btn hamb" data-act="openOrg" aria-label="Öppna organisatören"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     <button class="brand-btn" id="brandBtn" data-act="brandMenu" aria-haspopup="menu" aria-expanded="false">
       <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path class="slope" d="M2.5 20.5 21.5 7.2"/><circle class="stone" cx="10.9" cy="10.2" r="3.7"/></svg>
       Sisyfos
@@ -1141,6 +1146,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
     <button class="mode-btn" id="modeBtn" data-act="modeToggle" aria-label="Byt mellan enkelt och fullständigt läge"><span data-m="simple">Enkelt</span><span data-m="full">Fullt</span></button>
     <button class="icon-btn th-btn" data-act="theme" aria-label="Byt mellan ljust och mörkt tema"><svg class="ic th-moon" viewBox="0 0 24 24" aria-hidden="true"><title>Byt till mörkt läge</title><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><svg class="ic th-sun" viewBox="0 0 24 24" aria-hidden="true"><title>Byt till ljust läge</title><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg></button>
     <button class="badge beta-btn" data-act="feedback" id="alfaBtn" title="Sisyfos är en alfaversion – skicka synpunkter"><b>Alfa <span class="v-num">0.7.1</span></b><small>Skicka synpunkter</small></button>
+    <button class="icon-btn hamb" data-act="openOrg" aria-label="Öppna organisatören"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   </header>
   <nav class="rail" id="rail" aria-label="Organisatör"></nav>
   <main class="main" id="main"><div class="sh-dock" id="shDock"></div><div id="mainBody"></div></main>
@@ -1162,7 +1168,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 
 /* ───────────── Hjälpfunktioner ───────────── */
 const FORMAT = 'sisyfos', FORMAT_VERSION = 7, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.13.1', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const APP_VERSION = '0.13.2', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 { const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
@@ -1241,7 +1247,7 @@ const ic = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hid
    Boken = register (adminfilen: företag, kunder, roller, personer, projekt, avstämning)
          + logs (en tidlogg per person – händelser med unika id).
    I v1 sparas båda i samma lagring, men de hålls isär så att de senare kan bli egna filer. */
-let S, E, IDX;
+let S, E, IDX, AGG = null;
 const st = { page: 'tid', view: 'week', week: monday(today()), day: today(), month: today().slice(0, 7), mproj: null, sel: null, selDay: null, saved: null, saveErr: false };
 
 function sampleBook() {
@@ -1453,6 +1459,7 @@ function migrate(d) {
 const ck = (pid, p, t, d) => `${pid}|${p}~${t}|${d}`;
 let WEEKS;
 function apply(ev, pid) {
+  AGG = null;
   if (ev.type === 'week') { WEEKS.set(pid + '|' + ev.data.week, { checked: !!ev.data.checked, at: ev.at }); return; }
   if (ev.type === 'create') {
     const e = { id: ev.entryId, person: pid, ...ev.data, created: ev.at, updated: ev.at };
@@ -1469,15 +1476,26 @@ function apply(ev, pid) {
     else if (ev.type === 'restore') { e.deleted = false; e.removed = null; e.updated = ev.at; if (!IDX.has(k)) IDX.set(k, e.id); }
   }
 }
-function derive() { E = new Map(); IDX = new Map(); WEEKS = new Map(); for (const pid in S.logs) for (const ev of S.logs[pid].events) apply(ev, pid); }
+function derive() { AGG = null; E = new Map(); IDX = new Map(); WEEKS = new Map(); for (const pid in S.logs) for (const ev of S.logs[pid].events) apply(ev, pid); }
 
 const R = () => S.register;
 const me = () => S.session.personId;
 const log = () => S.logs[me()].events;
-const proj = id => R().projects.find(p => p.id === id);
+/* Uppslag på id: ett index per lista (WeakMap på listan) i stället för att leta igenom den varje gång.
+   Träffen kontrolleras mot listan som den ser ut nu, och en miss letar på vanligt sätt – så att listor
+   som ändrats på plats (push, ersatt element) alltid ger rätt svar. */
+const BYID = new WeakMap();
+function byId(a, id) {
+  const m = BYID.get(a), i = m?.get(id);
+  if (i !== undefined && a[i]?.id === id) return a[i];
+  const x = a.find(o => o.id === id);
+  if (x) BYID.set(a, new Map(a.map((o, j) => [o.id, j])));
+  return x;
+}
+const proj = id => byId(R().projects, id);
 const taskOf = (p, id) => p?.tasks.find(t => t.id === id);
-const role = id => R().roles.find(r => r.id === id);
-const cust = id => R().customers.find(c => c.id === id);
+const role = id => byId(R().roles, id);
+const cust = id => byId(R().customers, id);
 const roleFor = p => proj(p)?.memberRoles?.[me()] || R().people.find(x => x.id === me()).defaultRoleId;
 // Pris: per medarbetare i roll i projekt > per roll i projekt > centralt rollpris. Mest specifika vinner.
 const rateFor = (pId, roleId, personId) => { const p = proj(pId); return p?.personRates?.[personId]?.[roleId] ?? p?.roleRates?.[roleId] ?? role(roleId)?.rate ?? 0; };
@@ -1506,13 +1524,46 @@ const absKind = e => taskOf(proj(e.projectId), e.taskId)?.absence || null;
 const needsNote = e => !!e && e.hours > 0 && !(e.note || '').trim() && !absKind(e);
 const pRank = p => p.kind === 'absence' ? 2 : p.internal ? 1 : 0;
 const billable = e => { const p = proj(e.projectId); return !!p && !p.internal && !!taskOf(p, e.taskId)?.billable; };
-const live = () => [...E.values()].filter(e => !e.deleted && e.person === me());
+/* Summor räknas i ett svep över posterna och sparas tills något ändras (0.13.2): per projekt (upparbetat,
+   öppet, hanterat, projektets poster) och per dag för den inloggade (timmar, frånvaro). Förut gick varje
+   projekt och varje dag igenom alla poster – med många års tid blev det märkbart vid varje tangenttryck.
+   Cachen (AGG) töms av apply, derive och save, i början av varje händelse från användaren
+   (klick, inmatning, tangent …) och när dagen eller personen byts. */
+function agg() {
+  const t = today(), pid = me();
+  if (AGG && AGG.E === E && AGG.t === t && AGG.pid === pid) return AGG;
+  const A = { E, t, pid, live: [], P: new Map(), D: new Map() }, cm = ymOf(t) + '-01', hd = R().handled, info = new Map();
+  // Debiterbar och frånvarotyp per projekt och uppgift – samma svar för alla poster i raden
+  const rowOf = e => { const k = e.projectId + '~' + e.taskId; let x = info.get(k); if (!x) info.set(k, x = { b: billable(e), abs: absKind(e) }); return x; };
+  for (const e of E.values()) {
+    if (e.deleted) continue;
+    const x = rowOf(e);
+    if (e.person === pid) {
+      A.live.push(e);
+      let d = A.D.get(e.date); if (!d) A.D.set(e.date, d = { t: 0, a: 0, k: {} });
+      d.t += e.hours; if (x.abs) { d.a += e.hours; d.k[x.abs] = (d.k[x.abs] || 0) + e.hours; }
+    }
+    let r = A.P.get(e.projectId);
+    if (!r) A.P.set(e.projectId, r = { es: [], used: 0, m: { h: 0, a: 0, oh: 0, oa: 0, hh: 0, ha: 0, po: 0, poh: 0, last: null } });
+    r.es.push(e);
+    if (x.b) r.used += e.hours * e.rate;
+    if (!(e.hours > 0)) continue;
+    const m = r.m; if (!m.last || e.date > m.last) m.last = e.date;
+    if (!x.b) continue;
+    const a = e.hours * e.rate; m.h += e.hours; m.a += a;
+    if (hd[hKey(e.projectId, e.date)]) { m.hh += e.hours; m.ha += a; } else { m.oh += e.hours; m.oa += a; if (e.date < cm) { m.poh += e.hours; m.po += a; } }
+  }
+  return (AGG = A);
+}
+const live = () => agg().live;
+// Projektets poster (alla personer, inga borttagna) – i stället för att gå igenom hela boken
+const pEs = pId => agg().P.get(pId)?.es || [];
 /* Är alla timmar i projektet den månaden i avcheckade eller signerade veckor? Gäller alla personer i boken.
    Ger { ready, hours, open:[{person, week}] } – open är veckor som inte är avcheckade. */
 function monthReady(pid, ym) {
   const open = new Map(); let hours = 0;
-  for (const e of E.values()) {
-    if (e.deleted || e.projectId !== pid || !(e.hours > 0) || e.date.slice(0, 7) !== ym) continue;
+  for (const e of pEs(pid)) {
+    if (e.deleted || !(e.hours > 0) || e.date.slice(0, 7) !== ym) continue;
     hours += e.hours;
     const wk = monday(e.date), k = e.person + '|' + wk;
     if (!WEEKS.get(k)?.checked && !R().signed[k]) open.set(k, { person: e.person, week: wk });
@@ -1525,19 +1576,10 @@ const cell = (rk, d) => { const id = IDX.get(`${me()}|${rk}|${d}`); return id ? 
 const splitRow = rk => rk.split('~');
 const splitKey = k => k.split('|');
 
-function used(pId) { let s = 0; for (const e of E.values()) if (!e.deleted && e.projectId === pId && billable(e)) s += e.hours * e.rate; return s; }
+const used = pId => agg().P.get(pId)?.used || 0;
 // Upparbetat, öppet och hanterat. Öppet = debiterbar tid i månader som inte är markerade som hanterade (inte fakturerade än).
-function pMoney(pId) {
-  const r = { h: 0, a: 0, oh: 0, oa: 0, hh: 0, ha: 0, po: 0, poh: 0, last: null }, cm = ymOf(today()) + '-01';
-  for (const e of E.values()) {
-    if (e.deleted || e.projectId !== pId || !(e.hours > 0)) continue;
-    if (!r.last || e.date > r.last) r.last = e.date;
-    if (!billable(e)) continue;
-    const a = e.hours * e.rate; r.h += e.hours; r.a += a;
-    if (R().handled[hKey(pId, e.date)]) { r.hh += e.hours; r.ha += a; } else { r.oh += e.hours; r.oa += a; if (e.date < cm) { r.poh += e.hours; r.po += a; } }
-  }
-  return r;
-}
+// po/poh = öppet i månader före innevarande. Räknas i agg(); här en kopia så att anroparen kan ändra fritt.
+function pMoney(pId) { const m = agg().P.get(pId)?.m; return m ? { ...m } : { h: 0, a: 0, oh: 0, oa: 0, hh: 0, ha: 0, po: 0, poh: 0, last: null }; }
 const sumMoney = list => list.reduce((s, m) => { for (const k of ['h', 'a', 'oh', 'oa', 'hh', 'ha', 'po', 'poh']) s[k] += m[k]; if (m.last && (!s.last || m.last > s.last)) s.last = m.last; return s; }, { h: 0, a: 0, oh: 0, oa: 0, hh: 0, ha: 0, po: 0, poh: 0, last: null });
 // Öppet: 'cur' (orange) = bara i innevarande månad, 'due' (röd) = äldre månader väntar på att hanteras/faktureras
 const openCls = m => m.oa > 0.5 ? (m.po > 0.5 ? ' on due' : ' on cur') : '';
@@ -1567,19 +1609,16 @@ function cState(c) {
 const running = p => !p.internal && p.kind !== 'absence' && !(p.budgetKr > 0);
 function budgetPct(p) { return p.budgetKr > 0 ? used(p.id) / p.budgetKr : null; }
 const lvl = x => x == null ? 0 : x >= .9 ? 3 : x >= .75 ? 2 : x >= .5 ? 1 : 0;
-const dayTotal = d => live().reduce((s, e) => e.date === d ? s + e.hours : s, 0);
-const dayAbs = (d, kind) => live().reduce((s, e) => e.date === d && (kind ? absKind(e) === kind : absKind(e)) ? s + e.hours : s, 0);
+const dayTotal = d => agg().D.get(d)?.t || 0;
+const dayAbs = (d, kind) => { const x = agg().D.get(d); return !x ? 0 : kind ? x.k[kind] || 0 : x.a; };
 const dayKomp = d => dayAbs(d, 'comp');
 // Saldo: passerade dagar räknas fullt; i dag räknas bara övertid (dagen är inte slut än).
 // All frånvaro fyller ut dagen, men kompledig tid dras samtidigt av från saldot.
 const dayBal = (d, tot = dayTotal(d), kp = dayKomp(d)) => { const t = today(), x = tot - norm(d); return d < t ? x - kp : d === t ? Math.max(0, x) - kp : 0; };
+// Kompsaldot i dag – samma beräkning som compAt, en gång per ändring
 function compBalance() {
   if (!hasNorm()) return null;
-  const p = person(), t = today(), tots = new Map(), kp = new Map();
-  for (const e of live()) { tots.set(e.date, (tots.get(e.date) || 0) + e.hours); if (absKind(e) === 'comp') kp.set(e.date, (kp.get(e.date) || 0) + e.hours); }
-  let s = +p.balanceIn || 0;
-  for (let d = p.balanceStart || t; d <= t; d = addD(d, 1)) s += dayBal(d, tots.get(d) || 0, kp.get(d) || 0);
-  return s;
+  const A = agg(); return A.cb !== undefined ? A.cb : (A.cb = compAt(today()));
 }
 // Semesterkonto i dagar per semesterår. En dag = personens normtid den dagen (deltid ger kortare dagar).
 const nfD = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 1 });
@@ -1598,13 +1637,18 @@ const vacRules = () => Object.assign({}, VAC_DEF, R().book.vacation || {});
 function semStart(d, ys = '04-01') { let s = `${d.slice(0, 4)}-${ys}`; if (s > d) s = `${+d.slice(0, 4) - 1}-${ys}`; return s; }
 const ydate = d => `${+d.slice(8)} ${MONL[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}`;
 const semLabel = (y, ys) => ys === '01-01' ? String(y) : `${y}/${String((y + 1) % 100).padStart(2, '0')}`;
-function vacInfo(p = person(), t = today()) {
+// Semesterkontot för den inloggade i dag räknas en gång per ändring (agg) – det visas på flera ställen samtidigt
+function vacInfo(p, t) {
+  if (p !== undefined || t !== undefined) return vacInfo0(p, t);
+  const A = agg(); return A.vi !== undefined ? A.vi : (A.vi = vacInfo0());
+}
+function vacInfo0(p = person(), t = today()) {
   if (!p || p.employment === 'hourly' || simple()) return null;
   const v = p.vacation || {}, ys = v.yearStart || '04-01', per = +v.perYear || 0, ru = vacRules();
   const curS = semStart(t, ys), cy = +curS.slice(0, 4), y0 = Math.min(+semStart(v.from || curS, ys).slice(0, 4), cy);
   let pools = (v.saved || []).map((n, i) => ({ y: y0 - 1 - i, left: +n || 0 })).filter(x => x.left > 0.004);
   const by = new Map();
-  for (const e of [...E.values()]) if (!e.deleted && e.person === p.id && e.hours > 0 && absKind(e) === 'vacation') {
+  for (const e of E.values()) if (!e.deleted && e.person === p.id && e.hours > 0 && absKind(e) === 'vacation') {
     const y = +semStart(e.date, ys).slice(0, 4); if (y < y0 || y > cy) continue;
     if (!by.has(y)) by.set(y, []); by.get(y).push(e);
   }
@@ -1774,6 +1818,7 @@ function metaSet(patch) {
 const isExample = () => !!R()?.book?.example;
 
 function save() {
+  AGG = null;
   if (st.noSave) { renderSave(); return; }
   clearTimeout(saveT);
   saveT = setTimeout(() => { saveT = null; writeNow(); }, 250);
@@ -2598,7 +2643,7 @@ async function snapRestore(id) {
 function weekDays(wk) { return Array.from({ length: 7 }, (_, i) => addD(wk, i)); }
 function visDays(wk) {
   const all = weekDays(wk);
-  const weekendUsed = live().some(e => (e.date === all[5] || e.date === all[6]) && e.hours > 0);
+  const weekendUsed = dayTotal(all[5]) > 0 || dayTotal(all[6]) > 0;
   return S.prefs.showWeekend || weekendUsed ? all : all.slice(0, 5);
 }
 function rowsForWeek(wk) {
@@ -2774,8 +2819,12 @@ function alertOn(p) {
   const sz = p.notices?.snooze; if (sz && sz.until > today() && sz.level === L) return false;
   return true;
 }
+function runAlertHtml(p) {
+  const m = pMoney(p.id), c = cust(p.customerId);
+  return `<div class="alert soft run" role="status">${ic('snooze')}<div class="txt"><b>${esc(p.name)}</b> går fortfarande på löpande räkning – <span class="mono">${fkr(m.a)}</span> upparbetat${m.oa > 0 ? `, varav <span class="mono">${fkr(m.oa)}</span> inte hanterat` : ''}. Dags att skicka en budget eller en uppskattning till ${c ? esc(c.name) : 'kunden'}?</div><button class="btn sm" data-act="projEdit" data-p="${p.id}">${ic('note')}Ange budget</button><button class="btn sm" data-act="runSnoozeMenu" data-p="${p.id}" aria-haspopup="menu">${ic('snooze')}Påminn senare</button><button class="btn sm ghost" data-act="runOff" data-p="${p.id}">Visa inte igen</button></div>`;
+}
 function alertsHtml() {
-  return backupAlertHtml() + R().projects.filter(alertOn).map(p => {
+  return backupAlertHtml() + R().projects.filter(runDue).map(runAlertHtml).join('') + R().projects.filter(alertOn).map(p => {
     const x = budgetPct(p), over = alertLevel(p) === '100';
     return `<div class="alert" role="alert">${ic('alert')}<div class="txt"><b>${esc(p.name)}</b> ${over ? 'har passerat budgeten' : 'har nått ' + fpct(x) + ' av budgeten'}, ${fkr(used(p.id))} av ${fkr(p.budgetKr)}. ${over ? 'Stäm av med kunden om fortsatt arbete.' : 'Underrätta kunden innan budgeten tar slut.'}</div><button class="btn sm" data-act="snoozeMenu" data-p="${p.id}" aria-haspopup="menu">${ic('snooze')}Skjut upp</button><button class="btn sm" data-act="notify" data-p="${p.id}">${ic('bell')}Markera som underrättad</button></div>`;
   }).join('');
@@ -2943,10 +2992,23 @@ function acctHtml(T) {
   return 'Fyller ut dagen – påverkar inte kompsaldot';
 }
 function pDayHtml(d) { const tt = dayTotal(d), nm = norm(d); return `Dagen hittills: <span class="mono">${fh(tt)}</span>${hasNorm() ? ` av <span class="mono">${fh(nm)}</span>` : ''} h`; }
-// Löpande projekt (ingen budget): visa upparbetat i kronor och föreslå vänligt att skicka en budget till kunden
+// Löpande projekt (ingen budget): visa upparbetat i kronor och föreslå vänligt att skicka en budget till kunden.
+// Tipset kan skjutas upp (notices.runUntil – en påminnelse visas överst i tidboken när dagen kommer)
+// eller stängas av för projektet (notices.runOff). Båda ligger i projektets notices – inget nytt i filformatet.
+const runOff = P => !!P.notices?.runOff;
+const runSnoozed = P => !runOff(P) && !!P.notices?.runUntil && P.notices.runUntil > today();
+const runDue = P => running(P) && P.status === 'active' && !runOff(P) && !!P.notices?.runUntil && P.notices.runUntil <= today();
 function runningHtml(P, big = false) {
-  const m = pMoney(P.id), c = cust(P.customerId);
-  return `<div class="runbox${big ? ' big' : ''}">${ic('info')}<div><b>Löpande räkning – ingen budget.</b> Upparbetat hittills <b class="mono">${fkr(m.a)}</b> på ${fh(m.h)} h${m.oa > 0 ? `, varav <b class="mono">${fkr(m.oa)}</b> inte hanterat än` : ''}. Ett vänligt tips: skicka en budget eller en uppskattning till ${c ? esc(c.name) : 'kunden'}, så vet ni båda vad som gäller och Sisyfos kan påminna dig innan den tar slut.${big ? `<div style="margin-top:8px"><button class="btn sm" data-act="projEdit" data-p="${P.id}">${ic('note')}Ange budget</button></div>` : ''}</div></div>`;
+  const m = pMoney(P.id), c = cust(P.customerId), up = `Upparbetat hittills <b class="mono">${fkr(m.a)}</b> på ${fh(m.h)} h${m.oa > 0 ? `, varav <b class="mono">${fkr(m.oa)}</b> inte hanterat än` : ''}.`;
+  if (runOff(P) || runSnoozed(P)) return `<div class="runbox quiet${big ? ' big' : ''}">${ic(runOff(P) ? 'info' : 'snooze')}<div><b>Löpande räkning – ingen budget.</b> ${up} ${runOff(P) ? 'Tipset om budget visas inte i projektet.' : `Påminner om budget igen ${sdate(P.notices.runUntil)}.`} <button class="linkish" data-act="runOn" data-p="${P.id}">${runOff(P) ? 'Visa tipset igen' : 'Visa tipset nu'}</button></div></div>`;
+  return `<div class="runbox${big ? ' big' : ''}">${ic('info')}<div><b>Löpande räkning – ingen budget.</b> ${up} Ett vänligt tips: skicka en budget eller en uppskattning till ${c ? esc(c.name) : 'kunden'}, så vet ni båda vad som gäller och Sisyfos kan påminna dig innan den tar slut.<div class="run-acts">${big ? `<button class="btn sm" data-act="projEdit" data-p="${P.id}">${ic('note')}Ange budget</button>` : ''}<button class="btn sm${big ? ' ghost' : ''}" data-act="runSnoozeMenu" data-p="${P.id}" aria-haspopup="menu">${ic('snooze')}Påminn senare</button><button class="btn sm ghost" data-act="runOff" data-p="${P.id}">Visa inte i projektet</button></div></div></div>`;
+}
+// Sätter tipsets läge (runUntil eller runOff, aldrig båda) med Ångra, och ritar om det som syns
+function runSet(P, patchN, msg) {
+  const prev = { ...(P.notices || {}) }, refresh = () => { if (st.page === 'tid') patch(); else renderMain(); renderPanel(); };
+  const n = { ...prev }; delete n.runUntil; delete n.runOff; P.notices = { ...n, ...patchN };
+  save(); closeFloating(); refresh();
+  toast(msg, { label: 'Ångra', fn: () => { P.notices = prev; save(); refresh(); } });
 }
 function pBudgetHtml(P) {
   if (running(P)) return `<h3>Budget</h3>${runningHtml(P)}`;
@@ -3299,8 +3361,8 @@ const dYear = d => `${pd(d).getDate()} ${MON[pd(d).getMonth()]}` + (d.slice(0, 4
    före, i och efter en period. done = redan hanterat inom perioden. */
 function openSplit(pid, from = '0000-00-00', to = '9999-99-99') {
   const z = () => ({ h: 0, a: 0 }), r = { first: null, last: null, all: z(), before: z(), in: z(), after: z(), done: z() };
-  for (const e of E.values()) {
-    if (e.deleted || e.projectId !== pid || !(e.hours > 0) || !billable(e)) continue;
+  for (const e of pEs(pid)) {
+    if (e.deleted || !(e.hours > 0) || !billable(e)) continue;
     const a = amountOf(e), add = o => { o.h += e.hours; o.a += a; };
     if (handled(pid, e.date)) { if (e.date >= from && e.date <= to) add(r.done); continue; }
     add(r.all); if (!r.first || e.date < r.first) r.first = e.date; if (!r.last || e.date > r.last) r.last = e.date;
@@ -3333,11 +3395,11 @@ function projPanelHtml(P) {
   let h = pHead(esc(P.name), abs ? 'Semester och ledighet' : `${esc(P.number)}${P.internal ? ' · intern tid' : ''}`, pc(P)) + `<div class="p-body" style="--pc:${pc(P)}">`;
   if (!abs && !P.internal) {
     const o = openSplit(P.id), cur = ymOf(today());
-    const months = new Map(); for (const e of E.values()) if (!e.deleted && e.projectId === P.id && e.hours > 0 && billable(e) && !handled(P.id, e.date)) { const ym = ymOf(e.date); months.set(ym, (months.get(ym) || 0) + amountOf(e)); }
+    const months = new Map(); for (const e of pEs(P.id)) if (!e.deleted && e.hours > 0 && billable(e) && !handled(P.id, e.date)) { const ym = ymOf(e.date); months.set(ym, (months.get(ym) || 0) + amountOf(e)); }
     h += `<section class="psec"><h3>Öppet – inte hanterat</h3>${o.all.h ? `${pkv('Äldsta ohanterade tid', dYear(o.first), o.first < cm1() ? 'warn' : '')}${pkv('Senaste', dYear(o.last))}${pkv('Öppet totalt', hk(o.all), 'tot big')}
       <ul class="plist">${[...months].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([ym, a]) => `<li class="pl-li"><button class="pl" data-act="moCell" data-p="${P.id}" data-ym="${ym}"><span class="r-text"><span class="r-name">${cap(ymLabel(ym))}</span><span class="r-sub">${ym >= cur ? 'pågår' : 'öppen'}${readyHtml(P.id, ym)}</span></span><span class="mono small">${nk(a)}</span></button></li>`).join('')}</ul>
       <div class="p-acts"><button class="btn sm" data-act="rpOpen" data-p="${P.id}">${ic('report')}Dagbok för all öppen tid</button><button class="btn sm" data-act="showInvoice" data-s="p:${P.id}">${ic('export')}Fakturaunderlag</button></div>` : '<p class="p-note">Ingen öppen tid – allt är hanterat.</p>'}</section>`;
-    const miss = [...E.values()].filter(e => !e.deleted && e.projectId === P.id && needsNote(e)).length;
+    const miss = pEs(P.id).filter(e => !e.deleted && needsNote(e)).length;
     if (miss) h += `<section class="psec"><h3>Anteckningar</h3><p class="p-note" style="color:var(--warn-ink)">${miss === 1 ? 'En tid saknar' : miss + ' tider saknar'} anteckning – de blir tomma rader i dagboken.</p></section>`;
   } else if (P.internal && !abs) h += `<section class="psec"><h3>Intern tid</h3>${pkv('Timmar i år', fh(intHours(P.id, today().slice(0, 4))) + ' h')}${pkv('Timmar totalt', fh(m.h + intHours(P.id)) + ' h')}</section>`;
   return h + helpSec(abs ? ['Frånvaro fyller ut dagen mot normtiden och behöver ingen anteckning.', 'Redigera för att ändra frånvarotypernas förkortningar.'] : ['Klicka på en <b>månad</b> för att gå till tidboken, ladda ner dagboken eller markera månaden som hanterad.', '<b>Hanterad</b> betyder avstämd och dagboken utskriven – månadens tid i projektet låses.', '"<b>redo</b>" betyder att alla timmar i månaden ligger i avcheckade veckor.', '<b>Anteckningar</b> om projektet (till höger på sidan) är en enkel logg med datum.']) + `</div>`;
@@ -4024,6 +4086,15 @@ const A = {
     P.notices = { ...(P.notices || {}), snooze: { until, level: alertLevel(P) } }; save(); closeFloating(); patch();
     toast(`${P.name}: påminner igen ${sdate(until)}`, { label: 'Ångra', fn: () => { delete P.notices.snooze; save(); patch(); } });
   },
+  runSnoozeMenu: el => {
+    if (!$('#menu').hidden) { closeFloating(); return; }
+    const m = $('#menu'), id = el.dataset.p, opt = (d, l) => `<button role="menuitem" data-act="runSnooze" data-p="${id}" data-days="${d}">${ic('snooze')}${l}<kbd>${sdate(addD(today(), d))}</kbd></button>`;
+    m.innerHTML = `<div class="mh">Påminn mig om budget</div><hr>${opt(7, 'Om en vecka')}${opt(30, 'Om en månad')}${opt(91, 'Om tre månader')}<hr><div class="mh">Påminnelsen visas överst i tidboken.</div>`;
+    const r = el.getBoundingClientRect(); placeMenu(m, r.left, r.bottom + 6); $('button', m).focus();
+  },
+  runSnooze: el => { const P = proj(el.dataset.p), until = addD(today(), +el.dataset.days); runSet(P, { runUntil: until }, `${P.name}: påminner om budget ${sdate(until)}`); },
+  runOff: el => { const P = proj(el.dataset.p); runSet(P, { runOff: today() }, `${P.name}: tipset om budget visas inte i projektet`); },
+  runOn: el => { const P = proj(el.dataset.p); runSet(P, {}, `${P.name}: tipset om budget visas igen`); },
   checkWeek: () => checkWeekDlg(),
   forceCheck: () => doCheckWeek(curWeek()),
   reopenWeek: () => { const wk = curWeek(); if (weekState(wk).signed) { lockMsg(wk); return; } weekEvent(wk, false); toast(`Vecka ${isoWeek(wk).w} är öppen igen`); },
@@ -4313,6 +4384,8 @@ const A = {
   toastAct: el => { $('#toast').hidden = true; toastFns[+el.dataset.i || 0]?.(); }
 };
 
+// Summorna (agg) räknas om efter varje händelse från användaren – fångas före alla andra hanterare
+for (const t of ['click', 'input', 'change', 'keydown', 'submit', 'paste', 'drop']) document.addEventListener(t, () => { AGG = null; }, true);
 document.addEventListener('click', ev => {
   const el = ev.target.closest('[data-act]');
   if (!ev.target.closest('#menu,#pop,#cpop,#brandBtn,[data-act="addRow"],[data-act="menuFor"],[data-act="snoozeMenu"],[data-act="weekStateMenu"]')) closeFloating();
@@ -4637,7 +4710,7 @@ const STATUS = { active: 'Aktiva', paused: 'Inaktiva', closed: 'Avslutade' };
 const STATUS1 = { active: 'Aktivt', paused: 'Inaktivt', closed: 'Avslutat' };
 const stateLabel = (p, s = pState(p)) => s === 'idle' ? `Inaktivt – ingen tid på ${idleLabel(idleOf(p))}` : s === 'paused' ? 'Inaktivt' : s === 'closed' ? 'Avslutat' : '';
 const ABS_INFO = { comp: 'dras från kompsaldot', vacation: 'räknas av semesterdagar', parental: 'fyller ut dagen', other: 'fyller ut dagen', sick: 'fyller ut dagen', vab: 'fyller ut dagen' };
-const hasTime = (pId, tId) => { for (const e of E.values()) if (!e.deleted && e.projectId === pId && (!tId || e.taskId === tId)) return true; return false; };
+const hasTime = (pId, tId) => pEs(pId).some(e => !e.deleted && (!tId || e.taskId === tId));
 function pSorter(how) {
   return (a, b) => {
     const r = (pRank(a.p) - pRank(b.p)); if (r) return r;
@@ -4681,7 +4754,7 @@ function moneyHtml(P, m) {
 }
 const nk = n => nfKr.format(Math.round(n));
 // Intern tid är inte debiterbar och syns därför inte i pMoney – räkna timmarna för sig
-function intHours(pId, year) { let h = 0; for (const e of E.values()) if (!e.deleted && e.projectId === pId && !billable(e) && (!year || e.date.startsWith(year))) h += e.hours; return h; }
+function intHours(pId, year) { let h = 0; for (const e of pEs(pId)) if (!e.deleted && !billable(e) && (!year || e.date.startsWith(year))) h += e.hours; return h; }
 function pcardHtml({ p, m, s }) {
   const c = cust(p.customerId), lab = stateLabel(p, s), last = m.last, note = p.notes?.[p.notes.length - 1];
   const sub = p.kind === 'absence' ? 'Semester och ledighet' : p.internal ? 'Intern tid' : simple() ? `${fkr(rateFor(p.id, roleFor(p.id), me()))}/h` : c ? `<button class="lnk" data-act="openCustomer" data-c="${c.id}">${esc(c.name)}</button>` : 'Ingen kund';
@@ -4695,7 +4768,7 @@ function pcardHtml({ p, m, s }) {
 /* ───────────── Projektsida ───────────── */
 function projPageHtml(P) {
   const m = pMoney(P.id), c = cust(P.customerId), s = pState(P, m), lab = stateLabel(P, s), abs = P.kind === 'absence';
-  const es = [...E.values()].filter(e => !e.deleted && e.projectId === P.id && e.hours > 0);
+  const es = pEs(P.id).filter(e => !e.deleted && e.hours > 0);
   let h = `<div class="view dpage" style="--pc:${pc(P)}"><div class="dp-top"><button class="btn ghost sm" data-act="backList" data-page="projekt">${ic('left')}Projekt</button></div>
   <div class="dp-head"><span class="dot big"></span><div class="r-text"><h1><span class="r-num">${esc(P.number)}</span>${esc(P.name)}</h1><div class="dp-sub">${abs ? 'Semester och ledighet' : P.internal ? 'Intern tid' : simple() ? `${fkr(rateFor(P.id, roleFor(P.id), me()))}/h` : c ? `<button class="lnk" data-act="openCustomer" data-c="${c.id}">${esc(c.name)}</button>` : 'Ingen kund'}${P.property ? ` · ${esc(P.property)}` : ''}${lab ? ` · <span class="ptag">${esc(lab)}</span>` : ''}${running(P) ? ' <span class="ptag run">löpande</span>' : ''}</div></div>
   <span class="spacer"></span><div class="dp-acts">${!abs && P.status !== 'closed' ? `<button class="btn" data-act="reportTime" data-p="${P.id}">${ic('clock')}Rapportera tid</button>` : ''}${abs ? '' : `<button class="btn" data-act="showDiary" data-p="${P.id}" data-ym="${ymOf(today())}">${ic('report')}${simple() ? 'Öppen tid' : 'Projektdagbok'}</button>`}<button class="btn" data-act="projEdit" data-p="${P.id}">${ic('note')}Redigera</button></div></div>`;
@@ -5108,11 +5181,11 @@ function doHandle(pid, ym) {
 // Projektdagbok
 function diaryData(pid, from, to, amt) {
   const P = proj(pid), C = cust(P.customerId), vat = +R().book.vatRate || 0, k = amt === 'inc' ? 1 + vat / 100 : 1, tIdx = id => P.tasks.findIndex(t => t.id === id);
-  const es = [...E.values()].filter(e => !e.deleted && e.projectId === pid && e.date >= from && e.date <= to && (e.hours > 0 || (e.note || '').trim()))
+  const es = pEs(pid).filter(e => !e.deleted && e.date >= from && e.date <= to && (e.hours > 0 || (e.note || '').trim()))
     .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (tIdx(a.taskId) - tIdx(b.taskId)) || (a.person < b.person ? -1 : 1));
   const rows = es.map(e => ({ date: e.date, task: taskOf(P, e.taskId)?.name || '', hours: e.hours, note: (e.note || '').trim(), amount: amountOf(e) * k, init: initialsOf(e.person), miss: needsNote(e), hd: !!handled(pid, e.date) }));
   const per = new Map(); for (const e of es) { const t = taskOf(P, e.taskId); const o = per.get(e.taskId) || { name: t?.name || '', hours: 0, amount: 0, i: tIdx(e.taskId) }; o.hours += e.hours; o.amount += amountOf(e) * k; per.set(e.taskId, o); }
-  let usedTo = 0; for (const e of E.values()) if (!e.deleted && e.projectId === pid && e.date <= to) usedTo += amountOf(e);
+  let usedTo = 0; for (const e of pEs(pid)) if (!e.deleted && e.date <= to) usedTo += amountOf(e);
   const people = new Set(es.map(e => e.person));
   return { P, C, from, to, amt, vat, rows, perTask: [...per.values()].sort((a, b) => a.i - b.i), hours: rows.reduce((s, r) => s + r.hours, 0), amount: rows.reduce((s, r) => s + r.amount, 0), hdH: rows.reduce((s, r) => s + (r.hd ? r.hours : 0), 0), hdA: rows.reduce((s, r) => s + (r.hd ? r.amount : 0), 0), multi: people.size > 1, showTask: P.tasks.length > 1, miss: rows.filter(r => r.miss).length,
     budget: !P.internal && P.budgetKr > 0 ? { budget: P.budgetKr, used: usedTo, pct: usedTo / P.budgetKr, to } : null };
@@ -5205,8 +5278,8 @@ function invoiceData(sel, from, to, old, withRows) {
   const out = { C, from, to, old, vat, projects: [], hours: 0, amount: 0, first: null, last: null, done: { h: 0, a: 0 }, later: { h: 0, a: 0 }, miss: 0, months: [] };
   for (const P of ps) {
     const lines = new Map(), rows = [], tIdx = id => P.tasks.findIndex(t => t.id === id); let ph = 0, pa = 0;
-    for (const e of E.values()) {
-      if (e.deleted || e.projectId !== P.id || !(e.hours > 0) || !billable(e)) continue;
+    for (const e of pEs(P.id)) {
+      if (e.deleted || !(e.hours > 0) || !billable(e)) continue;
       if (handled(P.id, e.date)) { if (e.date >= from && e.date <= to) { out.done.h += e.hours; out.done.a += amountOf(e); } continue; }
       if (e.date > to) { out.later.h += e.hours; out.later.a += amountOf(e); continue; }
       if (e.date < from && !old) continue;
@@ -5225,7 +5298,7 @@ function invoiceData(sel, from, to, old, withRows) {
   out.vatA = out.amount * vat / 100;
   // Månader som kan markeras som hanterade: all projektets tid i månaden ligger i underlaget
   for (const m of out.months) {
-    m.ok = ![...E.values()].some(e => !e.deleted && e.projectId === m.pid && e.hours > 0 && ymOf(e.date) === m.ym && (e.date > to || (e.date < from && !old)));
+    m.ok = !pEs(m.pid).some(e => !e.deleted && e.hours > 0 && ymOf(e.date) === m.ym && (e.date > to || (e.date < from && !old)));
     m.ready = monthReady(m.pid, m.ym);
   }
   out.months.sort((a, b) => a.ym < b.ym ? -1 : a.ym > b.ym ? 1 : 0);
@@ -5342,12 +5415,12 @@ function invPanelHtml() {
   return h + helpSec(simple() ? ['Visar <b>öppen debiterbar tid</b> per projekt – tid som redan är hanterad ingår inte.', 'Välj <b>alla projekt</b> eller ett projekt, och hur långt fram underlaget ska gå.', '<b>Dagboksrader</b> visar varje dag med anteckning – bra som specifikation till fakturan.', '<b>PDF</b> att bifoga, <b>CSV</b> för Excel eller bokföringsprogrammet.', 'När du har fakturerat: <b>Markera som hanterat</b> låser tiden så att den inte kommer med igen.'] : ['Underlaget tar med <b>öppen debiterbar tid</b> – tid som redan är hanterad ingår inte.', 'Välj en <b>kund</b> för alla dess projekt på ett underlag, eller ett enskilt projekt.', '<b>PDF</b> att läsa eller bifoga, <b>CSV</b> att öppna i Excel eller föra in i bokföringsprogrammet. Projektdagboken är specifikationen.', 'När fakturan är skickad: <b>Markera som hanterat</b> låser tiden så att den inte kommer med igen.', 'Sisyfos gör inga fakturor – löpnummer, moms och arkivering sköts i bokföringsprogrammet.']) + `</div>`;
 }
 // Personsammanställning
+// Kompsaldot vid periodens slut (i dag om perioden inte är slut). Dagsummorna kommer från agg().
 function compAt(end) {
   if (!hasNorm()) return null;
-  const p = person(), tots = new Map(), kp = new Map();
-  for (const e of live()) { tots.set(e.date, (tots.get(e.date) || 0) + e.hours); if (absKind(e) === 'comp') kp.set(e.date, (kp.get(e.date) || 0) + e.hours); }
-  let s = +p.balanceIn || 0; const stop = end < today() ? end : today();
-  for (let d = p.balanceStart || today(); d <= stop; d = addD(d, 1)) s += dayBal(d, tots.get(d) || 0, kp.get(d) || 0);
+  const A = agg(), p = person(), t = today(), stop = end < t ? end : t;
+  let s = +p.balanceIn || 0;
+  for (let d = p.balanceStart || t; d <= stop; d = addD(d, 1)) { const x = A.D.get(d); s += dayBal(d, x?.t || 0, x?.k.comp || 0); }
   return s;
 }
 function personPeriod() { const r = rep(); return r.ptype === 'week' ? [r.pwk, addD(r.pwk, 6)] : [`${r.pym}-01`, ymLast(r.pym)]; }
@@ -5950,7 +6023,7 @@ const SH = {
 function shFlags(toks) { let dl = false; const rest = toks.filter(x => { const f = !x.q && SH_FLAGS[x.lo]; if (f === 'dl') dl = true; return !f; }); return { toks: rest, dl }; }
 // Samma standardmånad som rapporterna: förra månaden de tio första dagarna, annars denna
 function shDefMonth() { const t = today(), ym = +t.slice(8, 10) <= 10 ? ymAdd(ymOf(t), -1) : ymOf(t); return perMonths(ym, ym); }
-function shFirst(pid) { let f = null; for (const e of E.values()) if (!e.deleted && e.projectId === pid && e.hours > 0 && (!f || e.date < f)) f = e.date; return f || today(); }
+function shFirst(pid) { let f = null; for (const e of pEs(pid)) if (!e.deleted && e.hours > 0 && (!f || e.date < f)) f = e.date; return f || today(); }
 function shWeekEv(wk, checked) { const ev = { id: uid(), entryId: null, type: 'week', at: new Date().toISOString(), by: me(), data: { week: wk, checked } }; log().push(ev); apply(ev, me()); }
 function shRefresh() { closeFloating(); renderMain(); renderPanel(); renderStatus(); }
 function shShowDiary(pid, from, to) {
@@ -5975,7 +6048,7 @@ function shHandle(a, on) {
   const x = shFindProj(r.rest); if (!x || x.n < r.rest.length) return noP(r.rest);
   const P = x.P; if (P.internal || P.kind === 'absence') return { bad: true, html: `${B(P.name)} faktureras inte och hanteras inte.` };
   const cur = ymOf(today()), per = r.per || perMonths(ymAdd(cur, -1), ymAdd(cur, -1)); let ms, note = '';
-  if (per.kind === 'open') { const all = new Set(); for (const e of E.values()) if (!e.deleted && e.projectId === P.id && e.hours > 0 && billable(e) && !handled(P.id, e.date)) all.add(ymOf(e.date)); ms = [...all].sort(); const n0 = ms.length; ms = ms.filter(m => m < cur); if (on && n0 > ms.length) note = ` · ${MONL[+cur.slice(5) - 1]} pågår och tas inte med`; if (!on) ms = Object.keys(R().handled).filter(k => k.startsWith(P.id + '|')).map(k => k.split('|')[1]).sort(); }
+  if (per.kind === 'open') { const all = new Set(); for (const e of pEs(P.id)) if (!e.deleted && e.hours > 0 && billable(e) && !handled(P.id, e.date)) all.add(ymOf(e.date)); ms = [...all].sort(); const n0 = ms.length; ms = ms.filter(m => m < cur); if (on && n0 > ms.length) note = ` · ${MONL[+cur.slice(5) - 1]} pågår och tas inte med`; if (!on) ms = Object.keys(R().handled).filter(k => k.startsWith(P.id + '|')).map(k => k.split('|')[1]).sort(); }
   else if (per.kind === 'months') ms = per.months;
   else if (per.kind === 'year') ms = ymSpan(`${per.year}-01`, `${per.year}-12`);
   else return { bad: true, html: 'Än så länge kan bara hela månader hanteras: <b>hant okt strand</b> eller <b>hant öppet strand</b>. Valfri period kommer i en senare version.' };

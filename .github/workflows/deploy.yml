@@ -18,7 +18,7 @@ jobs:
       - name: Hoppa över utan hemligheter
         if: env.HAR_FTP != 'true'
         run: echo "::notice::FTP-hemligheterna saknas – inget publiceras."
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: env.HAR_FTP == 'true'
       - name: Samla filerna
         if: env.HAR_FTP == 'true'
@@ -33,7 +33,7 @@ jobs:
           KEY=$(printf '%s' "$KEY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
           if [ -n "$KEY" ]; then H=$(printf '%s' "$KEY" | sha256sum | cut -d' ' -f1); else H=''; echo "::notice::SISYFOS_ADMIN_KEY saknas – inga inbjudningskoder kan skapas."; fi
           printf "<?php\n// Skrivs av publiceringen på GitHub. sha256 av adminnyckeln (hemligheten SISYFOS_ADMIN_KEY).\nreturn ['admin' => '%s'];\n" "$H" > publicera/api-config.php
-      - uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         if: env.HAR_FTP == 'true'
         with:
           server: ${{ secrets.FTP_SERVER }}
@@ -57,6 +57,10 @@ jobs:
             exit 1
           fi
           echo "::notice::Webbhotellet har version $GOT."
+          # Bara information: skickar webbhotellet appen komprimerad? (index.html är ~700 kB, ~250 kB med gzip)
+          ENC=$(curl -sS -o /dev/null -D - -H 'Accept-Encoding: gzip, br' "${URL}index.html?t=$(date +%s)" | tr -d '\r' | grep -i '^content-encoding:' | cut -d' ' -f2 || true)
+          SIZE=$(curl -sS -o /dev/null -w '%{size_download}' -H 'Accept-Encoding: gzip, br' "${URL}index.html?t=$(date +%s)" || echo '?')
+          echo "::notice::index.html skickas ${ENC:-utan komprimering} – ${SIZE} byte över nätet."
       - name: Kontrollera servern för lagring på webben
         if: env.HAR_FTP == 'true'
         run: |
