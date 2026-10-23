@@ -196,7 +196,8 @@ function usage(array $acc): int { return (int)($acc['size'] ?? 0) + array_sum(ar
 function fake_salt(string $email): string { return base64_encode(substr(hash_hmac('sha256', 'salt|' . $email, secret(), true), 0, 16)); }
 function config(): array { static $c = null; if ($c === null) { $f = __DIR__ . '/api-config.php'; $c = is_file($f) ? (array)(include $f) : []; } return $c; }
 function is_admin(): bool {
-  $k = (string)($_SERVER['HTTP_X_SISYFOS_ADMIN'] ?? '');
+  // Klienten skickar nyckeln URL-kodad (från 0.13.1), så att å, ä, ö och andra tecken kommer fram som UTF-8.
+  $k = trim(rawurldecode((string)($_SERVER['HTTP_X_SISYFOS_ADMIN'] ?? '')));
   $want = (string)(config()['admin'] ?? '');
   return $want !== '' && $k !== '' && hash_equals($want, hash('sha256', $k));
 }

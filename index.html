@@ -1162,7 +1162,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 
 /* ───────────── Hjälpfunktioner ───────────── */
 const FORMAT = 'sisyfos', FORMAT_VERSION = 7, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.13.0', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const APP_VERSION = '0.13.1', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 { const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
@@ -2198,7 +2198,7 @@ const unixIso = s => s ? new Date(s * 1000).toISOString() : null;
 async function api(a, o = {}) {
   const h = { ...(o.headers || {}) }, tok = o.token || st.web?.token;
   if (tok && !o.noAuth) h['X-Sisyfos-Token'] = tok;
-  if (o.admin) h['X-Sisyfos-Admin'] = o.admin;
+  if (o.admin) h['X-Sisyfos-Admin'] = encodeURIComponent(o.admin); // URL-kodad: rubriker tål bara vissa tecken
   let body;
   if (o.body !== undefined) { const s = typeof o.body === 'string'; body = s ? o.body : JSON.stringify(o.body); h['Content-Type'] = s ? 'text/plain;charset=utf-8' : 'application/json'; }
   let r;

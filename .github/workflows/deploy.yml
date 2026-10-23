@@ -30,6 +30,7 @@ jobs:
         env:
           KEY: ${{ secrets.SISYFOS_ADMIN_KEY }}
         run: |
+          KEY=$(printf '%s' "$KEY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
           if [ -n "$KEY" ]; then H=$(printf '%s' "$KEY" | sha256sum | cut -d' ' -f1); else H=''; echo "::notice::SISYFOS_ADMIN_KEY saknas – inga inbjudningskoder kan skapas."; fi
           printf "<?php\n// Skrivs av publiceringen på GitHub. sha256 av adminnyckeln (hemligheten SISYFOS_ADMIN_KEY).\nreturn ['admin' => '%s'];\n" "$H" > publicera/api-config.php
       - uses: SamKirkland/FTP-Deploy-Action@v4.3.5

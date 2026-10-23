@@ -7,10 +7,11 @@ och kör samma sak en gång till där mappen utanför inte går att skapa → da
 
 Kör: python3 test/api_test.py   (kräver php i PATH)
 """
+from urllib.parse import quote
 import base64, hashlib, json, os, shutil, socket, subprocess, sys, tempfile, time, urllib.request, urllib.error
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ADMIN = 'testnyckel-for-admin'
+ADMIN = 'Testnyckel för admin – åäö € 2026'
 fel = []
 
 
@@ -82,7 +83,7 @@ def kor(laget):
         # inbjudningskoder
         s, d, _ = api.call('invite', {'note': 'test'}, headers={'X-Sisyfos-Admin': 'fel'})
         ok(s == 403, 'fel adminnyckel nekas')
-        s, d, _ = api.call('invite', {'note': 'Testare', 'max': 1}, headers={'X-Sisyfos-Admin': ADMIN})
+        s, d, _ = api.call('invite', {'note': 'Testare', 'max': 1}, headers={'X-Sisyfos-Admin': quote(ADMIN)})
         ok(s == 201 and len(d['code']) == 11, f'inbjudningskod skapad ({d.get("code")})')
         kod = d['code']
 
@@ -168,9 +169,9 @@ def kor(laget):
         ok(s == 429, 'efter åtta fel spärras kontot en stund, även för rätt lösenord')
 
         # admin, utloggning och radering
-        s, d, _ = api.call('accounts', headers={'X-Sisyfos-Admin': ADMIN})
+        s, d, _ = api.call('accounts', headers={'X-Sisyfos-Admin': quote(ADMIN)})
         ok(s == 200 and d['accounts'][0]['email'] == 'anna@exempel.se' and d['accounts'][0]['rev'] == 14, 'admin ser kontot')
-        s, d, _ = api.call('invites', headers={'X-Sisyfos-Admin': ADMIN})
+        s, d, _ = api.call('invites', headers={'X-Sisyfos-Admin': quote(ADMIN)})
         ok(d['invites'][0]['used'] == 1, 'admin ser att koden är använd')
         api.token = tok1
         s, d, _ = api.call('delete', {'login': login})
@@ -179,9 +180,9 @@ def kor(laget):
         ok(s == 200, 'utloggning')
         s, d, _ = api.call('info')
         ok(s == 401, 'token gäller inte efter utloggning')
-        s, d, _ = api.call('remove', {'email': 'anna@exempel.se'}, headers={'X-Sisyfos-Admin': ADMIN})
+        s, d, _ = api.call('remove', {'email': 'anna@exempel.se'}, headers={'X-Sisyfos-Admin': quote(ADMIN)})
         ok(s == 200, 'admin tar bort kontot')
-        s, d, _ = api.call('accounts', headers={'X-Sisyfos-Admin': ADMIN})
+        s, d, _ = api.call('accounts', headers={'X-Sisyfos-Admin': quote(ADMIN)})
         ok(d['accounts'] == [], 'inga konton kvar')
 
         # inget innehåll i klartext på disk

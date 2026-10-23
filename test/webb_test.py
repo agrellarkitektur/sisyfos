@@ -9,11 +9,12 @@ tidigare versioner, adminvyn, utloggning med borttagning och radering av kontot.
 Kräver php, Playwright med Chromium (pip install playwright && playwright install chromium).
 Kör: python3 test/webb_test.py   (körs inte i GitHub – för hand före en ny version)
 """
+from urllib.parse import quote
 import hashlib, json, os, shutil, socket, subprocess, sys, tempfile, time, urllib.request
 from playwright.sync_api import sync_playwright
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ADMIN = 'testnyckel-for-admin'
+ADMIN = 'Testnyckel för admin – åäö € 2026'
 EMAIL, PW, PW2 = 'testare@example.se', 'korrekt häst batteri', 'nytt lösenord för test'
 fel = []
 
@@ -71,7 +72,7 @@ def main():
         for _ in range(50):
             try: socket.create_connection(('127.0.0.1', port), 0.2).close(); break
             except OSError: time.sleep(0.1)
-        req = urllib.request.Request(url + 'api.php?a=invite', data=json.dumps({'note': 'test', 'max': 1}).encode(), headers={'X-Sisyfos-Admin': ADMIN, 'Content-Type': 'application/json'})
+        req = urllib.request.Request(url + 'api.php?a=invite', data=json.dumps({'note': 'test', 'max': 1}).encode(), headers={'X-Sisyfos-Admin': quote(ADMIN), 'Content-Type': 'application/json'})
         kod = json.loads(urllib.request.urlopen(req).read())['code']
         ok(len(kod) == 11, f'inbjudningskod {kod}')
 
@@ -171,7 +172,7 @@ def main():
             shell(A, 'webb'); A.click('[data-act=webDel]'); A.fill('#wPw', PW2); A.click('[data-act=webDelGo]')
             A.wait_for_selector('[data-act=webReg]', timeout=20000)
             ok(bok(A)['web'] is None, 'A: kontot raderat, boken kvar')
-            req = urllib.request.Request(url + 'api.php?a=accounts', headers={'X-Sisyfos-Admin': ADMIN})
+            req = urllib.request.Request(url + 'api.php?a=accounts', headers={'X-Sisyfos-Admin': quote(ADMIN)})
             ok(json.loads(urllib.request.urlopen(req).read())['accounts'] == [], 'inga konton kvar på servern')
             br.close()
     finally:

@@ -1,5 +1,9 @@
 # Ändringar i Sisyfos
 
+## 0.13.1
+
+- **Adminnyckeln får innehålla å, ä, ö och andra tecken.** Nyckeln skickas nu URL-kodad till servern. Förut gav å, ä och ö *Fel adminnyckel*, och tecken som € eller typografiska citattecken gav *Ingen kontakt med servern*. Mellanslag och radbrytningar före och efter nyckeln (t.ex. när den klistrats in i GitHub) räknas inte.
+
 ## 0.13.0
 
 Spara på webben – krypterad synk för en person på flera enheter. Filformatet för boken är oförändrat (7), och den krypterade filen är samma omslag som i 0.12.0.
