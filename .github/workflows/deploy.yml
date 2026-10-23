@@ -1,11 +1,12 @@
 # Publicerar appen på webbhotellet via FTPS vid varje push till main (och för hand).
 # Aktiveras först när hemligheterna finns: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD
 # och frivilligt FTP_DIR (standard /sisyfos/) och FTP_PROTOCOL (standard ftps).
+# SISYFOS_ADMIN_KEY (frivillig) blir adminnyckeln för api.php – bara dess sha256 hamnar på servern.
 name: Publicera på webbhotellet
 on:
   push:
     branches: [main]
-    paths: ['index.html', 'feedback.php', 'sw.js', 'manifest.webmanifest', '*.png', 'icon.svg']
+    paths: ['index.html', 'feedback.php', 'api.php', 'sw.js', 'manifest.webmanifest', '*.png', 'icon.svg']
   workflow_dispatch:
 concurrency: deploy
 jobs:
@@ -23,7 +24,14 @@ jobs:
         if: env.HAR_FTP == 'true'
         run: |
           mkdir -p publicera
-          cp index.html feedback.php sw.js manifest.webmanifest icon.svg favicon-32.png icon-192.png icon-512.png icon-maskable-512.png apple-touch-icon.png publicera/
+          cp index.html feedback.php api.php sw.js manifest.webmanifest icon.svg favicon-32.png icon-192.png icon-512.png icon-maskable-512.png apple-touch-icon.png publicera/
+      - name: Adminnyckel för api.php
+        if: env.HAR_FTP == 'true'
+        env:
+          KEY: ${{ secrets.SISYFOS_ADMIN_KEY }}
+        run: |
+          if [ -n "$KEY" ]; then H=$(printf '%s' "$KEY" | sha256sum | cut -d' ' -f1); else H=''; echo "::notice::SISYFOS_ADMIN_KEY saknas – inga inbjudningskoder kan skapas."; fi
+          printf "<?php\n// Skrivs av publiceringen på GitHub. sha256 av adminnyckeln (hemligheten SISYFOS_ADMIN_KEY).\nreturn ['admin' => '%s'];\n" "$H" > publicera/api-config.php
       - uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         if: env.HAR_FTP == 'true'
         with:
@@ -48,3 +56,23 @@ jobs:
             exit 1
           fi
           echo "::notice::Webbhotellet har version $GOT."
+      - name: Kontrollera servern för lagring på webben
+        if: env.HAR_FTP == 'true'
+        run: |
+          URL="${{ vars.SITE_URL || 'https://agrellarkitektur.se/sisyfos/' }}"
+          ST=$(curl -sS "${URL}api.php?a=status" || true)
+          echo "api.php: $ST"
+          echo "$ST" | grep -q '"ok":true' || { echo "::error::api.php svarar inte som väntat: $ST"; exit 1; }
+          LAGE=$(echo "$ST" | grep -oP '"storage":"\K[a-z]+')
+          ADMIN=$(echo "$ST" | grep -oP '"admin":\K(true|false)')
+          if [ "$LAGE" = "inside" ]; then
+            for F in data/.htaccess data/secret.key data/invites.json; do
+              C=$(curl -s -o /dev/null -w '%{http_code}' "${URL}${F}")
+              echo "${F}: HTTP $C"
+              if [ "$C" = "200" ]; then echo "::error::${URL}${F} går att läsa på webben – datamappen är inte spärrad!"; exit 1; fi
+            done
+            echo "::notice::Datamappen ligger i sisyfos/data/ och är spärrad för webben."
+          else
+            echo "::notice::Datamappen ligger utanför webbroten."
+          fi
+          echo "::notice::Adminnyckel satt: $ADMIN"
