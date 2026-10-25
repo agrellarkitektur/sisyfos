@@ -8,19 +8,30 @@ lägger boken där en tidigare version skulle ha sparat den och kontrollerar att
   – sidan startar utan JavaScript-fel,
   – boken öppnas (bokens namn syns) och inte ersätts av exempelboken,
   – boken uppgraderas till appens filformat och sparas.
+Fakturorna (format 9) ska vara oförändrade och deras kontrollsummor stämma.
 Dessutom öppnas varje krypterad kopia (test/bocker/*.sisyfos, sedan 0.12.0) via Importera bok –
 en gång med lösenordet och en gång med återställningsnyckeln ur *.nycklar.txt.
 
 Kör:  python3 -m http.server 8765 &  python3 test/oppna_gamla_bocker.py
 Kräver: pip install playwright && python3 -m playwright install chromium
 """
-import json, pathlib, re, sys
+import hashlib, json, pathlib, re, sys
 from playwright.sync_api import sync_playwright
 
 ROT = pathlib.Path(__file__).resolve().parent.parent
 URL = sys.argv[1] if len(sys.argv) > 1 else 'http://localhost:8765/index.html'
 appfmt = int(re.search(r'FORMAT_VERSION = (\d+)', (ROT / 'index.html').read_text(encoding='utf-8')).group(1))
 fel = 0
+# Fakturornas kontrollsumma (format 9): sha256 av fakturan utan hash, med nycklarna sorterade – som canon() i appen
+def canon(v):
+    if isinstance(v, list): return '[' + ','.join(canon(x) for x in v) + ']'
+    if isinstance(v, dict): return '{' + ','.join(json.dumps(k, ensure_ascii=False) + ':' + canon(v[k]) for k in sorted(v)) + '}'
+    if isinstance(v, float) and v.is_integer(): return str(int(v))
+    return json.dumps(v, ensure_ascii=False)
+def fakturor_ok(fore, efter):
+    a, b = fore['register'].get('invoices', []), efter['register'].get('invoices', [])
+    if a != b: return False
+    return all(hashlib.sha256(canon({k: v for k, v in x.items() if k != 'hash'}).encode()).hexdigest() == x['hash'] for x in b if x.get('status') == 'issued' and x.get('hash'))
 with sync_playwright() as p:
     b = p.chromium.launch()
     for fil in sorted((ROT / 'test' / 'bocker').glob('*.json')):
@@ -35,8 +46,10 @@ with sync_playwright() as p:
         visad = pg.inner_text('#bookName')
         dlg = pg.inner_text('#dlg h2') if pg.is_visible('#dlg') else ''
         sparad = json.loads(pg.evaluate("localStorage.getItem('sisyfos.bok')") or '{}')
-        ok = not js and namn in visad and not dlg and sparad.get('version') == appfmt
+        fk = fakturor_ok(bok, sparad) if bok['register'].get('invoices') else True
+        ok = not js and namn in visad and not dlg and sparad.get('version') == appfmt and fk
         print(('OK  ' if ok else 'FEL ') + f"{fil.name}: format {bok.get('version')} → {sparad.get('version')}, visar ”{visad.strip()}”"
+              + (f", {len(bok['register']['invoices'])} fakturor {'oförändrade' if fk else 'ÄNDRADE'}" if bok['register'].get('invoices') else '')
               + (f", dialog ”{dlg}”" if dlg else '') + (f", JS-fel: {js}" if js else ''))
         fel += not ok
         ctx.close()

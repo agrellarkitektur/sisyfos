@@ -57,7 +57,7 @@ För dig som fakturerar din egen tid – till exempel konsult med eget bolag. V�
 
 ## Fakturaunderlag
 
-Sisyfos gör inga fakturor, men ett **underlag** att föra in i bokföringsprogrammet: *Rapporter → Fakturaunderlag*, eller knappen *Fakturaunderlag* på kund- och projektsidan.
+Sisyfos gör alltid ett **underlag** att föra in i bokföringsprogrammet: *Rapporter → Fakturaunderlag*, eller knappen *Fakturaunderlag* på kund- och projektsidan. Riktiga fakturor är ett tillägg som slås på särskilt – se *Fakturor* nedan.
 
 - Underlaget tar med **öppen debiterbar tid** för en kund (alla projekt) eller ett projekt, till och med vald månad eller för en egen period – som standard även äldre öppen tid. Hanterad tid ingår inte.
 - Tiden summeras per projekt, uppgift, roll och timpris, med summa exkl. moms, moms och summa inkl. moms. Kundens fakturaadress, org.nr och referens står med.
@@ -72,6 +72,34 @@ Sisyfos gör inga fakturor, men ett **underlag** att föra in i bokföringsprogr
 - eller med smartshell: `hant 1/10-15/10 strand`, `hant v40-42 strand`, `hant öppet strand` (all öppen tid till och med förra månaden), `häv okt strand`.
 
 Det som redan är hanterat rörs inte när en längre period markeras, och perioder som ligger kant i kant slås ihop. Att häva en del av en period delar den. Månadsöversikten visar en hel hanterad månad med ett lås och en delvis hanterad med ett ljusare lås.
+
+## Fakturor
+
+Från 0.15.0 kan Sisyfos göra **riktiga fakturor** med löpnummer, OCR och betal-QR direkt ur fakturaunderlaget. Det är ett tillägg som är av tills det slås på – i guiden för ny bok (steget *Fakturor*) eller under *Inställningar → Fakturor*. Innan det går att slå på måste villkoren godkännas:
+
+- Varje faktura du utfärdar blir **räkenskapsinformation**. Du ansvarar för att innehållet är rätt och för att fakturorna **sparas i sju år**. Ladda ner arkivet regelbundet – webbläsaren är ingen arkivplats.
+- En utfärdad faktura kan **aldrig ändras eller tas bort**. Fel rättas med en kreditfaktura.
+- Numren löper i en **obruten serie**. Utfärda bara från en enhet – eller med boken synkad på webben, då delas numret ut först när synken har gått igenom.
+- Sisyfos är fortfarande **inget bokföringsprogram**. Fakturorna förs in i ditt bokföringsprogram.
+- Sisyfos är en **alfaversion utan garanti** (GPL). Det här är inte juridisk rådgivning – fråga din redovisningskonsult om något är oklart.
+
+**Uppgifter.** Momsregistreringsnummer (föreslås ur org.nr: SE + org.nr + 01), bankgiro, plusgiro och/eller IBAN med BIC, Swish, betalningsvillkor i dagar, text om dröjsmålsränta, *Godkänd för F-skatt*, text före numret och första nummer, OCR, betal-QR, öresavrundning och en fri text längst ner. Företagets namn, adress och org.nr hämtas från *Inställningar → Företaget*. På kunden kan momsnummer och egna betalningsvillkor anges.
+
+**Så gör man.** *Rapporter → Fakturaunderlag*: välj kund eller projekt och tryck *Skapa faktura* – ett **utkast** med en rad per projekt, uppgift, roll och pris och kundens fakturaadress. Utkastet går att ändra: kund, datum, villkor, referenser, rader (även egna rader, t.ex. utlägg), momssats och meddelande. *Utfärda* ger nästa nummer, fryser fakturan, låser tiden i underlaget (markerar den som hanterad) och laddar ner PDF:en. *Rapporter → Fakturor* listar utkast och utfärdade fakturor, och där finns *Tom faktura* för en faktura utan tid (till exempel fast pris).
+
+**Rättelser.** *Kreditera* utfärdar en kreditfaktura med samma rader och negativa belopp, som hänvisar till originalet – och kan låsa upp tiden så att den kan faktureras på nytt. Häver man hanteringen av tid som ingår i en faktura varnar Sisyfos.
+
+**Fakturan.** Innehåller det mervärdesskattelagen kräver av en fullständig faktura: fakturadatum, löpnummer, säljarens momsregistreringsnummer, namn och adress för säljare och köpare, vad som sålts och hur mycket, tidsperioden, belopp exkl. moms, momssats och momsbelopp – och därtill förfallodag, betalningsvillkor, dröjsmålsränta, bankgiro/plusgiro/IBAN, OCR och referenser. Med momssatsen 0 % står *Undantag från momsplikt* på fakturan. Allt som syns på en utfärdad faktura är kopierat in i den (även loggan), så **samma faktura ger alltid samma PDF** – utan utskriftsdatum, med en kontrollsumma (sha256) i sidfoten.
+
+**OCR.** Välj det som står i ditt avtal med banken (Bankgiro Inbetalningar): ingen OCR (betalaren anger fakturanumret), OCR med kontrollsiffra eller OCR med längd- och kontrollsiffra. OCR-numret är fakturanumrets siffror, eventuellt en längdsiffra (antal siffror inklusive längd- och kontrollsiffra, modulo 10), och sist en kontrollsiffra enligt Luhn (modulus 10). Under *Inställningar → Fakturor* går det att kontrollera ett nummer. Bankens kontroll av OCR-nummer kräver ett avtal – utan det fungerar fakturanumret som referens.
+
+**Betal-QR.** En QR-kod med betalningsuppgifterna i formatet för *QR-kod för betalning* (UsingQR: mottagare, org.nr, referens, datum, belopp, bankgiro/plusgiro/IBAN) som många bankappar kan läsa. Prova med din egen bankapp innan du litar på den.
+
+**Numren och synken.** Nästa nummer är det högsta utfärdade plus ett (eller första numret). Med boken på webben synkas den före och efter utfärdandet, och utan nät går det inte att utfärda. Skulle två enheter ändå ge samma nummer samtidigt rättas det när böckerna slås ihop: den som utfärdades senare får nästa lediga nummer och fakturan visar det tidigare numret.
+
+**Arkiv.** *Rapporter → Fakturor → Arkiv* laddar ner en zip per år med alla fakturor som PDF, en CSV-översikt och en JSON-fil med de frysta fakturorna. Spara den med din övriga bokföring. Panelen påminner om år vars arkiv inte är nedladdat.
+
+Kommer senare (0.15.1): export som SIE till bokföringsprogrammet, betalstatus, kunder i andra EU-länder (omvänd betalningsskyldighet) och kunder utanför EU.
 
 ## Dagsanteckning och egna kommandon
 
@@ -140,7 +168,7 @@ Vill du ha boken på ditt eget webbhotell: lägg Sisyfos med `api.php` i en mapp
 
 Samma text finns i appen under *Sisyfos-menyn → Data och integritet*.
 
-**Vad boken innehåller.** Företagets uppgifter och logga. Kunder: namn, organisations- eller personnummer, referens, kontaktperson, e-post, telefon, adresser och anteckningar. Projekt: namn, nummer, fastighetsbeteckning, budget, timpriser, uppgifter och anteckningar. Tid: datum, timmar, pris och anteckning för varje tidpost, dagsanteckningar, med historik över ändringar, avcheckning och signering; varje ändring märks med ett slumpat id för enheten den gjordes på (inget om själva enheten). Inställningar för boken, till exempel egna kommandon – det som bara gäller skärmen (tema, panelbredd, kompakt läge, utfällda rader, listfilter) sparas på varje enhet för sig och följer inte med boken. Om dig: namn, initialer, roll och timpris – i fullständigt läge även anställningsform, normtid, kompsaldo och semester. Personnummer, kontaktpersoner och anteckningar om människor är personuppgifter.
+**Vad boken innehåller.** Företagets uppgifter och logga. Kunder: namn, organisations- eller personnummer, referens, kontaktperson, e-post, telefon, adresser och anteckningar. Projekt: namn, nummer, fastighetsbeteckning, budget, timpriser, uppgifter och anteckningar. Tid: datum, timmar, pris och anteckning för varje tidpost, dagsanteckningar, med historik över ändringar, avcheckning och signering; varje ändring märks med ett slumpat id för enheten den gjordes på (inget om själva enheten). Inställningar för boken, till exempel egna kommandon – det som bara gäller skärmen (tema, panelbredd, kompakt läge, utfällda rader, listfilter) sparas på varje enhet för sig och följer inte med boken. Om dig: namn, initialer, roll och timpris – i fullständigt läge även anställningsform, normtid, kompsaldo och semester. Med fakturor påslagna: fakturorna (köparens namn, adress, org.nr och referens, rader och belopp), dina betalningsuppgifter (bankgiro, plusgiro, IBAN, Swish) och momsregistreringsnummer, och när villkoren godkändes. Personnummer, kontaktpersoner och anteckningar om människor är personuppgifter.
 
 **Var den sparas.** I webbläsaren på enheten, tillsammans med automatiska ögonblicksbilder (se ovan). **Med konto på webben** dessutom krypterad på servern där Sisyfos ligger (agrellarkitektur.se, ett webbhotell hos Loopia i Sverige): e-postadressen, när kontot skapades, inloggade enheter och när de senast användes, och den krypterade boken med de tio senaste versionerna, deras storlek och tidpunkter. Lösenordet, boknyckeln och innehållet lämnar aldrig enheten okrypterade, och kontot med allt på servern kan raderas när du vill. Krypteringen görs av appen, som hämtas från samma server – se förbehållet under *Spara på webben*. Filer du själv sparar – kopior, autospar till mapp, PDF och CSV – är vanliga, okrypterade filer. Krypterade kopior (`.sisyfos`) kan bara öppnas med ditt lösenord eller din utskrivna återställningsnyckel; glömmer du båda går de inte att öppna, inte heller för oss. Ingen annan kan läsa boken, inte heller Agrell Arkitektur, och därför kan ingen heller återställa den åt dig.
 
@@ -158,6 +186,8 @@ Sisyfos är en PWA och fungerar utan nät.
 ## Filformat och bakåtkompatibilitet
 
 Boken är en JSON-fil med versionsnummer (`format`). Varje ändring av formatet får en migrering, och **gamla böcker går alltid att öppna** i nyare versioner. En bok från en nyare version öppnas inte av en äldre – och skrivs aldrig över.
+
+Format 9 (0.15.0) lade till fakturor (`register.invoices`, med de loggor fakturorna använde i `register.invoiceLogos`) och inställningarna för dem (`book.invoicing`). Utfärdade fakturor är frysta och har en kontrollsumma som testet räknar om.
 
 Format 8 (0.14.0) ändrade hanterad tid från hela månader till datumintervall per projekt (`register.handled[projekt] = [{from, to, …}]`), lade till dagsanteckningar (händelsetypen `daynote`), egna kommandon (`prefs.aliases`) och enhets-id på händelser (`dev`), och flyttade skärminställningarna ur boken till enheten.
 
@@ -178,7 +208,7 @@ python3 test/oppna_gamla_bocker.py
 | `manifest.webmanifest`, `icon.svg`, `*.png` | Appikon och installation |
 | `feedback.php` | Tar emot synpunktsformuläret och skickar det som e-post. Sparar ingenting |
 | `api.php` | Servern för lagring på webben – tar bara emot krypterade böcker |
-| `test/` | Gamla böcker och kontrollen att de öppnas (`oppna_gamla_bocker.py`), test av servern (`api_test.py`) och av synken mellan två enheter (`webb_test.py`, körs för hand). För hand vid omskrivningar: `stor_bok.py` bygger en testbok på tio år, `prestanda.py` mäter vanliga åtgärder med den och `jamfor_versioner.py` kontrollerar att skärmarna är lika med en tidigare version |
+| `test/` | Gamla böcker och kontrollen att de öppnas (`oppna_gamla_bocker.py`), test av fakturorna (`faktura_test.py`), test av servern (`api_test.py`) och av synken mellan två enheter (`webb_test.py`, körs för hand). För hand vid omskrivningar: `stor_bok.py` bygger en testbok på tio år, `prestanda.py` mäter vanliga åtgärder med den och `jamfor_versioner.py` kontrollerar att skärmarna är lika med en tidigare version |
 
 ## Publicera på ett webbhotell
 

@@ -1,5 +1,5 @@
 # Kontrollerar att alla gamla böcker i test/bocker går att öppna i den nya versionen,
-# och att servern för lagring på webben (api.php) fungerar.
+# att fakturorna fungerar (0.15.0) och att servern för lagring på webben (api.php) fungerar.
 name: Test – gamla böcker öppnas
 on:
   push:
@@ -19,6 +19,12 @@ jobs:
           python -m http.server 8765 >/dev/null 2>&1 &
           sleep 1
           python test/oppna_gamla_bocker.py
+      - name: Fakturor
+        run: |
+          sudo apt-get install -y poppler-utils >/dev/null
+          python -m http.server 8765 >/dev/null 2>&1 &
+          sleep 1
+          python test/faktura_test.py
       - name: Servern för lagring på webben
         run: |
           php -v | head -1

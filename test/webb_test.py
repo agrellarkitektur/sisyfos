@@ -78,8 +78,8 @@ def main():
 
         with sync_playwright() as p:
             br = p.chromium.launch()
-            A = br.new_context(service_workers='block').new_page()
-            B = br.new_context(service_workers='block').new_page()
+            A = br.new_context(service_workers='block', accept_downloads=True).new_page()
+            B = br.new_context(service_workers='block', accept_downloads=True).new_page()
             for pg in (A, B):
                 pg.on('pageerror', lambda e: fel.append('sidfel: ' + str(e)) or print('SIDFEL', e))
                 pg.goto(url); pg.wait_for_selector('#saveState')
@@ -134,6 +134,23 @@ def main():
             ok(any(x['from'] <= '2026-09-01' and x['to'] >= '2026-09-15' for x in hb), f"B: hanterad period från A kom fram {[(x['from'], x['to']) for x in hb]}")
             ok(A.evaluate('document.documentElement.dataset.theme') == 'dark' and B.evaluate('document.documentElement.dataset.theme') != 'dark' and 'theme' not in bok(B)['bok']['prefs'], 'temat följer inte med till B')
             shell(A, 'ljust')
+
+            # --- Format 9: fakturor – numret delas ut efter synk, så B fortsätter A:s serie ---
+            shell(A, 'inst'); A.click('[data-act=invOnDlg]'); A.check('#ioOk'); A.fill('#ioVat', 'SE556677889901'); A.fill('#ioBg', '123-4567'); A.fill('#ioStart', '7')
+            A.click('[data-act=invOnGo]'); A.wait_for_timeout(300)
+            shell(A, 'fakt kund smeden'); A.click('[data-act=invNew]'); A.wait_for_selector('#ieForm')
+            A.click('[data-act=ieIssue]'); A.wait_for_selector('[data-act=ieIssueGo]')
+            with A.expect_download(timeout=30000) as dl: A.click('[data-act=ieIssueGo]')
+            ok(dl.value.suggested_filename.startswith('Faktura 7 '), f'A: faktura 7 utfärdad ({dl.value.suggested_filename})')
+            vanta_synk(A); synka(B)
+            shell(B, 'rapp'); B.click('[data-act=repTab][data-tab=invoices]'); B.click('[data-act=invBlank]'); B.wait_for_selector('#ieForm')
+            B.fill('#ieName', 'Kund på B'); r0 = B.locator('#ieRows .ie-row').first; r0.locator('[data-l=text]').fill('Fast pris'); r0.locator('[data-l=price]').fill('1000')
+            B.click('[data-act=ieIssue]'); B.wait_for_selector('[data-act=ieIssueGo]')
+            with B.expect_download(timeout=30000) as dl: B.click('[data-act=ieIssueGo]')
+            ok(dl.value.suggested_filename.startswith('Faktura 8 '), f'B: nästa nummer efter A:s är 8 ({dl.value.suggested_filename})')
+            vanta_synk(B); synka(A)
+            nums = sorted(x['num'] for x in bok(A)['bok']['register']['invoices'] if x['status'] == 'issued')
+            ok(nums == ['7', '8'], f'A har båda fakturorna: {nums}')
 
             # --- Utan nät: ändringen väntar och skickas när nätet kommer tillbaka ---
             A.context.set_offline(True); shell(A, 'proj Offlineprojekt'); A.wait_for_timeout(6000)

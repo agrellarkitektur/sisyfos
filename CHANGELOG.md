@@ -1,5 +1,22 @@
 # Ändringar i Sisyfos
 
+## 0.15.0
+
+Filformat 9 – **riktiga fakturor** som tillägg. Böcker i format 8 och äldre uppgraderas när de öppnas; inget annat ändras. En enhet med en äldre version av appen kan inte öppna boken efteråt (ladda om sidan så hämtas den nya).
+
+- **Fakturor är av tills de slås på** – i guiden för ny bok (nytt steg *Fakturor* före *Klart*) eller under *Inställningar → Fakturor*. Villkoren måste godkännas först: en utfärdad faktura är räkenskapsinformation som ska sparas i sju år, kan inte ändras eller tas bort, numren löper i en obruten serie, och Sisyfos är fortfarande inget bokföringsprogram. Godkännandet sparas med datum och vem.
+- **Uppgifter:** momsregistreringsnummer (föreslås ur org.nr), bankgiro, plusgiro, IBAN och BIC, Swish, betalningsvillkor, dröjsmålsränta, *Godkänd för F-skatt*, text före numret och första nummer, OCR, betal-QR, öresavrundning och en text längst ner. Kunden kan ha eget momsnummer och egna betalningsvillkor.
+- **Skapa faktura** i fakturaunderlaget gör ett utkast av kundens eller projektets öppna tid. Utkastet går att ändra – kund (även hämtad från en annan kund), datum, villkor, referenser, rader och egna rader, momssats och meddelande – och förhandsgranska som PDF. *Tom faktura* för en faktura utan tid.
+- **Utfärda** ger nästa nummer, fryser fakturan (säljarens och köparens uppgifter, rader, belopp, OCR och loggan kopieras in), låser tiden i underlaget och laddar ner PDF:en. Varnar om tiden har ändrats sedan utkastet skapades.
+- **Kreditera** utfärdar en kreditfaktura med negativa belopp som hänvisar till originalet, och kan låsa upp tiden igen. Att häva hanterad tid som ingår i en faktura ger en varning.
+- **Fakturans PDF** har det en fullständig faktura ska innehålla, betalningsruta med bankgiro/plusgiro/IBAN, OCR och betal-QR, och säljarens uppgifter i sidfoten. Samma faktura ger alltid samma PDF – utan utskriftsdatum, med en kontrollsumma (sha256). Momssatsen 0 % ger texten *Undantag från momsplikt*.
+- **OCR** med kontrollsiffra eller med längd- och kontrollsiffra (Luhn, modulus 10), efter avtalet med banken, och en ruta som kontrollerar ett nummer.
+- **Numren och synken:** med boken på webben synkas den före och efter utfärdandet. Två enheter som ändå ger samma nummer samtidigt rättas när böckerna slås ihop – den som utfärdades senare får nästa lediga nummer, likadant på båda.
+- **Rapporter → Fakturor:** utkast och utfärdade fakturor, PDF igen, kreditera, och **arkiv** – en zip per år med alla PDF:er, en CSV och en JSON-fil. Panelen visar årets summor, nästa nummer och påminner om år vars arkiv inte är nedladdat.
+- QR-koderna kan nu vara större (version 1–10), så att betalningsuppgifterna ryms.
+- Data och integritet och README (*Fakturor*) beskriver tillägget.
+- Test: exempelbok `test/bocker/format-9.json` (fakturorna ska vara oförändrade och kontrollsummorna stämma), `test/faktura_test.py` (påslag, utkast, utfärdande, PDF, kreditering, arkiv, varning, telefon, guiden – körs i GitHub), `webb_test.py` (en faktura på varje enhet ger nummer i följd).
+
 ## 0.14.0
 
 Filformat 8 – en migrering för allt som väntat på ett nytt format. Böcker i format 7 och äldre uppgraderas när de öppnas; en enhet med en äldre version av appen kan inte öppna boken efteråt (ladda om sidan så hämtas den nya). Samma bok uppgraderad på två enheter slås ihop utan dubbletter.
