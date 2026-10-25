@@ -1162,8 +1162,23 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 .inv-t td{vertical-align:middle}
 .inv-t tr.cr td{color:var(--muted)}
 .inv-t small{font-size:12px}
+.inv-t td.nw .btn+.btn{margin-left:4px}
+.inv-f{margin:10px 0 4px}
+.ps-late{color:var(--warn-ink)}
+.ps-paid,.ps-refunded{color:var(--ok-ink,var(--ok))}
+.inv-t .linkish{font-size:12px}
+.pkv.warn,.pkv.warn b{color:var(--warn-ink)}
+.sie-acc summary{cursor:pointer;font-size:13px;color:var(--muted);margin:4px 0}
+.sie-acc .form{margin-top:8px}
 .tag-k{font:600 10px var(--font-ui,inherit);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border:1px solid var(--rule);border-radius:5px;padding:0 4px;vertical-align:1px}
-@media (width <= 760px){.inv-t th:nth-child(2),.inv-t td:nth-child(2){display:none}}
+@media (width <= 760px){
+  .inv-t thead,.inv-t td:nth-child(2){display:none}
+  .inv-t tbody tr{display:grid;grid-template-columns:auto 1fr auto;column-gap:10px;align-items:baseline;padding:9px 10px;border-bottom:1px solid var(--rule)}
+  .inv-t tbody tr:last-child{border-bottom:0}
+  .inv-t tbody td{border:0;padding:0}
+  .inv-t tbody td:nth-child(5){grid-column:1;padding-top:6px}
+  .inv-t tbody td:nth-child(6){grid-column:2/-1;justify-self:end;padding-top:6px;display:flex;gap:4px}
+}
 </style>
 </head>
 <body>
@@ -1202,7 +1217,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 
 /* ───────────── Hjälpfunktioner ───────────── */
 const FORMAT = 'sisyfos', FORMAT_VERSION = 9, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.15.0', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const APP_VERSION = '0.15.1', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 { const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
@@ -1404,7 +1419,7 @@ function emptyBook() {
       projects: [{ id: 'proj' + uid(), number: 'Intern', name: 'Företaget', customerId: null, property: '', budgetKr: 0, internal: true, color: -1, status: 'active',
         tasks: [{ id: 'u' + uid(), name: 'Administration', billable: false }, { id: 'u' + uid(), name: 'Utbildning', billable: false }, { id: 'u' + uid(), name: 'Anbud', billable: false }],
         roleRates: {}, personRates: {}, memberRoles: {}, notices: {} }, absenceProject()],
-      handled: {}, signed: {}, invoices: [], invoiceLogos: {}
+      handled: {}, signed: {}, invoices: [], invoiceLogos: {}, payments: {}
     },
     logs: { [pid]: { events: [] } }, session: { personId: pid }, prefs: { showWeekend: false, expanded: [], weekRows: {}, hiddenRows: {} }
   };
@@ -1502,6 +1517,7 @@ function migrate(d) {
   d.register.signed = d.register.signed || {};
   if (!Array.isArray(d.register.invoices)) d.register.invoices = [];
   if (!isObj(d.register.invoiceLogos)) d.register.invoiceLogos = {};
+  if (!isObj(d.register.payments)) d.register.payments = {};
   d.register.book.calendar = d.register.book.calendar || {};
   const created = d.register.book.created || new Date().toISOString();
   d.register.book.idleDays = d.register.book.idleDays ?? 90;
@@ -2459,7 +2475,7 @@ function setAt(root, path, val) {
 function cfLabel(p, o, t) {
   const KIND = { customers: 'Kunden', projects: 'Projektet', roles: 'Rollen', people: 'Personen', invoices: 'Fakturan' };
   if (p[0] === 'register' && KIND[p[1]] && p[2]?.id) { const x = getAt(o, p.slice(0, 3)) || getAt(t, p.slice(0, 3)); return `${KIND[p[1]]} ”${x?.name || x?.number || x?.num || x?.buyer?.name || 'utkast'}”`; }
-  if (p[0] === 'register') return { book: 'Företagsuppgifter och inställningar', handled: 'Hanterad tid', signed: 'Signerade veckor', invoiceLogos: 'Fakturornas loggor' }[p[1]] || 'Registret';
+  if (p[0] === 'register') return { book: 'Företagsuppgifter och inställningar', handled: 'Hanterad tid', signed: 'Signerade veckor', invoiceLogos: 'Fakturornas loggor', payments: 'Betalningar' }[p[1]] || 'Registret';
   if (p[0] === 'logs') return 'Tidposter';
   return 'Boken';
 }
@@ -4102,7 +4118,7 @@ function dataDlg() {
   <li><b>Projekt:</b> namn, nummer, fastighetsbeteckning, budget, timpriser, uppgifter och anteckningar.</li>
   <li><b>Tid:</b> datum, timmar, pris och anteckning för varje tidpost, dagsanteckningar, med historik över ändringar, avcheckning och signering. Varje ändring märks med ett slumpat id för enheten den gjordes på (inget om själva enheten).</li>
   <li><b>Du:</b> namn, initialer, roll och timpris – och i fullständigt läge anställningsform, normtid, kompsaldo och semester.</li>
-  <li><b>Fakturor</b> (bara om du slagit på dem): köparens namn, adress, org.nr och referens, rader och belopp, dina betalningsuppgifter (bankgiro, plusgiro, IBAN, Swish) och momsregistreringsnummer, och när villkoren godkändes. Utfärdade fakturor är räkenskapsinformation som du ska spara i sju år – ladda ner arkivet.</li>
+  <li><b>Fakturor</b> (bara om du slagit på dem): köparens namn, adress, org.nr och referens, rader och belopp, när de betalades, dina betalningsuppgifter (bankgiro, plusgiro, IBAN, Swish) och momsregistreringsnummer, och när villkoren godkändes. Utfärdade fakturor är räkenskapsinformation som du ska spara i sju år – ladda ner arkivet.</li>
   <li><b>Inställningar</b> för boken, till exempel egna kommandon i smartshell. Det som bara gäller skärmen – tema, panelens bredd, kompakt läge, utfällda rader, helgen och listornas filter – sparas på varje enhet för sig och följer inte med boken.</li></ul>
   <p class="small">Personnummer, kontaktpersoner och anteckningar om människor är personuppgifter.</p>
   <h3>Var den sparas</h3>
@@ -4888,7 +4904,7 @@ function custDlg(id) {
    <div class="fld"><label for="cuEmail">E-post</label><input id="cuEmail" type="email" value="${esc(c.email)}"></div>
    <div class="fld"><label for="cuPhone">Telefon</label><input id="cuPhone" type="tel" value="${esc(c.phone)}"></div>
    <div class="fld full"><label for="cuAddr">Adress</label><textarea id="cuAddr" class="ta" rows="3">${esc(c.address)}</textarea></div>
-   ${invOn() ? `<div class="fld"><label for="cuVat">Momsregistreringsnummer</label><input id="cuVat" class="mono" value="${esc(c.vatNo)}" autocomplete="off"><span class="fld-hint">Står på fakturan – behövs för kunder i andra EU-länder</span></div><div class="fld"><label for="cuTerms">Betalningsvillkor, dagar</label><input id="cuTerms" class="mono" inputmode="numeric" value="${esc(c.terms ?? '')}" placeholder="${esc(invCfg().terms)}"><span class="fld-hint">Tomt = bokens (${esc(invCfg().terms)} dagar)</span></div>` : ''}
+   ${invOn() ? `<div class="fld"><label for="cuZone">Kunden finns i</label><select id="cuZone">${INV_ZONES.map(([v, l]) => `<option value="${v}" ${(c.zone || 'se') === v ? 'selected' : ''}>${l}</option>`).join('')}</select><span class="fld-hint">EU-företag: omvänd betalningsskyldighet. Utanför EU: ingen svensk moms. Skriv landet sist i adressen.</span></div><div class="fld"><label for="cuVat">Momsregistreringsnummer</label><input id="cuVat" class="mono" value="${esc(c.vatNo)}" autocomplete="off"><span class="fld-hint">Står på fakturan – krävs för företag i andra EU-länder</span></div><div class="fld"><label for="cuTerms">Betalningsvillkor, dagar</label><input id="cuTerms" class="mono" inputmode="numeric" value="${esc(c.terms ?? '')}" placeholder="${esc(invCfg().terms)}"><span class="fld-hint">Tomt = bokens (${esc(invCfg().terms)} dagar)</span></div>` : ''}
    <label class="chk fld full"><input type="checkbox" id="cuInvTog" ${c.invoiceAddress ? 'checked' : ''}> Annan fakturaadress</label>
    <div class="fld full" id="cuInvF" ${c.invoiceAddress ? '' : 'hidden'}><label for="cuInv">Fakturaadress</label><textarea id="cuInv" class="ta" rows="3">${esc(c.invoiceAddress)}</textarea></div>
    ${REQNOTE}<div class="err fld full" id="cuErr"></div>
@@ -4903,12 +4919,17 @@ function saveCust() {
   const data = { name, orgNr: g('cuOrg'), ref: g('cuRef'), contact: g('cuContact'), email, phone: g('cuPhone'), address: $('#cuAddr').value.trim(), invoiceAddress: $('#cuInvTog').checked ? $('#cuInv').value.trim() : '' };
   if ($('#cuVat')) {
     const vn = g('cuVat').replace(/\s/g, '').toUpperCase(), tm = g('cuTerms');
-    if (vn && !/^[A-Z]{2}[0-9A-Z]{8,12}$/.test(vn)) { err.textContent = 'Momsregistreringsnumret ser inte rätt ut – till exempel SE556000000001.'; return; }
+    if (vn && !/^[A-Z]{2}[0-9A-Z]{2,13}$/.test(vn)) { err.textContent = 'Momsregistreringsnumret ser inte rätt ut – landskod och nummer, till exempel SE556000000001 eller DE123456789.'; return; }
     if (tm && !(Math.floor(pNum(tm)) >= 0 && Math.floor(pNum(tm)) <= 365)) { err.textContent = 'Ange betalningsvillkoret som 0–365 dagar, eller lämna tomt.'; return; }
+    const zn = $('#cuZone')?.value || 'se';
+    if (zn === 'eu' && !vn) { err.textContent = 'Ett företag i ett annat EU-land behöver momsregistreringsnumret på fakturan (med landskod, t.ex. DE123456789).'; $('#cuVat').focus(); return; }
+    if (zn === 'eu' && vn.startsWith('SE')) { err.textContent = 'Momsnumret börjar med SE – välj Sverige, eller ange kundens utländska momsnummer.'; $('#cuVat').focus(); return; }
+    data.zone = zn;
     data.vatNo = vn; data.terms = tm ? Math.floor(pNum(tm)) : null; if (data.terms == null) delete data.terms;
   }
   let c = st.editCust && cust(st.editCust);
-  if (c) { Object.assign(c, data); if ($('#cuTerms') && data.terms == null) delete c.terms; } else { c = { id: 'k' + uid(), archived: false, notes: [], created: new Date().toISOString(), ...data }; R().customers.push(c); }
+  if (data.zone === 'se') delete data.zone;
+  if (c) { Object.assign(c, data); if ($('#cuTerms') && data.terms == null) delete c.terms; if ($('#cuZone') && !data.zone) delete c.zone; } else { c = { id: 'k' + uid(), archived: false, notes: [], created: new Date().toISOString(), ...data }; R().customers.push(c); }
   save(); closeDlg(); st.focus = c.id; renderMain(); toast(`${c.name} är sparad`);
 }
 
@@ -5746,7 +5767,7 @@ function invSellerNow() {
   const b = R().book, c = invCfg();
   return { company: b.company || b.name || '', orgNr: b.orgNr || '', vatNo: c.vatNo || '', address: b.address || '', email: b.email || '', phone: b.phone || '', web: b.web || '', bg: c.bg || '', pg: c.pg || '', iban: c.iban || '', bic: c.bic || '', swish: c.swish || '', fskatt: !!c.fskatt, interest: c.interest || '', note: c.note || '' };
 }
-function invBuyerOf(C) { return { customerId: C?.id || null, name: C?.name || '', orgNr: C?.orgNr || '', vatNo: C?.vatNo || '', address: C ? (C.invoiceAddress || C.address || '') : '', ref: C?.ref || '', contact: C?.contact || '' }; }
+function invBuyerOf(C) { return { customerId: C?.id || null, zone: C?.zone || 'se', name: C?.name || '', orgNr: C?.orgNr || '', vatNo: C?.vatNo || '', address: C ? (C.invoiceAddress || C.address || '') : '', ref: C?.ref || '', contact: C?.contact || '' }; }
 // Öppen debiterbar tid i perioderna just nu (för att se om tiden har ändrats sedan utkastet skapades)
 function invBasis(spans) {
   let h = 0, a = 0;
@@ -5764,13 +5785,13 @@ function invNewFromBasis() {
   const d = invoiceData(v.sel, from, to, v.old, false); if (!d.hours) { toast('Ingen öppen tid att fakturera'); return; }
   const c = invCfg(), C = d.C, lines = [];
   for (const x of d.projects) for (const l of x.lines) lines.push({ text: `${invPHead({ all: false }, x.P)}: ${l.task}${!simple() && l.role ? ` (${l.role})` : ''}`, qty: r2(l.hours), unit: 'h', price: r2(l.rate), amount: r2(l.amount) });
-  const x = { id: 'f' + uid(), kind: 'invoice', status: 'draft', created: new Date().toISOString(), by: me(), dev: devId(), issued: today(), terms: Math.max(0, Math.floor(+(C?.terms ?? c.terms))) || 0, buyer: invBuyerOf(C), ourRef: person().name || '', msg: '', period: { from: d.first && d.first < from ? d.first : from, to }, lines, vat: d.vat, spans: d.spans.map(s => ({ pid: s.pid, from: s.from, to: s.to })), basis: { h: r2(d.hours), a: r2(d.amount) } };
+  const x = { id: 'f' + uid(), kind: 'invoice', status: 'draft', created: new Date().toISOString(), by: me(), dev: devId(), issued: today(), terms: Math.max(0, Math.floor(+(C?.terms ?? c.terms))) || 0, buyer: invBuyerOf(C), ourRef: person().name || '', msg: '', period: { from: d.first && d.first < from ? d.first : from, to }, lines, vatMode: zoneMode(C?.zone), vat: (C?.zone || 'se') === 'se' ? d.vat : 0, spans: d.spans.map(s => ({ pid: s.pid, from: s.from, to: s.to })), basis: { h: r2(d.hours), a: r2(d.amount) } };
   if (!C && d.projects.length === 1) x.buyer.customerId = null;
   INVS().push(x); save(); renderMain(); invEdit(x.id);
 }
 function invBlank() {
   if (!invOn()) return;
-  const c = invCfg(), x = { id: 'f' + uid(), kind: 'invoice', status: 'draft', created: new Date().toISOString(), by: me(), dev: devId(), issued: today(), terms: +c.terms || 0, buyer: invBuyerOf(null), ourRef: person().name || '', msg: '', period: null, lines: [{ text: '', qty: 1, unit: 'st', price: 0, amount: 0 }], vat: +R().book.vatRate || 0, spans: [] };
+  const c = invCfg(), x = { id: 'f' + uid(), kind: 'invoice', status: 'draft', created: new Date().toISOString(), by: me(), dev: devId(), issued: today(), terms: +c.terms || 0, buyer: invBuyerOf(null), ourRef: person().name || '', msg: '', period: null, lines: [{ text: '', qty: 1, unit: 'st', price: 0, amount: 0 }], vatMode: 'se', vat: +R().book.vatRate || 0, spans: [] };
   INVS().push(x); save(); renderMain(); invEdit(x.id);
 }
 const invRowHtml = (l, i) => `<div class="ie-row" data-i="${i}"><input data-l="text" value="${esc(l.text)}" placeholder="Beskrivning" aria-label="Beskrivning"><input data-l="qty" class="mono" inputmode="decimal" value="${esc(fq(l.qty))}" aria-label="Antal"><input data-l="unit" value="${esc(l.unit || '')}" aria-label="Enhet" placeholder="h"><input data-l="price" class="mono" inputmode="decimal" value="${esc(nf2.format(l.price))}" aria-label="À-pris"><span class="mono ie-amt">${fkr2(l.amount)}</span><button type="button" class="icon-btn" data-act="ieRowX" data-i="${i}" aria-label="Ta bort raden">${ic('x')}</button></div>`;
@@ -5789,7 +5810,9 @@ function invEdit(id) {
    ${fld('ieBVat', 'Kundens momsregistreringsnummer', b.vatNo, { attr: 'class="mono" autocomplete="off"', hint: 'Behövs bara för kunder i andra EU-länder' })}${fld('ieRef', 'Er referens', b.ref)}
    <h3 class="dsub fld full">Datum och villkor</h3>
    ${fld('ieDate', 'Fakturadatum', x.issued, { attr: 'type="date"', req: 1 })}${fld('ieTerms', 'Betalningsvillkor, dagar', x.terms, { attr: 'class="mono" inputmode="numeric"', hint: 'Förfaller …', hid: 'ieDue' })}
-   ${fld('ieOur', 'Vår referens', x.ourRef)}${fld('ieVat', 'Moms, %', fhs(+x.vat || 0), { attr: 'class="mono" inputmode="decimal"', hint: +x.vat ? '' : 'Momsen 0 %: fakturan får texten ”Undantag från momsplikt”.' })}
+   ${fld('ieOur', 'Vår referens', x.ourRef)}
+   <div class="fld"><label for="ieMode">Moms</label><select id="ieMode">${INV_MODES.map(([v, l]) => `<option value="${v}" ${invMode(x) === v ? 'selected' : ''}>${l}</option>`).join('')}</select><span class="fld-hint" id="ieModeH"></span></div>
+   ${fld('ieVat', 'Momssats, %', fhs(+x.vat || 0), { attr: `class="mono" inputmode="decimal" ${invMode(x) === 'se' ? '' : 'disabled'}`, hint: '', hid: 'ieVatH' })}
    <h3 class="dsub fld full">Rader</h3>${per}
    <div class="fld full"><div class="ie-head"><span>Beskrivning</span><span>Antal</span><span>Enhet</span><span>À-pris</span><span>Belopp</span><span></span></div><div id="ieRows">${x.lines.map(invRowHtml).join('')}</div><div><button type="button" class="btn sm" data-act="ieAdd">${ic('plus')}Rad</button></div></div>
    ${fld('ieMsg', 'Meddelande på fakturan', x.msg, { ta: 2, full: 1 })}
@@ -5807,7 +5830,10 @@ function invEdRead() {
   x.ourRef = g('ieOur').trim(); x.msg = g('ieMsg').replace(/\s+$/, '');
   if (/^\d{4}-\d{2}-\d{2}$/.test(g('ieDate'))) x.issued = g('ieDate');
   const t = Math.floor(pNum(g('ieTerms'))); if (t >= 0 && t <= 365) x.terms = t;
-  const v = pNum(g('ieVat')); if (v >= 0 && v <= 100) x.vat = v;
+  const md = g('ieMode'); if (INV_MODES.some(m => m[0] === md)) x.vatMode = md;
+  const vi = $('#ieVat');
+  if (invMode(x) !== 'se') { x.vat = 0; if (vi) { vi.value = '0'; vi.disabled = true; } }
+  else { if (vi?.disabled) { vi.disabled = false; if (pNum(vi.value) === 0) vi.value = fhs(+R().book.vatRate || 0); } const v = pNum(g('ieVat')); if (v >= 0 && v <= 100) x.vat = v; }
   x.lines = $$('#ieRows .ie-row').map(row => {
     const q = k => $(`[data-l="${k}"]`, row).value, qty = pNum(q('qty')), price = pNum(q('price'));
     return { text: q('text').trim(), qty: isNaN(qty) ? 0 : qty, unit: q('unit').trim(), price: isNaN(price) ? 0 : r2(price), amount: r2((isNaN(qty) ? 0 : qty) * (isNaN(price) ? 0 : price)), bad: isNaN(qty) || isNaN(price) };
@@ -5818,6 +5844,8 @@ function invEdSum() {
   const x = invEdX(), box = $('#ieSum'); if (!x || !box) return;
   $$('#ieRows .ie-row').forEach((row, i) => { const l = x.lines[i]; if (l) { $('.ie-amt', row).textContent = fkr2(l.amount); row.classList.toggle('bad', !!l.bad); } });
   const T = invTot(x), due = $('#ieDue'); if (due) due.textContent = `Förfaller ${T.due}`;
+  const mh = $('#ieModeH'), m = invMode(x); if (mh) mh.textContent = m === 'rc' ? 'Fakturan får texten ”Omvänd betalningsskyldighet” och båda momsnumren. Redovisa försäljningen i periodisk sammanställning. Gäller inte tjänster som rör en fastighet i Sverige – då svensk moms.' : m === 'export' ? 'Fakturan får texten att tjänsten är omsatt utanför Sverige. Gäller inte tjänster som rör en fastighet i Sverige – då svensk moms.' : '';
+  const vh = $('#ieVatH'); if (vh) vh.textContent = m === 'se' && !+x.vat ? 'Momsen 0 %: fakturan får texten ”Undantag från momsplikt”.' : '';
   box.innerHTML = `<table class="pp-t sum"><tbody><tr><td class="w">Summa exkl. moms</td><td class="r mono">${fkr2(T.net)}</td></tr><tr><td class="w">Moms ${fhs(+x.vat || 0)} %</td><td class="r mono">${fkr2(T.vatA)}</td></tr>${T.round ? `<tr><td class="w">Öresavrundning</td><td class="r mono">${fkr2(T.round)}</td></tr>` : ''}<tr class="tot"><td class="w">Att betala</td><td class="r mono">${fkr2(T.pay)}</td></tr></tbody></table>`;
 }
 function invEdChk(x) {
@@ -5826,6 +5854,11 @@ function invEdChk(x) {
   const bi = x.lines.findIndex(l => l.bad); if (bi >= 0) return [`Rad ${bi + 1}: antal och à-pris ska vara tal.`, null];
   const ei = x.lines.findIndex(l => !l.text && l.amount); if (ei >= 0) return [`Rad ${ei + 1} saknar beskrivning.`, null];
   if (!(invTot(x).pay > 0)) return ['Fakturan har inget belopp att betala.', null];
+  if (invMode(x) === 'rc') {
+    if (!/^[A-Z]{2}[0-9A-Z]{2,13}$/.test(x.buyer.vatNo || '')) return ['Omvänd betalningsskyldighet: ange kundens momsregistreringsnummer (med landskod, t.ex. DE123456789).', 'ieBVat'];
+    if (x.buyer.vatNo.startsWith('SE')) return ['Omvänd betalningsskyldighet gäller köpare i andra EU-länder – momsnumret börjar med SE.', 'ieBVat'];
+    if (!invCfg().vatNo) return ['Omvänd betalningsskyldighet: ditt momsregistreringsnummer behövs på fakturan (Inställningar → Fakturor).', null];
+  }
   return null;
 }
 function invIssueAsk() {
@@ -5837,6 +5870,7 @@ function invIssueAsk() {
   if (x.issued > today()) warn.push('Fakturadatumet ligger i framtiden.');
   if (x.issued < today() && invIssued().some(i => i.issued > x.issued)) warn.push('En faktura med senare datum är redan utfärdad – numren och datumen följer inte varandra.');
   if (webOn() && navigator.onLine === false) warn.push('Du är offline. Fakturan kan utfärdas först när boken kan synkas.');
+  if (invMode(x) !== 'se' && !invCfg().iban) warn.push('Kunden finns utomlands, men fakturan har inget IBAN – utländska kunder kan oftast inte betala till bankgiro. Lägg in IBAN och BIC under Inställningar → Fakturor.');
   const lock = (x.spans || []).filter(s => proj(s.pid)).map(s => `${proj(s.pid).name}, ${perTxt(s.from, s.to)}`);
   openDlg(`<h2 id="dlgTitle">Utfärda fakturan?</h2><p>Fakturan får nummer <b class="mono">${esc(invNum(invNextNo()))}</b>, fakturadatum ${esc(x.issued)} och förfallodag ${esc(T.due)} – att betala <b>${fkr2(T.pay)}</b> till ${esc(x.buyer.name)}.</p><p>En utfärdad faktura <b>kan inte ändras eller tas bort</b>. Fel rättas med en kreditfaktura.${webOn() ? ' Boken synkas före och efter, så att numret inte kan användas på en annan enhet.' : ''}</p>${lock.length ? `<p class="small">Tiden låses (markeras som hanterad): ${lock.map(esc).join('; ')}.</p>` : ''}${warn.map(w => `<div class="alert soft">${ic('alert')}<div class="txt">${esc(w)}</div></div>`).join('')}<div class="dlg-foot"><button class="btn ghost" data-act="ieBack">${ic('left')}Tillbaka till utkastet</button><button class="btn primary" data-act="ieIssueGo" ${changed ? 'data-force="1"' : ''}>${ic('lock')}Utfärda${changed ? ' ändå' : ''}</button></div>`);
 }
@@ -5879,15 +5913,15 @@ function invCreditAsk(id) {
   const o = INVS().find(i => i.id === id); if (!o || o.status !== 'issued' || o.kind !== 'invoice') return;
   if (invCreditOf(o)) { toast(`Faktura ${o.num} är redan krediterad`); return; }
   if (!invOn()) { toast('Slå på fakturor under Inställningar för att kreditera'); return; }
-  st.invCr = id; const sp = (o.spans || []).filter(s => proj(s.pid));
-  openDlg(`<h2 id="dlgTitle">Kreditera faktura ${esc(o.num)}?</h2><p>En kreditfaktura med samma rader och negativa belopp (${fkr2(-o.pay)}) utfärdas med nästa nummer, <b class="mono">${esc(invNum(invNextNo()))}</b>, och hänvisar till faktura ${esc(o.num)}. Den kan inte ändras eller tas bort.</p>${sp.length ? `<label class="chk"><input type="checkbox" id="crUnlock" checked> Lås upp tiden i fakturan igen, så att den kan faktureras på nytt (${sp.map(s => esc(`${proj(s.pid).name}, ${perTxt(s.from, s.to)}`)).join('; ')})</label>` : ''}<p class="small muted">Vill du bara rätta en del: kreditera hela fakturan och gör en ny.</p><div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="invCreditGo">${ic('lock')}Utfärda kreditfaktura</button></div>`);
+  st.invCr = id; const ul = invUnlockOf(o), sp = ul.filter(s => proj(s.pid)), kept = !jeq(ul, (o.spans || []).map(s => ({ pid: s.pid, from: s.from, to: s.to })));
+  openDlg(`<h2 id="dlgTitle">Kreditera faktura ${esc(o.num)}?</h2><p>En kreditfaktura med samma rader och negativa belopp (${fkr2(-o.pay)}) utfärdas med nästa nummer, <b class="mono">${esc(invNum(invNextNo()))}</b>, och hänvisar till faktura ${esc(o.num)}. Den kan inte ändras eller tas bort.</p>${sp.length ? `<label class="chk"><input type="checkbox" id="crUnlock" checked> Lås upp tiden i fakturan igen, så att den kan faktureras på nytt (${sp.map(s => esc(`${proj(s.pid).name}, ${perTxt(s.from, s.to)}`)).join('; ')})${kept ? ' – tid som också ingår i en annan faktura förblir låst' : ''}</label>` : ''}<p class="small muted">Vill du bara rätta en del: kreditera hela fakturan och gör en ny.</p><div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="invCreditGo">${ic('lock')}Utfärda kreditfaktura</button></div>`);
 }
 function invCreditGo() {
   const id = st.invCr, unlock = !!$('#crUnlock')?.checked; closeDlg();
   invIssueFlow(() => {
     const o = INVS().find(i => i.id === id); if (!o || o.status !== 'issued') return null;
     if (invCreditOf(o)) { toast(`Faktura ${o.num} är redan krediterad`); return null; }
-    const cr = { id: 'f' + uid(), kind: 'credit', status: 'draft', created: new Date().toISOString(), by: me(), dev: devId(), issued: today(), terms: 0, credits: o.id, creditsNum: o.num, creditsDate: o.issued, buyer: { ...o.buyer }, ourRef: o.ourRef, msg: '', period: o.period, lines: o.lines.map(l => ({ ...l, qty: -l.qty, amount: -l.amount })), vat: o.vat, spans: [], ...(unlock && o.spans?.length ? { unlock: o.spans.map(s => ({ ...s })) } : {}) };
+    const cr = { id: 'f' + uid(), kind: 'credit', status: 'draft', created: new Date().toISOString(), by: me(), dev: devId(), issued: today(), terms: 0, credits: o.id, creditsNum: o.num, creditsDate: o.issued, buyer: { ...o.buyer }, ourRef: o.ourRef, msg: '', period: o.period, lines: o.lines.map(l => ({ ...l, qty: -l.qty, amount: -l.amount })), ...(o.vatMode ? { vatMode: o.vatMode } : {}), vat: o.vat, spans: [], ...(unlock && invUnlockOf(o).length ? { unlock: invUnlockOf(o) } : {}) };
     INVS().push(cr); return cr;
   });
 }
@@ -5930,7 +5964,7 @@ function invPdf(x, draft) {
   // Betalning
   const pay = [s.bg && ['Bankgiro', s.bg], s.pg && ['Plusgiro', s.pg], s.iban && ['IBAN', s.iban], s.iban && s.bic && ['BIC', s.bic], s.swish && ['Swish', s.swish]].filter(Boolean);
   if (!credit && T.pay > 0 && pay.length) {
-    const qr = x.qr !== false && !draft ? invQrText(x) : null, Q = qr ? qrMatrix(qr) : null, mod = Q ? Math.min(2.6, 96 / Q.length) : 0, qs = Q ? Q.length * mod + 8 * mod : 0;
+    const qr = x.qr !== false && !draft && invMode(x) === 'se' ? invQrText(x) : null, Q = qr ? qrMatrix(qr) : null, mod = Q ? Math.min(2.6, 96 / Q.length) : 0, qs = Q ? Q.length * mod + 8 * mod : 0;
     const rows = [...pay, [T.ocr ? 'Ange OCR-nummer' : 'Ange fakturanummer', T.ocr || num], ['Förfallodag', T.due], ['Belopp', fkr2(T.pay)]], bh = Math.max(rows.length * 14 + 30, qs + 16);
     doc.ensure(bh + 10); const top = doc.y;
     pdf.rect(M, top, doc.w, bh, SOFT); pdf.text(M + 12, top + 18, 'BETALNING', { size: 6.8, bold: true, color: MUTED });
@@ -5939,7 +5973,7 @@ function invPdf(x, draft) {
     doc.y = top + bh + 14;
   }
   // Villkor och texter som krävs
-  const terms = [!credit ? `Betalningsvillkor: ${x.terms} dagar netto.` : '', !credit ? s.interest : '', +x.vat ? '' : 'Undantag från momsplikt.', s.fskatt ? 'Godkänd för F-skatt.' : '', s.note].filter(Boolean);
+  const terms = [!credit ? `Betalningsvillkor: ${x.terms} dagar netto.` : '', !credit ? s.interest : '', invVatNote(x), s.fskatt ? 'Godkänd för F-skatt.' : '', s.note].filter(Boolean);
   for (const t of terms) for (const w of pdf.wrap(t, 8.5, false, doc.w)) { doc.ensure(12); pdf.text(M, doc.y, w, { size: 8.5, color: MUTED }); doc.y += 12; }
   // Sidfot: säljarens uppgifter på varje sida
   const f1 = [s.company, String(s.address || '').split('\n').filter(Boolean).join(', ')].filter(Boolean).join(' · ');
@@ -5973,8 +6007,8 @@ function zipStore(files) {
 }
 function invCsv(L) {
   const n = x => (Math.round(x * 100) / 100).toFixed(2).replace('.', ','), q = s => { s = String(s ?? ''); return /[;"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-  const rows = [['Nummer', 'Typ', 'Fakturadatum', 'Förfallodag', 'Kund', 'Kundens org.nr', 'Summa exkl. moms', 'Momssats %', 'Moms', 'Öresavrundning', 'Att betala', 'Krediterar', 'OCR', 'Kontroll']];
-  for (const x of L) rows.push([x.num, invKind(x), x.issued, x.kind === 'credit' ? '' : x.due, x.buyer?.name, x.buyer?.orgNr, n(x.net), n(+x.vat || 0), n(x.vatA), n(x.round || 0), n(x.pay), x.creditsNum || '', x.ocr || '', x.hash || '']);
+  const rows = [['Nummer', 'Typ', 'Fakturadatum', 'Förfallodag', 'Kund', 'Kundens org.nr', 'Summa exkl. moms', 'Momssats %', 'Moms', 'Öresavrundning', 'Att betala', 'Krediterar', 'OCR', 'Kontroll', 'Moms', 'Status', 'Betald']];
+  for (const x of L) rows.push([x.num, invKind(x), x.issued, x.kind === 'credit' ? '' : x.due, x.buyer?.name, x.buyer?.orgNr, n(x.net), n(+x.vat || 0), n(x.vatA), n(x.round || 0), n(x.pay), x.creditsNum || '', x.ocr || '', x.hash || '', INV_MODES.find(m => m[0] === invMode(x))[1], invPayState(x).txt, PAYS()[x.id]?.date || '']);
   return '﻿' + rows.map(r => r.map(q).join(';')).join('\r\n') + '\r\n';
 }
 async function invArchive(year) {
@@ -5983,7 +6017,7 @@ async function invArchive(year) {
   const logos = {}; for (const x of L) if (x.logo && R().invoiceLogos?.[x.logo]) logos[x.logo] = R().invoiceLogos[x.logo];
   const files = L.map(x => ({ name: invFileName(x), bytes: invPdf(x) }));
   files.push({ name: `fakturor-${year}.csv`, bytes: new TextEncoder().encode(invCsv(L)) });
-  files.push({ name: `fakturor-${year}.json`, bytes: new TextEncoder().encode(JSON.stringify({ format: 'sisyfos-fakturor', version: 1, app: APP_VERSION, exported: new Date().toISOString(), company: R().book.company || R().book.name, year, invoices: L, logos }, null, 1)) });
+  files.push({ name: `fakturor-${year}.json`, bytes: new TextEncoder().encode(JSON.stringify({ format: 'sisyfos-fakturor', version: 1, app: APP_VERSION, exported: new Date().toISOString(), company: R().book.company || R().book.name, year, invoices: L, logos, payments: Object.fromEntries(L.filter(x => PAYS()[x.id]).map(x => [x.id, PAYS()[x.id]])) }, null, 1)) });
   if (await offerFile(fileSafe(`Fakturor ${year} ${R().book.company || R().book.name}.zip`), zipStore(files), 'application/zip')) {
     const I = R().book.invoicing = R().book.invoicing || {}; I.archived = { ...(I.archived || {}), [year]: new Date().toISOString() }; save(); renderMain(); renderPanel();
     toast(`Arkivet för ${year} är nedladdat – ${L.length} ${L.length === 1 ? 'faktura' : 'fakturor'}. Spara det där du sparar annan bokföring.`);
@@ -5992,24 +6026,201 @@ async function invArchive(year) {
 
 /* ── Rapporter → Fakturor ── */
 function invListHtml() {
-  const L = INVS(), drafts = L.filter(x => x.status === 'draft'), iss = invIssued().sort((a, b) => b.no - a.no), yrs = [...new Set(iss.map(x => x.issued.slice(0, 4)))].sort().reverse(), arc = invCfg().archived || {};
-  let h = `<div class="rep-ctl">${invOn() ? `<div class="rep-acts"><button class="btn primary" data-act="invToBasis">${ic('report')}Från fakturaunderlaget</button><button class="btn" data-act="invBlank">${ic('plus')}Tom faktura</button></div>` : ''}${yrs.length ? `<div class="fld"><label for="iaY">Arkiv</label><div class="inv-arc"><select id="iaY">${yrs.map(y => `<option value="${y}">${y}${arc[y] ? '' : ' – inte nedladdat'}</option>`).join('')}</select><button class="btn" data-act="invArchive">${ic('export')}Ladda ner zip</button></div></div>` : ''}</div>`;
+  const L = INVS(), drafts = L.filter(x => x.status === 'draft'), all = invIssued().sort((a, b) => b.no - a.no), r = rep(), F = ['all', 'unpaid', 'late'].includes(r.invF) ? r.invF : 'all';
+  const S = new Map(all.map(x => [x.id, invPayState(x)])), nU = all.filter(x => invUnpaid(S.get(x.id))).length, nL = all.filter(x => S.get(x.id).k === 'late').length;
+  const iss = all.filter(x => F === 'all' || (F === 'late' ? S.get(x.id).k === 'late' : invUnpaid(S.get(x.id)))), yrs = [...new Set(iss.map(x => x.issued.slice(0, 4)))].sort().reverse(), arc = invCfg().archived || {};
+  let h = `<div class="rep-ctl">${invOn() ? `<div class="rep-acts"><button class="btn primary" data-act="invToBasis">${ic('report')}Från fakturaunderlaget</button><button class="btn" data-act="invBlank">${ic('plus')}Tom faktura</button></div>` : ''}${yrs.length ? `<div class="fld"><label for="iaY">Arkiv</label><div class="inv-arc"><select id="iaY">${yrs.map(y => `<option value="${y}">${y}${arc[y] ? '' : ' – inte nedladdat'}</option>`).join('')}</select><button class="btn" data-act="invArchive">${ic('export')}Ladda ner zip</button></div></div>` : ''}${all.length ? `<div class="fld"><label>Bokföringen</label><button class="btn" data-act="invSie">${ic('export')}Exportera SIE …</button></div>` : ''}</div>`;
   if (!invOn()) h += `<div class="alert soft">${ic('info')}<div class="txt">Fakturor är avstängda. De som redan är utfärdade finns kvar här och i arkivet. Slå på dem igen under Inställningar → Fakturor.</div></div>`;
   if (drafts.length) h += `<h3 class="dsub">Utkast</h3><ul class="inv-l">${drafts.map(x => { const T = invTot(x); return `<li><button class="pl" data-act="invOpen" data-i="${x.id}"><span class="r-text"><span class="r-name">${esc(x.buyer.name || 'Ingen kund angiven')}</span><span class="r-sub">${x.period ? esc(periodLabel(x.period.from, x.period.to)) + ' · ' : ''}skapat ${esc(fwhen(x.created))}</span></span><span class="mono">${fkr2(T.pay)}</span></button></li>`; }).join('')}</ul>`;
+  if (all.length) h += `<div class="inv-f"><div class="seg" role="group" aria-label="Visa">${[['all', 'Alla', all.length], ['unpaid', 'Obetalda', nU], ['late', 'Förfallna', nL]].map(([k, l, n]) => `<button data-act="invF" data-f="${k}" aria-pressed="${F === k}">${l} <span class="muted">${n}</span></button>`).join('')}</div></div>`;
+  if (all.length && !iss.length) return h + `<p class="muted">${F === 'late' ? 'Inga förfallna fakturor.' : 'Inga obetalda fakturor.'}</p>`;
   if (!iss.length) return h + `<p class="muted">${invOn() ? 'Inga utfärdade fakturor än. Gå till <b>Fakturaunderlag</b>, välj kund eller projekt och tryck <b>Skapa faktura</b> – eller gör en tom faktura.' : 'Inga utfärdade fakturor.'}</p>`;
   h += `<h3 class="dsub">Utfärdade</h3><div class="tbl-wrap"><table class="pp-t inv-t"><thead><tr><th>Nummer</th><th>Datum</th><th class="w">Kund</th><th class="r">Att betala</th><th></th><th></th></tr></thead><tbody>${iss.map(x => {
-    const cr = x.kind === 'invoice' ? invCreditOf(x) : null, stt = x.kind === 'credit' ? `Krediterar ${esc(x.creditsNum)}` : cr ? `Krediterad (${esc(cr.num)})` : x.due < today() ? `förföll ${esc(x.due)}` : `förfaller ${esc(x.due)}`;
-    return `<tr class="${cr ? 'cr' : ''}"><td class="mono nw"><b>${esc(x.num)}</b>${x.kind === 'credit' ? ' <span class="tag-k">kredit</span>' : ''}</td><td class="nw">${esc(x.issued)}</td><td class="w">${esc(x.buyer?.name || '')}<small class="muted"> · ${stt}${x.renum ? ` · tidigare ${esc(x.renum.num)}` : ''}</small></td><td class="r mono nw">${fkr2(x.pay)}</td><td class="nw"><button class="btn sm ghost" data-act="invPdf" data-i="${x.id}">${ic('export')}PDF</button></td><td class="nw">${x.kind === 'invoice' && !cr && invOn() ? `<button class="btn sm ghost" data-act="invCredit" data-i="${x.id}">Kreditera …</button>` : ''}</td></tr>`;
+    const cr = x.kind === 'invoice' ? invCreditOf(x) : null, ps = S.get(x.id), pay = PAYS()[x.id] || invUnpaid(ps);
+    const stt = `${x.kind === 'credit' ? `krediterar ${esc(x.creditsNum)} · ` : ''}${pay ? `<button type="button" class="linkish ps-${ps.k}" data-act="invPay" data-i="${x.id}">${esc(ps.txt)}</button>` : `<span class="ps-${ps.k}">${esc(ps.txt)}</span>`}`;
+    return `<tr class="${cr ? 'cr' : ''}"><td class="mono nw"><b>${esc(x.num)}</b>${x.kind === 'credit' ? ' <span class="tag-k">kredit</span>' : ''}</td><td class="nw">${esc(x.issued)}</td><td class="w">${esc(x.buyer?.name || '')}${invMode(x) !== 'se' ? ` <span class="tag-k">${invMode(x) === 'rc' ? 'EU' : 'export'}</span>` : ''}<small class="muted"> · ${stt}${x.renum ? ` · tidigare ${esc(x.renum.num)}` : ''}</small></td><td class="r mono nw">${fkr2(x.pay)}</td><td class="nw"><button class="btn sm ghost" data-act="invPdf" data-i="${x.id}">${ic('export')}PDF</button></td><td class="nw">${invUnpaid(ps) ? `<button class="btn sm ghost" data-act="invPay" data-i="${x.id}">${ic('check')}${x.kind === 'credit' ? 'Återbetald' : 'Betald'} …</button>` : ''}${x.kind === 'invoice' && !cr && invOn() ? `<button class="btn sm ghost" data-act="invCredit" data-i="${x.id}">Kreditera …</button>` : ''}</td></tr>`;
   }).join('')}</tbody></table></div>`;
   return h;
 }
 function invListPanel() {
   const iss = invIssued(), y = today().slice(0, 4), iy = iss.filter(x => x.issued.startsWith(y)), arc = invCfg().archived || {};
   const sum = k => iy.reduce((s, x) => s + (+x[k] || 0), 0), old = [...new Set(iss.map(x => x.issued.slice(0, 4)))].filter(yy => yy < y && !arc[yy]);
-  let h = pHead('Fakturor', `${iss.length} utfärdade · ${INVS().length - iss.length} utkast`) + `<div class="p-body"><section class="psec"><h3>${y}</h3>${pkv('Fakturor', iy.filter(x => x.kind === 'invoice').length)}${pkv('Kreditfakturor', iy.filter(x => x.kind === 'credit').length)}${pkv('Exkl. moms', fkr(sum('net')))}${pkv('Moms', fkr(sum('vatA')))}${pkv('Inkl. moms', fkr(sum('pay')), 'tot big')}${invOn() ? pkv('Nästa nummer', `<span class="mono">${esc(invNum(invNextNo()))}</span>`) : ''}</section>`;
+  const ST = iss.map(x => [x, invPayState(x)]), ub = ST.filter(([, s]) => s.k === 'open' || s.k === 'late'), lt = ub.filter(([, s]) => s.k === 'late'), rf = ST.filter(([, s]) => s.k === 'refund'), ps = a => a.reduce((t, [x]) => t + (+x.pay || 0), 0);
+  let h = pHead('Fakturor', `${iss.length} utfärdade · ${INVS().length - iss.length} utkast`) + `<div class="p-body">${iss.length ? `<section class="psec"><h3>Betalningar</h3>${pkv('Obetalt', ub.length ? `${ub.length} st · ${fkr(ps(ub))}` : 'inget')}${pkv('Förfallet', lt.length ? `${lt.length} st · ${fkr(ps(lt))}` : 'inget', lt.length ? 'warn' : '')}${rf.length ? pkv('Att betala tillbaka', `${rf.length} st · ${fkr(-ps(rf))}`, 'warn') : ''}${invCfg().sieLast ? pkv('SIE exporterad t.o.m.', esc(invCfg().sieLast.to)) : ''}</section>` : ''}<section class="psec"><h3>${y}</h3>${pkv('Fakturor', iy.filter(x => x.kind === 'invoice').length)}${pkv('Kreditfakturor', iy.filter(x => x.kind === 'credit').length)}${pkv('Exkl. moms', fkr(sum('net')))}${pkv('Moms', fkr(sum('vatA')))}${pkv('Inkl. moms', fkr(sum('pay')), 'tot big')}${invOn() ? pkv('Nästa nummer', `<span class="mono">${esc(invNum(invNextNo()))}</span>`) : ''}</section>`;
   h += `<section class="psec"><h3>Arkiv</h3>${old.length ? `<p class="p-note" style="color:var(--warn-ink)">${old.join(', ')}: arkivet är inte nedladdat. Fakturorna ska sparas i sju år.</p>` : ''}${Object.keys(arc).sort().reverse().slice(0, 4).map(k => pkv(k, 'nedladdat ' + fwhen(arc[k]))).join('') || '<p class="p-note">Inget arkiv nedladdat än.</p>'}</section>`;
-  return h + helpSec(['Skapa en faktura från <b>Fakturaunderlag</b>: välj kund eller projekt och tryck <b>Skapa faktura</b>. Utkastet går att ändra.', '<b>Utfärda</b> ger nästa nummer och låser fakturan och tiden i den. Den kan inte ändras eller tas bort.', 'Fel rättas med <b>Kreditera</b> – en kreditfaktura med negativa belopp, och tiden kan låsas upp igen.', '<b>PDF</b> blir likadan varje gång. <b>Arkivet</b> (zip per år) har alla fakturor som PDF, en CSV och en JSON-fil – spara det med din övriga bokföring i sju år.', 'För in fakturorna i ditt bokföringsprogram – Sisyfos bokför inte.']) + `</div>`;
+  return h + helpSec(['Skapa en faktura från <b>Fakturaunderlag</b>: välj kund eller projekt och tryck <b>Skapa faktura</b>. Utkastet går att ändra.', '<b>Utfärda</b> ger nästa nummer och låser fakturan och tiden i den. Den kan inte ändras eller tas bort.', 'Fel rättas med <b>Kreditera</b> – en kreditfaktura med negativa belopp, och tiden kan låsas upp igen.', '<b>Betald …</b> noterar när pengarna har kommit. <b>Förfallna</b> visar det som har passerat förfallodagen.', '<b>PDF</b> blir likadan varje gång. <b>Arkivet</b> (zip per år) har alla fakturor som PDF, en CSV och en JSON-fil – spara det med din övriga bokföring i sju år.', '<b>Exportera SIE</b> ger en fil med fakturorna och betalningarna som verifikationer att läsa in i bokföringsprogrammet – Sisyfos bokför inte själv.']) + `</div>`;
 }
+
+/* ── Moms för kunder utomlands (0.15.1) ──
+   Kunden har zone 'se' (standard), 'eu' (företag i ett annat EU-land) eller 'world' (utanför EU). Fakturan får
+   vatMode 'se' (svensk moms), 'rc' (omvänd betalningsskyldighet – köparen redovisar momsen, båda momsnumren står på
+   fakturan) eller 'export' (tjänst omsatt utanför Sverige). Utan vatMode: 'se' (fakturor från 0.15.0). */
+const INV_ZONES = [['se', 'Sverige'], ['eu', 'Ett annat EU-land (företag)'], ['world', 'Utanför EU']];
+const INV_MODES = [['se', 'Svensk moms'], ['rc', 'Omvänd betalningsskyldighet – företag i ett annat EU-land'], ['export', 'Ingen svensk moms – kund utanför EU']];
+const invMode = x => x?.vatMode || 'se';
+const zoneMode = z => z === 'eu' ? 'rc' : z === 'world' ? 'export' : 'se';
+function invVatNote(x) {
+  const m = invMode(x);
+  if (m === 'rc') return 'Omvänd betalningsskyldighet (reverse charge) – köparen redovisar momsen.';
+  if (m === 'export') return 'Tjänsten är omsatt utanför Sverige – ingen svensk moms (outside the scope of Swedish VAT).';
+  return +x.vat ? '' : 'Undantag från momsplikt.';
+}
+
+/* ── Betalningar (0.15.1) ──
+   register.payments = { <fakturans id>: { date, at, by, dev } }. Ligger utanför fakturan, som är fryst och har en
+   kontrollsumma. För en kreditfaktura betyder betalningen att pengarna är återbetalda (bara när originalet var betalt). */
+const PAYS = () => R().payments || (R().payments = {});
+const dayDiff = (a, b) => Math.round((pd(b) - pd(a)) / 864e5);
+function invPayState(x) {
+  const P = PAYS(), t = today();
+  if (x.kind === 'credit') {
+    const o = INVS().find(i => i.id === x.credits);
+    if (!o || !P[o.id]) return { k: 'settled', txt: `kvittad mot ${x.creditsNum}` };
+    const p = P[x.id]; return p ? { k: 'refunded', date: p.date, txt: `återbetald ${p.date}` } : { k: 'refund', txt: `${x.creditsNum} var betald – att betala tillbaka` };
+  }
+  const p = P[x.id], cr = invCreditOf(x);
+  if (cr) return { k: 'credited', date: p?.date, txt: p ? `betald ${p.date} · krediterad (${cr.num})` : `krediterad (${cr.num})` };
+  if (p) return { k: 'paid', date: p.date, txt: `betald ${p.date}` };
+  if (x.due < t) { const n = dayDiff(x.due, t); return { k: 'late', days: n, txt: `förfallen ${x.due} (${n} ${n === 1 ? 'dag' : 'dagar'})` }; }
+  return { k: 'open', txt: `obetald · förfaller ${x.due}` };
+}
+const invUnpaid = s => s.k === 'open' || s.k === 'late' || s.k === 'refund';
+function invPayDlg(id) {
+  const x = INVS().find(i => i.id === id); if (!x || x.status !== 'issued') return;
+  const s = invPayState(x), p = PAYS()[id], back = x.kind === 'credit';
+  if (!p && !invUnpaid(s)) return;
+  st.invPay = id;
+  openDlg(`<h2 id="dlgTitle">${back ? 'Återbetalning' : 'Betalning'} – ${invKind(x).toLowerCase()} ${esc(x.num)}</h2><p>${esc(x.buyer?.name || '')} · ${fkr2(Math.abs(x.pay))}${back ? ' att betala tillbaka' : ` · ${x.due < today() ? 'förföll' : 'förfaller'} ${esc(x.due)}`}</p>
+  <div class="form"><div class="fld"><label for="ipDate">${back ? 'Återbetald' : 'Betald'} den${REQ}</label><input id="ipDate" type="date" value="${esc(p?.date || today())}" min="${esc(x.issued)}" max="${esc(today())}" data-enter="invPayGo"></div><div class="err fld full" id="ipErr"></div></div>
+  <p class="small muted">Sisyfos noterar bara att ${back ? 'pengarna är återbetalda' : 'fakturan är betald'} – betalningen bokförs i ditt bokföringsprogram (eller följer med SIE-exporten). Delbetalning: vänta tills hela beloppet har kommit.</p>
+  <div class="dlg-foot">${p ? `<button class="btn ghost" data-act="invPayDel" style="margin-right:auto">${ic('trash')}Ta bort betalningen</button>` : ''}<button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="invPayGo">${ic('check')}Spara</button></div>`);
+  $('#ipDate')?.focus();
+}
+function invPaySet(id, val, msg) {
+  const P = PAYS(), old = P[id];
+  if (val) P[id] = val; else delete P[id];
+  save(); closeDlg(); render();
+  toast(msg, { label: 'Ångra', fn: () => { if (old) PAYS()[id] = old; else delete PAYS()[id]; save(); render(); } });
+}
+function invPayGo() {
+  const x = INVS().find(i => i.id === st.invPay), d = $('#ipDate')?.value || ''; if (!x) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { $('#ipErr').textContent = 'Ange ett datum.'; return; }
+  if (d > today()) { $('#ipErr').textContent = 'Datumet ligger i framtiden.'; return; }
+  if (d < x.issued) { $('#ipErr').textContent = `Datumet ligger före fakturadatumet (${x.issued}).`; return; }
+  invPaySet(x.id, { date: d, at: new Date().toISOString(), by: me(), dev: devId() }, `${invKind(x)} ${x.num}: ${x.kind === 'credit' ? 'återbetald' : 'betald'} ${d}`);
+}
+function invPayDel() { const x = INVS().find(i => i.id === st.invPay); if (x) invPaySet(x.id, null, `${invKind(x)} ${x.num}: betalningen är borttagen`); }
+
+/* ── SIE 4 (0.15.1) ──
+   En importfil (typ 4I, teckenkodning PC8 = CP437) med fakturorna och – om man vill – betalningarna som verifikationer.
+   Konton enligt BAS, går att ändra. Faktura: kundfordringar debet, försäljning och moms kredit (kreditfaktura tvärtom).
+   Betalning: bank debet, kundfordringar kredit. */
+const SIE_DEF = { series: '', ar: '1510', bank: '1930', round: '3740', s25: '3001', s12: '3002', s6: '3003', s0: '3004', eu: '3308', world: '3305', v25: '2611', v12: '2621', v6: '2631' };
+const SIE_FIELDS = [['ar', 'Kundfordringar'], ['bank', 'Bank (betalningar)'], ['s25', 'Försäljning 25 % moms'], ['v25', 'Utgående moms 25 %'], ['s12', 'Försäljning 12 % moms'], ['v12', 'Utgående moms 12 %'], ['s6', 'Försäljning 6 % moms'], ['v6', 'Utgående moms 6 %'], ['s0', 'Försäljning utan moms (Sverige)'], ['eu', 'Försäljning tjänster till annat EU-land'], ['world', 'Försäljning tjänster utanför EU'], ['round', 'Öresavrundning']];
+const sieCfg = () => Object.assign({}, SIE_DEF, invCfg().sie || {});
+const CP437 = "ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ ";
+const CP437_ALT = { '–': '-', '—': '-', '‘': "'", '’': "'", '“': '"', '”': '"', '…': '...', '€': 'EUR', ' ': ' ' };
+function cp437(s) {
+  const out = [];
+  for (let ch of String(s)) {
+    if (CP437_ALT[ch]) ch = CP437_ALT[ch];
+    for (const c of ch) {
+      const n = c.codePointAt(0); if (n < 128) { out.push(n); continue; }
+      let i = CP437.indexOf(c); if (i >= 0) { out.push(128 + i); continue; }
+      const b = c.normalize('NFD')[0], bn = b.codePointAt(0);
+      out.push(bn < 128 ? bn : CP437.indexOf(b) >= 0 ? 128 + CP437.indexOf(b) : 63);
+    }
+  }
+  return new Uint8Array(out);
+}
+const sieQ = s => '"' + String(s ?? '').replace(/[\r\n\t]+/g, ' ').replace(/\\/g, '\\\\').replace(/"/g, '\\"').trim() + '"';
+const sieAmt = n => { const v = r2(n); return (Object.is(v, -0) || Math.abs(v) < 0.005 ? 0 : v).toFixed(2); };
+function sieAcc(x, c) {
+  const m = invMode(x), v = +x.vat || 0;
+  if (m === 'rc') return [c.eu, null];
+  if (m === 'export') return [c.world, null];
+  if (!v) return [c.s0, null];
+  return v === 12 ? [c.s12, c.v12] : v === 6 ? [c.s6, c.v6] : [c.s25, c.v25];
+}
+// Verifikationerna i perioden: fakturor efter fakturadatum, betalningar efter betaldatum
+function sieVers(from, to, withPay, c = sieCfg()) {
+  const V = [], iss = invIssued(), P = PAYS();
+  for (const x of iss.filter(x => x.issued >= from && x.issued <= to).sort((a, b) => a.no - b.no)) {
+    const [sa, va] = sieAcc(x, c), rows = [[c.ar, x.pay], [sa, -x.net]];
+    if (va && Math.abs(x.vatA) > 0.004) rows.push([va, -x.vatA]); else if (Math.abs(x.vatA) > 0.004) rows[1][1] -= x.vatA;
+    if (Math.abs(x.round || 0) > 0.004) rows.push([c.round, -x.round]);
+    V.push({ date: x.issued, o: 0, no: x.no, text: `${invKind(x)} ${x.num} ${x.buyer?.name || ''}`, rows, odd: !!va && ![25, 12, 6].includes(+x.vat) });
+  }
+  if (withPay) for (const x of iss) { const p = P[x.id]; if (!p || p.date < from || p.date > to) continue; V.push({ date: p.date, o: 1, no: x.no, text: `${x.kind === 'credit' ? 'Återbetalning' : 'Betalning'} ${invKind(x).toLowerCase()} ${x.num} ${x.buyer?.name || ''}`, rows: [[c.bank, x.pay], [c.ar, -x.pay]] }); }
+  return V.sort((a, b) => a.date.localeCompare(b.date) || a.o - b.o || a.no - b.no);
+}
+function sieText(V, c = sieCfg()) {
+  const b = R().book, d = s => s.replace(/-/g, ''), L = ['#FLAGGA 0', `#PROGRAM "Sisyfos" ${APP_VERSION}`, '#FORMAT PC8', `#GEN ${d(today())}`, '#SIETYP 4', `#FNAMN ${sieQ(b.company || b.name)}`];
+  if (b.orgNr) L.push(`#ORGNR ${String(b.orgNr).replace(/\s/g, '')}`);
+  for (const v of V) {
+    L.push(`#VER ${sieQ(c.series)} "" ${d(v.date)} ${sieQ(v.text)}`, '{');
+    for (const [acc, amt] of v.rows) if (Math.abs(amt) > 0.004) L.push(`   #TRANS ${acc} {} ${sieAmt(amt)}`);
+    L.push('}');
+  }
+  return L.join('\r\n') + '\r\n';
+}
+function invSieDlg() {
+  const c = sieCfg(), I = invCfg(), last = I.sieLast, y = today().slice(0, 4);
+  const from = last?.to ? addD(last.to, 1) : (invIssued().map(x => x.issued).filter(d => d.startsWith(y)).sort()[0] || `${y}-01-01`), to = today();
+  const f = (k, l) => `<div class="fld"><label for="sie_${k}">${l}</label><input id="sie_${k}" class="mono" value="${esc(c[k])}" inputmode="numeric" maxlength="6" autocomplete="off"></div>`;
+  openDlg(`<h2 id="dlgTitle">Exportera till bokföringen (SIE)</h2><p>En SIE-fil (typ 4I) med de utfärdade fakturorna som verifikationer – och betalningarna, om du vill – att läsa in i ditt bokföringsprogram. Kontrollera kontona mot din kontoplan första gången.</p>
+  <form class="form" id="sieForm" novalidate>
+   <div class="fld"><label for="sieFrom">Från och med${REQ}</label><input id="sieFrom" type="date" value="${esc(from)}"></div>
+   <div class="fld"><label for="sieTo">Till och med${REQ}</label><input id="sieTo" type="date" value="${esc(to)}"></div>
+   <label class="chk fld full"><input type="checkbox" id="siePay" ${I.siePay === false ? '' : 'checked'}> Ta med betalningarna (betaldatum i perioden)</label>
+   <div class="fld"><label for="sie_series">Verifikationsserie</label><input id="sie_series" class="mono" value="${esc(c.series)}" maxlength="4" autocomplete="off"><span class="fld-hint">Tomt = bokföringsprogrammet väljer</span></div>
+   <details class="fld full sie-acc"><summary>Konton (BAS)</summary><div class="form">${SIE_FIELDS.map(([k, l]) => f(k, l)).join('')}</div></details>
+   <p class="fld full small" id="sieInfo"></p>
+   <div class="err fld full" id="sieErr"></div>
+  </form>
+  <div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="invSieGo">${ic('export')}Ladda ner SIE-fil</button></div>`, 'wide');
+  invSieInfo();
+}
+function invSieRead() {
+  const c = {}, g = id => $('#' + id)?.value.trim() || '';
+  for (const k of Object.keys(SIE_DEF)) c[k] = g('sie_' + k);
+  return { from: g('sieFrom'), to: g('sieTo'), pay: !!$('#siePay')?.checked, c };
+}
+function invSieChk(v) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v.from) || !/^\d{4}-\d{2}-\d{2}$/.test(v.to)) return 'Ange perioden.';
+  if (v.from > v.to) return 'Perioden börjar efter att den slutar.';
+  for (const [k, l] of SIE_FIELDS) if (!/^\d{4,6}$/.test(v.c[k])) return `Kontot för ${l.toLowerCase()} ska vara 4–6 siffror.`;
+  if (!/^[0-9A-Za-z]{0,4}$/.test(v.c.series)) return 'Serien är bokstäver eller siffror, högst fyra.';
+  return '';
+}
+function invSieInfo() {
+  const box = $('#sieInfo'); if (!box) return;
+  const v = invSieRead(), e = invSieChk(v), last = invCfg().sieLast; $('#sieErr').textContent = '';
+  if (e) { box.textContent = ''; return; }
+  const V = sieVers(v.from, v.to, v.pay, v.c), ni = V.filter(x => !x.o).length, np = V.length - ni;
+  box.innerHTML = `${V.length ? `<b>${ni}</b> ${ni === 1 ? 'faktura' : 'fakturor'}${v.pay ? ` och <b>${np}</b> ${np === 1 ? 'betalning' : 'betalningar'}` : ''} blir ${V.length === 1 ? 'en verifikation' : V.length + ' verifikationer'}.` : 'Inga fakturor eller betalningar i perioden.'}${last?.to && v.from <= last.to ? ` <span style="color:var(--warn-ink)">Förra exporten gick till och med ${esc(last.to)} – läs inte in samma verifikationer två gånger.</span>` : ''}${V.some(x => x.odd) ? ' <span style="color:var(--warn-ink)">En momssats utöver 25, 12 och 6 % bokförs på kontona för 25 %.</span>' : ''}`;
+}
+async function invSieGo() {
+  const v = invSieRead(), e = invSieChk(v); if (e) { $('#sieErr').textContent = e; return; }
+  await invFixHashes();
+  const V = sieVers(v.from, v.to, v.pay, v.c); if (!V.length) { $('#sieErr').textContent = 'Inga fakturor eller betalningar i perioden.'; return; }
+  const I = R().book.invoicing = R().book.invoicing || {}, diff = {};
+  for (const k of Object.keys(SIE_DEF)) if (v.c[k] !== SIE_DEF[k]) diff[k] = v.c[k];
+  if (await offerFile(fileSafe(`SIE ${R().book.company || R().book.name} ${v.from}–${v.to}.si`), cp437(sieText(V, v.c)), 'text/plain')) {
+    if (Object.keys(diff).length) I.sie = diff; else delete I.sie;
+    I.siePay = v.pay; if (!I.sieLast?.to || v.to > I.sieLast.to) I.sieLast = { to: v.to, at: new Date().toISOString() };
+    save(); closeDlg(); renderMain(); renderPanel();
+    toast(`SIE-filen är nedladdad – ${V.length} ${V.length === 1 ? 'verifikation' : 'verifikationer'}. Läs in den i bokföringsprogrammet.`);
+  }
+}
+
+/* Kreditering: lås bara upp tid som ingen annan okrediterad faktura omfattar */
+function spanMinus(s, cut) {
+  let parts = [[s.from, s.to]];
+  for (const c of cut) parts = parts.flatMap(([a, b]) => c.to < a || c.from > b ? [[a, b]] : [...(c.from > a ? [[a, addD(c.from, -1)]] : []), ...(c.to < b ? [[addD(c.to, 1), b]] : [])]);
+  return parts.map(([from, to]) => ({ pid: s.pid, from, to }));
+}
+const invUnlockOf = o => (o.spans || []).flatMap(s => spanMinus(s, invCovering(s.pid, s.from, s.to).filter(x => x.id !== o.id).flatMap(x => (x.spans || []).filter(y => y.pid === s.pid))));
 
 /* ── Inställningar → Fakturor ── */
 const INV_OCR = [['none', 'Ingen OCR – betalaren anger fakturanumret'], ['check', 'OCR med kontrollsiffra'], ['len', 'OCR med längd- och kontrollsiffra']];
@@ -6102,13 +6313,16 @@ Object.assign(A, {
   ieIssue: () => invIssueAsk(), ieBack: () => invEdit(st.invEd), ieIssueGo: () => invIssueGo(),
   invPdf: async el => { await invFixHashes(); const x = INVS().find(i => i.id === el.dataset.i); if (x) offerFile(invFileName(x), invPdf(x)); },
   invCredit: el => invCreditAsk(el.dataset.i), invCreditGo: () => invCreditGo(),
-  invArchive: () => invArchive($('#iaY')?.value || today().slice(0, 4))
+  invArchive: () => invArchive($('#iaY')?.value || today().slice(0, 4)),
+  invF: el => { rep().invF = el.dataset.f; renderMain(); },
+  invPay: el => invPayDlg(el.dataset.i), invPayGo: () => invPayGo(), invPayDel: () => invPayDel(),
+  invSie: () => invSieDlg(), invSieGo: () => invSieGo()
 });
-document.addEventListener('input', ev => { const t = ev.target; if (t.closest?.('#ieForm') && t.id !== 'ieCust') { invEdRead(); invEdSum(); } if (t.id === 'ivOcrT') { const r = $('#ivOcrR'), v = t.value.replace(/\s/g, ''); if (r) r.textContent = !v ? '' : ocrCheck(v, invCfg().ocr) || 'Numret är rätt uppbyggt'; } });
+document.addEventListener('input', ev => { const t = ev.target; if (t.closest?.('#sieForm')) invSieInfo(); if (t.closest?.('#ieForm') && t.id !== 'ieCust') { invEdRead(); invEdSum(); } if (t.id === 'ivOcrT') { const r = $('#ivOcrR'), v = t.value.replace(/\s/g, ''); if (r) r.textContent = !v ? '' : ocrCheck(v, invCfg().ocr) || 'Numret är rätt uppbyggt'; } });
 document.addEventListener('change', ev => {
   const t = ev.target;
   if (t.matches?.('[data-inv]')) { invSet(t.dataset.inv, t); return; }
-  if (t.id === 'ieCust') { const C = cust(t.value), x = invEdRead(); if (!C || !x) return; x.buyer = invBuyerOf(C); if (C.terms != null) x.terms = +C.terms; save(); invEdit(x.id); return; }
+  if (t.id === 'ieCust') { const C = cust(t.value), x = invEdRead(); if (!C || !x) return; x.buyer = invBuyerOf(C); if (C.terms != null) x.terms = +C.terms; const m = zoneMode(C.zone); if (m !== invMode(x)) { x.vatMode = m; x.vat = m === 'se' ? +R().book.vatRate || 0 : 0; } save(); invEdit(x.id); return; }
   if (t.closest?.('#ieForm')) { invEdRead(); save(); }
 });
 

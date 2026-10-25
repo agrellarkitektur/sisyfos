@@ -1,5 +1,20 @@
 # Ändringar i Sisyfos
 
+## 0.15.1
+
+Filformat 9, oförändrat – betalningarna, kundens land och fakturans momsläge är nya valfria fält. Fakturor utfärdade i 0.15.0 och deras kontrollsummor ändras inte. Ladda om på alla enheter: en enhet med 0.15.0 behåller de nya uppgifterna vid synken men visar dem inte.
+
+- **Betalstatus.** *Rapporter → Fakturor* visar om en faktura är obetald, förfallen (med antal dagar), betald eller krediterad, och filtren *Alla*, *Obetalda* och *Förfallna*. *Betald …* noterar datumet då pengarna kom (inte i framtiden, inte före fakturadatumet), med Ångra; datumet går att ändra eller ta bort. En kreditfaktura för en redan betald faktura visas som *att betala tillbaka* tills den markeras som återbetald; annars är den kvittad mot originalet. Panelen visar obetalt, förfallet och att betala tillbaka. Arkivets CSV har kolumnerna *Moms*, *Status* och *Betald*, och JSON-filen betalningarna. Betalningarna sparas i `register.payments`, utanför de frysta fakturorna.
+- **Kunder i andra EU-länder.** Kunden får fältet *Kunden finns i* (Sverige, ett annat EU-land, utanför EU). Ett EU-företag kräver momsregistreringsnummer med utländsk landskod. Fakturan får **omvänd betalningsskyldighet**: 0 % moms, texten *Omvänd betalningsskyldighet (reverse charge)* och båda momsnumren; utkastet påminner om periodisk sammanställning och om att tjänster som rör en fastighet i Sverige ändå har svensk moms.
+- **Kunder utanför EU.** Fakturan får 0 % moms och texten att tjänsten är omsatt utanför Sverige.
+- **Momsläget** väljs efter kunden och kan ändras i utkastet (*Svensk moms*, *Omvänd betalningsskyldighet*, *Ingen svensk moms*); det fryses på fakturan och följer med en kreditfaktura. Betal-QR kommer bara med på fakturor med svensk moms, och utfärdandet varnar när en utländsk kund inte kan betala till IBAN.
+- **SIE-export.** *Exportera SIE …* ger en SIE 4I-fil (PC8) med fakturorna och – valfritt – betalningarna som verifikationer: kundfordringar mot försäljning och utgående moms per momssats, försäljning till EU och utanför EU på egna konton, öresavrundning, och bank mot kundfordringar för betalningarna. Kontona följer BAS och kan ändras, liksom verifikationsserien. Nästa export föreslås börja dagen efter den förra, och dialogen varnar när perioden överlappar.
+- **Kreditering och överlappande perioder.** *Lås upp tiden* låser nu bara upp den tid som ingen annan okrediterad faktura omfattar.
+- På telefon staplas raderna i fakturalistan, så att knapparna får plats.
+- Momsregistreringsnummer för kunder får nu vara 4–15 tecken med landskod (t.ex. ATU12345678, DE123456789).
+- README (*Fakturor*) och Data och integritet beskriver det nya.
+- Test: `test/faktura2_test.py` (betalstatus, filter, Betald … med Ångra, EU-kund och kund utanför EU med PDF:ernas texter, SIE-filen – kodning, att varje verifikation går jämnt ut, konton, period – och att fakturorna från 0.15.0 är oförändrade; körs i GitHub).
+
 ## 0.15.0
 
 Filformat 9 – **riktiga fakturor** som tillägg. Böcker i format 8 och äldre uppgraderas när de öppnas; inget annat ändras. En enhet med en äldre version av appen kan inte öppna boken efteråt (ladda om sidan så hämtas den nya).

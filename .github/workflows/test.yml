@@ -25,6 +25,7 @@ jobs:
           python -m http.server 8765 >/dev/null 2>&1 &
           sleep 1
           python test/faktura_test.py
+          python test/faktura2_test.py
       - name: Servern för lagring på webben
         run: |
           php -v | head -1

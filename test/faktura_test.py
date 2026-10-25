@@ -114,7 +114,7 @@ with sync_playwright() as p:
     kolla(len(cr) == 1 and cr[0]['num'] == '42' and cr[0]['credits'] == f0['id'] and cr[0]['pay'] == -f0['pay'], f"Kreditfaktura 42 = -{f0['pay']}: {[(x['num'], x['pay']) for x in cr]}")
     hd = B['register']['handled']
     kolla(not any(r['from'] <= sp[0]['from'] and r['to'] >= sp[0]['to'] for r in hd.get(sp[0]['pid'], [])), 'Tiden är upplåst efter krediteringen')
-    kolla('Krediterad (42)' in pg.inner_text('.inv-t') and not pg.is_visible('[data-act=invCredit]'), 'Listan: krediterad, ingen kreditera-knapp')
+    kolla('krediterad (42)' in pg.inner_text('.inv-t').lower() and not pg.is_visible('[data-act=invCredit]'), 'Listan: krediterad, ingen kreditera-knapp')
 
     # Arkivet
     with pg.expect_download() as dl: pg.click('[data-act=invArchive]')
@@ -127,7 +127,7 @@ with sync_playwright() as p:
 
     # Utkast: ta bort
     pg.click('[data-act=invBlank]'); pg.wait_for_timeout(200)
-    pg.click('[data-act=ieDel]'); pg.wait_for_timeout(100); pg.click('#dlg .btn.primary'); pg.wait_for_timeout(200)
+    pg.click('[data-act=ieDel]'); pg.wait_for_timeout(200); pg.click('#dlg .btn.primary'); pg.wait_for_timeout(500)
     kolla(len([x for x in bok(pg)['register']['invoices'] if x['status'] == 'draft']) == 0, 'Utkast kan tas bort')
 
     # Telefon: redigeringen ryms
