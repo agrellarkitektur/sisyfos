@@ -1,5 +1,18 @@
 # Ändringar i Sisyfos
 
+## 0.16.0
+
+Filformat 10 – **grunden för flera personer** (etapp 4, första steget). Är du ensam i boken märks ingen skillnad. Böcker i format 9 och äldre uppgraderas när de öppnas. Ladda om på alla enheter: en enhet med 0.15.x kan inte öppna boken efteråt och säger att den kommer från en nyare version.
+
+- **Organisationen.** Boken får ett organisations-id (`register.org`), räknat ur bokens skapad-datum så att samma bok får samma id på alla enheter.
+- **Boken i delar.** När boken krypteras delas den i delar med en skribent var: registret (admin skriver, alla läser), fakturorna och det som rör budgetens förbrukning (bara admin), ett personkort per person med anställning, saldo, semester och signerade veckor (admin skriver, personen och admin läser) och en tidlogg per person (personen skriver, personen och admin läser). Så blir det möjligt att en medarbetares tid bara syns för personen själv och admin, och att varje fil har en enda skribent.
+- **En personlig nyckel.** Varje person får ett nyckelpar för kryptering (ECDH P-256) och ett för signering (ECDSA P-256), första gången boken sparas krypterad – som kopia eller på webben. De offentliga nycklarna står i registret, de privata i en nyckelring som låses med boknyckeln och följer med varje krypterad fil. *Inställningar → Spara boken → Kryptering* visar nyckelns fingeravtryck.
+- **Krypterad fil version 2.** Varje del krypteras med en egen nyckel som låses till varje läsare (som *age*) och signeras av skribenten; en ändrad del eller en del från fel skribent upptäcks när filen öppnas. Gäller både kopior som fil och boken på webben. Krypterade kopior från 0.12.0–0.15.1 (version 1) öppnas som förut. Servern behöver inte ändras.
+- **Två enheter samtidigt.** Uppgraderar telefonen och datorn samtidigt och skapar var sin nyckel kommer de överens om den äldsta.
+- Synken jämför böckernas innehåll i stället för fältens ordning.
+- README (*Kryptering*, *Filformat*) och Data och integritet beskriver det nya. Planen för resten av etapp 4: servern med organisationer och inbjudningar (0.16.1) och arbetet med flera – välja vems tidbok, signera åt andra, smartshell åt andra (0.16.2).
+- Test: `test/delar_test.py` (delning fram och tillbaka, att registret saknar fakturor, personkort och budgetens förbrukning, kryptering till rätt läsare – en medarbetare ser inte fakturorna eller någon annans tid –, ändrad del, nyckelkrock, nyckelringen mellan enheter, import av version 2; körs i GitHub), `test/bocker/format-10.json` och `test/bocker/krypterad-2.sisyfos`. `webb_test.py` kontrollerar att filen på servern är version 2 och att båda enheterna har samma nyckel.
+
 ## 0.15.1
 
 Filformat 9, oförändrat – betalningarna, kundens land och fakturans momsläge är nya valfria fält. Fakturor utfärdade i 0.15.0 och deras kontrollsummor ändras inte. Ladda om på alla enheter: en enhet med 0.15.0 behåller de nya uppgifterna vid synken men visar dem inte.

@@ -137,6 +137,23 @@ Sedan 0.12.0 kan boken sparas som en **krypterad kopia** (`.sisyfos`). Slå på 
 
 Samma nyckel används när boken sparas krypterad på webben: då lämnar varken lösenordet, boknyckeln eller boken i klartext enheten.
 
+### Boken i delar och en nyckel per person (0.16.0)
+
+Som grund för flera personer i samma bok krypteras boken sedan 0.16.0 i **delar** med en skribent var, och varje person har en **personlig nyckel**. Ensam märks ingen skillnad.
+
+| Del | Innehåll | Skriver | Läser |
+|---|---|---|---|
+| `reg` – registret | företaget och inställningarna, kunder, roller, projekt (budget och timpriser), personernas namn, roll och offentliga nycklar, hanterade perioder (utan timmar och belopp) | admin | alla |
+| `adm` | fakturor, betalningar, timmar och belopp för hanterad tid | admin | admin |
+| `card.<person>` – personkortet | anställning, kompsaldo, semester och signerade veckor | admin | personen och admin |
+| `log.<person>` – tidloggen | tidposterna och dagsanteckningarna; för den egna personen också bokens inställningar | personen | personen och admin |
+
+- **Personlig nyckel:** ett nyckelpar för kryptering (ECDH P-256) och ett för signering (ECDSA P-256), skapade första gången boken sparas krypterad. De offentliga nycklarna står i registret; de privata ligger i en nyckelring som är låst med boknyckeln och följer med varje krypterad fil – så når du dem från alla dina enheter. Fingeravtrycket visas under *Kryptering*.
+- **En del** krypteras med en egen slumpad nyckel (AES-256-GCM, gzip först), som i sin tur låses till varje läsare med en tillfällig ECDH-nyckel och HKDF – ungefär som verktyget *age*. Skribenten signerar delen. När filen öppnas kontrolleras signaturen och att skribenten får skriva delen; en ändrad del upptäcks.
+- **Två enheter** som skapar nycklar samtidigt kommer överens: den äldsta nyckeln gäller.
+- Filen har version 2 av det krypterade omslaget. Version 1 (0.12.0–0.15.1) öppnas som förut. En äldre app säger att boken kommer från en nyare version.
+- Planen för flera personer – servern med organisationer (0.16.1) och arbetet med flera (0.16.2) – står i projektets planeringsdokument (etapp 4).
+
 ## Spara på webben
 
 Sedan 0.13.0 kan boken sparas **krypterad på servern** där Sisyfos ligger, så att du når den från flera enheter – telefonen och datorn. Under *Inställningar → Spara boken → Spara på webben*:
@@ -176,7 +193,7 @@ Samma text finns i appen under *Sisyfos-menyn → Data och integritet*.
 
 **Vad boken innehåller.** Företagets uppgifter och logga. Kunder: namn, organisations- eller personnummer, referens, kontaktperson, e-post, telefon, adresser och anteckningar. Projekt: namn, nummer, fastighetsbeteckning, budget, timpriser, uppgifter och anteckningar. Tid: datum, timmar, pris och anteckning för varje tidpost, dagsanteckningar, med historik över ändringar, avcheckning och signering; varje ändring märks med ett slumpat id för enheten den gjordes på (inget om själva enheten). Inställningar för boken, till exempel egna kommandon – det som bara gäller skärmen (tema, panelbredd, kompakt läge, utfällda rader, listfilter) sparas på varje enhet för sig och följer inte med boken. Om dig: namn, initialer, roll och timpris – i fullständigt läge även anställningsform, normtid, kompsaldo och semester. Med fakturor påslagna: fakturorna (köparens namn, adress, org.nr och referens, rader och belopp) och när de betalades, dina betalningsuppgifter (bankgiro, plusgiro, IBAN, Swish) och momsregistreringsnummer, och när villkoren godkändes. Personnummer, kontaktpersoner och anteckningar om människor är personuppgifter.
 
-**Var den sparas.** I webbläsaren på enheten, tillsammans med automatiska ögonblicksbilder (se ovan). **Med konto på webben** dessutom krypterad på servern där Sisyfos ligger (agrellarkitektur.se, ett webbhotell hos Loopia i Sverige): e-postadressen, när kontot skapades, inloggade enheter och när de senast användes, och den krypterade boken med de tio senaste versionerna, deras storlek och tidpunkter. Lösenordet, boknyckeln och innehållet lämnar aldrig enheten okrypterade, och kontot med allt på servern kan raderas när du vill. Krypteringen görs av appen, som hämtas från samma server – se förbehållet under *Spara på webben*. Filer du själv sparar – kopior, autospar till mapp, PDF och CSV – är vanliga, okrypterade filer. Krypterade kopior (`.sisyfos`) kan bara öppnas med ditt lösenord eller din utskrivna återställningsnyckel; glömmer du båda går de inte att öppna, inte heller för oss. Ingen annan kan läsa boken, inte heller Agrell Arkitektur, och därför kan ingen heller återställa den åt dig.
+**Var den sparas.** I webbläsaren på enheten, tillsammans med automatiska ögonblicksbilder (se ovan). **Med konto på webben** dessutom krypterad på servern där Sisyfos ligger (agrellarkitektur.se, ett webbhotell hos Loopia i Sverige): e-postadressen, när kontot skapades, inloggade enheter och när de senast användes, och den krypterade boken med de tio senaste versionerna, deras storlek och tidpunkter. Lösenordet, boknyckeln och innehållet lämnar aldrig enheten okrypterade, och kontot med allt på servern kan raderas när du vill. Krypteringen görs av appen, som hämtas från samma server – se förbehållet under *Spara på webben*. Filer du själv sparar – kopior, autospar till mapp, PDF och CSV – är vanliga, okrypterade filer. Krypterade kopior (`.sisyfos`) kan bara öppnas med ditt lösenord eller din utskrivna återställningsnyckel; glömmer du båda går de inte att öppna, inte heller för oss. Sedan 0.16.0 krypteras boken i delar och du har en personlig nyckel, vars privata del bara finns låst i dina krypterade filer. Ingen annan kan läsa boken, inte heller Agrell Arkitektur, och därför kan ingen heller återställa den åt dig.
 
 **Vad som skickas över nätet.** Appen hämtas från agrellarkitektur.se, och webbhotellet för som alla webbservrar tekniska loggar över anrop (IP-adress, tidpunkt, vilken fil) – inget ur boken följer med. Synpunkter skickas bara när du trycker på Skicka: det du skrivit, din e-postadress om du anger den och, om du vill, version och skärmstorlek. `feedback.php` skickar det vidare som e-post och sparar ingenting. Med konto på webben: den krypterade boken när den ändras, e-postadressen och en inloggning som räknas fram ur lösenordet (servern sparar bara ett hashvärde av den); webbhotellets loggar visar då också IP-adress och tidpunkt för synken. Inget annat: ingen statistik, spårning, reklam, AI eller tjänster från andra företag, och typsnitten är inbyggda.
 
@@ -192,6 +209,8 @@ Sisyfos är en PWA och fungerar utan nät.
 ## Filformat och bakåtkompatibilitet
 
 Boken är en JSON-fil med versionsnummer (`format`). Varje ändring av formatet får en migrering, och **gamla böcker går alltid att öppna** i nyare versioner. En bok från en nyare version öppnas inte av en äldre – och skrivs aldrig över.
+
+Format 10 (0.16.0) lade till organisationen (`register.org = {id, created}` – id:t räknas fram ur bokens skapad-datum, så samma bok får samma id på alla enheter) och personernas offentliga nycklar (`register.people[].keys`, när boken sparas krypterad). Den krypterade filen fick version 2 med delar – se *Kryptering*.
 
 Format 9 (0.15.0) lade till fakturor (`register.invoices`, med de loggor fakturorna använde i `register.invoiceLogos`) och inställningarna för dem (`book.invoicing`). I 0.15.1 kom betalningarna (`register.payments`), kundens land (`zone`) och fakturans momsläge (`vatMode`) som valfria fält – formatet är fortfarande 9. Utfärdade fakturor är frysta och har en kontrollsumma som testet räknar om.
 
@@ -214,7 +233,7 @@ python3 test/oppna_gamla_bocker.py
 | `manifest.webmanifest`, `icon.svg`, `*.png` | Appikon och installation |
 | `feedback.php` | Tar emot synpunktsformuläret och skickar det som e-post. Sparar ingenting |
 | `api.php` | Servern för lagring på webben – tar bara emot krypterade böcker |
-| `test/` | Gamla böcker och kontrollen att de öppnas (`oppna_gamla_bocker.py`), test av fakturorna (`faktura_test.py` och `faktura2_test.py` – betalningar, kunder utomlands och SIE), test av servern (`api_test.py`) och av synken mellan två enheter (`webb_test.py`, körs för hand). För hand vid omskrivningar: `stor_bok.py` bygger en testbok på tio år, `prestanda.py` mäter vanliga åtgärder med den och `jamfor_versioner.py` kontrollerar att skärmarna är lika med en tidigare version |
+| `test/` | Gamla böcker och kontrollen att de öppnas (`oppna_gamla_bocker.py`), test av fakturorna (`faktura_test.py` och `faktura2_test.py` – betalningar, kunder utomlands och SIE), test av boken i delar och nycklarna (`delar_test.py`), test av servern (`api_test.py`) och av synken mellan två enheter (`webb_test.py`, körs för hand). För hand vid omskrivningar: `stor_bok.py` bygger en testbok på tio år, `prestanda.py` mäter vanliga åtgärder med den och `jamfor_versioner.py` kontrollerar att skärmarna är lika med en tidigare version |
 
 ## Publicera på ett webbhotell
 
@@ -225,7 +244,7 @@ Lägg alla filer i roten (utom `test/`, README och LICENSE) i samma mapp, till e
 - **Publicera på webbhotellet** – laddar upp appen via FTPS vid varje push till `main`. Aktiveras när hemligheterna `FTP_SERVER`, `FTP_USERNAME` och `FTP_PASSWORD` finns (frivilligt `FTP_DIR`, standard `/sisyfos/`, och `FTP_PROTOCOL`, standard `ftps`).
 - **Release-zip** – när en release publiceras på GitHub (tagg `vX.Y.Z`) läggs `sisyfos-vX.Y.Z.zip` till, färdig att lägga på webbhotellet (appen, `feedback.php` och `api.php`). Taggen måste ligga på en commit där `APP_VERSION` i `index.html` är samma version – GitHub föreslår `main` som *Target*, så har `main` hunnit få en nyare version väljs rätt commit under *Target → Recent commits*. Blir det fel säger körningen vilken commit som har versionen. Arbetsflödet kan också köras för hand med taggen och en annan commit (`ref`).
 - **Publicera på webbhotellet** skriver också `api-config.php` med sha256 av hemligheten `SISYFOS_ADMIN_KEY` (adminnyckeln för inbjudningskoder) och kontrollerar efteråt att `api.php?a=status` svarar och att datamappen inte går att läsa från webben.
-- **Test – gamla böcker öppnas** – se ovan. Kör också `test/api_test.py` (servern i båda lagringslägena).
+- **Test – gamla böcker öppnas** – se ovan. Kör också `test/delar_test.py` (boken i delar och nycklarna) och `test/api_test.py` (servern i båda lagringslägena).
 
 ## Licens
 

@@ -1,0 +1,3 @@
+# Testnycklar för krypterad-2.sisyfos (0.16.0, version 2 med delar) – bara för testet
+lösenord: Sisyfos rullar stenen 2026
+återställningsnyckel: GS23-WKX5-EASJ-J3Q8-W720-Q247-HET5-CRV2

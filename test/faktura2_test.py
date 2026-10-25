@@ -20,6 +20,7 @@ from playwright.sync_api import sync_playwright
 
 URL = sys.argv[1] if len(sys.argv) > 1 else 'http://localhost:8765/index.html'
 ROOT = pathlib.Path(__file__).resolve().parent
+APPV = re.search(r"APP_VERSION = '([^']+)'", (ROOT.parent / 'index.html').read_text(encoding='utf-8')).group(1)
 fel = []
 def kolla(ok, txt):
     print(('OK  ' if ok else 'FEL ') + txt)
@@ -135,7 +136,7 @@ with sync_playwright() as p:
     raw = pathlib.Path(dl.value.path()).read_bytes(); pg.wait_for_timeout(300)
     kolla(dl.value.suggested_filename.endswith('.si'), 'Filnamnet: ' + dl.value.suggested_filename)
     txt = raw.decode('cp437')
-    kolla(b'\r\n' in raw and '#FORMAT PC8' in txt and '#SIETYP 4' in txt and '#PROGRAM "Sisyfos" 0.15.1' in txt, 'SIE-huvudet: PC8, typ 4, programmet')
+    kolla(b'\r\n' in raw and '#FORMAT PC8' in txt and '#SIETYP 4' in txt and f'#PROGRAM "Sisyfos" {APPV}' in txt, 'SIE-huvudet: PC8, typ 4, programmet')
     kolla('Brf Smeden' in txt and 'å'.encode('cp437') in raw or 'ö'.encode('cp437') in raw, 'Svenska tecken i CP437')
     vers = re.findall(r'#VER (\S+) "" (\d{8}) "([^"]*)"\r\n\{\r\n(.*?)\r\n\}\r\n', txt, re.S)
     kolla(len(vers) == 7, f'7 verifikationer (5 fakturor, 2 betalningar): {len(vers)}')

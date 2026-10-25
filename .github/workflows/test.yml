@@ -19,6 +19,11 @@ jobs:
           python -m http.server 8765 >/dev/null 2>&1 &
           sleep 1
           python test/oppna_gamla_bocker.py
+      - name: Boken i delar och nycklarna
+        run: |
+          python -m http.server 8765 >/dev/null 2>&1 &
+          sleep 1
+          python test/delar_test.py
       - name: Fakturor
         run: |
           sudo apt-get install -y poppler-utils >/dev/null

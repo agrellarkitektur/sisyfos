@@ -38,6 +38,14 @@ def bok(page):
     return page.evaluate(BOK_JS)
 
 
+# Nyckelringen på enheten och filen på servern (0.16.0: krypterad fil version 2 med delar)
+NYCKEL_JS = """async () => { const db = await new Promise(r => { const q = indexedDB.open('sisyfos'); q.onsuccess = () => r(q.result); });
+  const get = k => new Promise(r => { const g = db.transaction('kv').objectStore('kv').get(k); g.onsuccess = () => r(g.result); });
+  const k = await get('keys'), w = await get('web'); db.close();
+  const f = await (await fetch('api.php?a=get', { headers: { 'X-Sisyfos-Token': w.token }, cache: 'no-store' })).json();
+  return { fp: k?.fp, v: f.version, parts: Object.keys(f.parts || {}).sort(), ring: f.keys?.[f.me]?.fp }; }"""
+
+
 def shell(page, text):
     page.fill('#quickIn', text); page.wait_for_timeout(150); page.press('#quickIn', 'Enter'); page.wait_for_timeout(300)
 
@@ -119,6 +127,10 @@ def main():
             pa, pb = projekt(A), projekt(B)
             ok('Alfaprojekt' in pa and 'Betaprojekt' in pa, f'A har båda projekten: {pa}')
             ok(pa == pb, 'A och B har samma projekt')
+            ka, kb = A.evaluate(NYCKEL_JS), B.evaluate(NYCKEL_JS)
+            reg = {p['id']: (p.get('keys') or {}).get('fp') for p in bok(A)['bok']['register']['people']}
+            ok(ka['v'] == 2 and 'reg' in ka['parts'] and 'adm' in ka['parts'], f"filen på servern: version {ka['v']}, delar {ka['parts']}")
+            ok(ka['fp'] and ka['fp'] == kb['fp'] == ka['ring'] and ka['fp'] in reg.values(), f"samma personliga nyckel på A och B och i registret ({ka['fp']} / {kb['fp']})")
             ea, eb = bok(A)['bok']['logs'], bok(B)['bok']['logs']
             na = {k: len(v['events']) for k, v in ea.items()}; nb = {k: len(v['events']) for k, v in eb.items()}
             ok(na == nb and sum(na.values()) >= 229, f'händelser lika på båda: {na} / {nb}')
