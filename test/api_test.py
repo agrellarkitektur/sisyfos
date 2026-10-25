@@ -189,9 +189,156 @@ def kor(laget):
         datadir = os.path.join(web, 'data') if laget == 'inside' else os.path.join(tmp, 'sisyfos-data')
         alla = ''.join(open(os.path.join(r, f), errors='ignore').read() for r, _, fs in os.walk(datadir) for f in fs)
         ok(login not in alla and login2 not in alla, 'inloggningshemligheterna finns inte på disk')
+
+        organisation(api, datadir)
     finally:
         srv.terminate(); srv.wait()
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+def del_(by, to, n=1):
+    """En låtsasdel: servern kan inte läsa den, bara se skribenten (by) och läsarna (to)"""
+    return {'by': by, 'epk': {'x': 'a', 'y': 'b'}, 'to': {p: {'iv': 'i', 'ct': 'c'} for p in to}, 'zip': 'gzip', 'iv': 'x', 'ct': 'y' * (40 + n), 'sig': 's'}
+
+
+def fil(v, me, parts):
+    return json.dumps({'format': 'sisyfos-krypterad', 'version': 2, 'app': 'test', 'saved': 'nu', 'vault': v, 'zip': 'gzip', 'org': 'otest', 'me': me,
+                       'keys': {me: {'at': '2026', 'fp': 'f', 'box': {'iv': 'r', 'ct': 'q'}}}, 'parts': parts, 'data': {'iv': 's', 'ct': 't'}}).encode()
+
+
+def organisation(api, datadir):
+    """Organisationer (0.16.1): kod från serverns ägare, admin bjuder in, medarbetaren går med, delar med en skribent var"""
+    adm = {'X-Sisyfos-Admin': quote(ADMIN)}
+    s, d, _ = api.call('invite', {'note': 'Konto', 'max': 1}, headers=adm); kodA = d['code']
+    s, d, _ = api.call('invite', {'note': 'Byrån', 'kind': 'org'}, headers=adm); kodO = d['code']
+    ok(s == 201 and d['kind'] == 'org', 'kod för en organisation')
+    vA, lA = vault(vid='va'), base64.b64encode(os.urandom(32)).decode()
+    api.token = None
+    s, d, _ = api.call('register', {'invite': kodO, 'email': 'ca@byran.se', 'login': lA, 'vault': vA})
+    ok(s == 403, 'en organisationskod skapar inget konto')
+    s, d, _ = api.call('register', {'invite': kodA, 'email': 'ca@byran.se', 'login': lA, 'vault': vA}); api.token = tA = d['token']
+    s, d, _ = api.call('put', bok(vA, 1), headers={'X-Sisyfos-Base': '0'})
+    ok(s == 200 and d['rev'] == 1, 'admin har en egen bok')
+    s, d, _ = api.call('orgCreate', {'code': kodA, 'book': 'otest', 'name': 'Byrån', 'pid': 'pers1'})
+    ok(s == 403, 'en kontokod skapar ingen organisation')
+    s, d, _ = api.call('orgCreate', {'code': kodO, 'book': 'otest', 'name': 'Byrån', 'pid': 'pers1'})
+    ok(s == 201 and d['org']['role'] == 'admin' and d['org']['pid'] == 'pers1', 'organisationen skapad, kontot är admin')
+    oid = d['org']['id']; q = '&org=' + oid
+    s, d, _ = api.call('info')
+    ok(s == 409 and d['error'] == 'moved' and d['org']['id'] == oid, 'den egna boken har flyttat – en gammal enhet får veta vart')
+    s, d, _ = api.call('info', query=q)
+    ok(s == 200 and d['rev'] == 0 and d['org']['members'][0]['email'] == 'ca@byran.se', 'info för organisationen')
+
+    # admin sparar registret, fakturorna, sitt kort och sin logg – och förvaltar Annas logg
+    parts = {'reg': del_('pers1', ['pers1']), 'adm': del_('pers1', ['pers1']), 'card.pers1': del_('pers1', ['pers1']), 'log.pers1': del_('pers1', ['pers1']), 'log.anna': del_('pers1', ['pers1'])}
+    s, d, _ = api.call('put', fil(vA, 'pers1', parts), headers={'X-Sisyfos-Base': '0'}, query=q)
+    ok(s == 200 and d['rev'] == 1 and d['behind'] is False, 'admin sparar delarna → version 1')
+    s, d, _ = api.call('put', fil(vA, 'pers1', {'reg': del_('pers2', ['pers1'])}), headers={'X-Sisyfos-Base': '1'}, query=q)
+    ok(s == 403, 'en del som säger sig vara skriven av någon annan nekas')
+
+    # inbjudan – och taket
+    s, d, _ = api.call('orgInvite', {'pid': 'anna', 'note': 'Anna'}, query=q); kodM = d['code']
+    ok(s == 201 and len(kodM) == 11, f'admin bjuder in Anna ({kodM})')
+    for i in range(8):
+        s, d, _ = api.call('orgInvite', {'pid': f'p{i}'}, query=q)
+    ok(s == 201, 'tio platser: admin, Anna och åtta inbjudningar')
+    s, d, _ = api.call('orgInvite', {'pid': 'p9'}, query=q)
+    ok(s == 409 and d['error'] == 'org_full', 'den elfte nekas (tak 10)')
+    s, d, _ = api.call('info', query=q)
+    for x in d['org']['invites']:
+        if x['pid'].startswith('p'): api.call('orgUninvite', {'code': x['code']}, query=q)
+    s, d, _ = api.call('invites', headers=adm)
+    ok(all(x['kind'] != 'member' for x in d['invites']), 'serverns ägare ser inte medarbetarkoderna')
+
+    # Anna skapar konto med koden och lämnar sina nycklar
+    vN, lN = vault(vid='vn'), base64.b64encode(os.urandom(32)).decode()
+    api.token = None
+    s, d, _ = api.call('register', {'invite': kodM, 'email': 'anna@byran.se', 'login': lN, 'vault': vN})
+    ok(s == 201 and d['org']['id'] == oid and d['org']['pid'] == 'anna' and d['org']['role'] == 'member', 'Anna har konto och är medarbetare')
+    api.token = tN = d['token']
+    s, d, _ = api.call('get', raw=True, query=q); f = json.loads(d)
+    ok(s == 200 and f['me'] == 'anna' and f['parts'] == {} and f['srv']['wrote'] == ['pers1'], 'Anna ser inga delar innan admin tagit in henne')
+    keys = {'enc': {'kty': 'EC', 'crv': 'P-256', 'x': 'ex', 'y': 'ey'}, 'sig': {'kty': 'EC', 'crv': 'P-256', 'x': 'sx', 'y': 'sy'}, 'at': '2026-10-25', 'fp': 'abcd'}
+    s, d, _ = api.call('orgKeys', {'keys': keys, 'env': {'vault': vN, 'keys': {'anna': {'at': '1', 'fp': 'abcd', 'box': {}}}, 'data': {'iv': 'a', 'ct': 'b'}}}, query=q)
+    ok(s == 200, 'Anna lämnar sina offentliga nycklar och sitt omslag')
+    s, d, _ = api.call('info', query=q)
+    ok(s == 200 and 'email' not in d['org']['members'][0] and d['org']['invites'] == [], 'Anna ser inte medlemmarnas e-post eller inbjudningarna')
+    s, d, _ = api.call('orgInvite', {'pid': 'x1'}, query=q)
+    ok(s == 403, 'Anna kan inte bjuda in')
+    s, d, _ = api.call('put', fil(vN, 'anna', {'reg': del_('anna', ['anna'])}), headers={'X-Sisyfos-Base': '1'}, query=q)
+    ok(s == 403, 'Anna kan inte skriva registret')
+    s, d, _ = api.call('put', fil(vN, 'anna', {'log.pers1': del_('anna', ['anna'])}), headers={'X-Sisyfos-Base': '1'}, query=q)
+    ok(s == 403, 'Anna kan inte skriva någon annans tidlogg')
+
+    # admin ser nycklarna, krypterar om till Anna och lämnar över hennes logg
+    api.token = tA
+    s, d, _ = api.call('info', query=q)
+    anna = [m for m in d['org']['members'] if m['pid'] == 'anna'][0]
+    ok(anna['keys']['fp'] == 'abcd' and anna['email'] == 'anna@byran.se', 'admin ser Annas nycklar')
+    parts = {'reg': del_('pers1', ['pers1', 'anna'], 2), 'card.anna': del_('pers1', ['pers1', 'anna']), 'log.anna': del_('pers1', ['pers1', 'anna'], 3)}
+    s, d, _ = api.call('put', fil(vA, 'pers1', parts), headers={'X-Sisyfos-Base': '1'}, query=q)
+    ok(s == 200 and d['rev'] == 2, 'admin krypterar om till Anna → version 2')
+
+    api.token = tN
+    s, d, h = api.call('get', raw=True, query=q); f = json.loads(d)
+    ok(sorted(f['parts']) == ['card.anna', 'log.anna', 'reg'] and h.get('X-Sisyfos-Rev') == '2' and f['keys']['anna']['fp'] == 'abcd', f"Anna får bara sina delar: {sorted(f['parts'])}")
+    s, d, _ = api.call('put', fil(vN, 'anna', {'log.anna': del_('anna', ['anna', 'pers1'], 4)}), headers={'X-Sisyfos-Base': '1'}, query=q)
+    ok(s == 409 and d['error'] == 'conflict', 'Annas logg har ändrats sedan version 1 → krock')
+    s, d, _ = api.call('put', fil(vN, 'anna', {'log.anna': del_('anna', ['anna', 'pers1'], 4)}), headers={'X-Sisyfos-Base': '2'}, query=q)
+    ok(s == 200 and d['rev'] == 3, 'Anna skriver sin tidlogg → version 3')
+
+    api.token = tA
+    s, d, _ = api.call('put', fil(vA, 'pers1', {'log.anna': del_('pers1', ['pers1'])}), headers={'X-Sisyfos-Base': '3'}, query=q)
+    ok(s == 403, 'när Anna har skrivit sin logg kan admin inte ändra den')
+    s, d, _ = api.call('put', fil(vA, 'pers1', {'log.pers1': del_('pers1', ['pers1'], 5)}), headers={'X-Sisyfos-Base': '2'}, query=q)
+    ok(s == 200 and d['behind'] is True, 'admins egen logg sparas utan krock – men andra delar är nyare (behind)')
+    s, d, _ = api.call('get', raw=True, query=q); f = json.loads(d)
+    ok(len(f['parts']) == 6 and sorted(f['srv']['wrote']) == ['anna', 'pers1'] and f['srv']['role'] == 'admin', 'admin ser alla delar och att Anna skrivit sin logg')
+
+    # lösenordsbyte följer med till omslaget
+    v2 = dict(vA, pw={'iv': 'n2', 'ct': 'm2'})
+    s, d, _ = api.call('vault', {'vault': v2})
+    s, d, _ = api.call('get', raw=True, query=q)
+    ok(json.loads(d)['vault']['pw']['ct'] == 'm2', 'nytt valv i organisationens omslag')
+
+    # serverns ägare ser organisationen
+    s, d, _ = api.call('accounts', headers=adm)
+    ok(d['orgs'][0]['name'] == 'Byrån' and d['orgs'][0]['members'] == 2, 'serverns ägare ser organisationen')
+    alla = ''.join(open(os.path.join(r, f), errors='ignore').read() for r, _, fs in os.walk(os.path.join(datadir, 'org')) for f in fs)
+    ok('anna@byran.se' in alla and lN not in alla, 'organisationen på disk: e-post för admin, inga hemligheter')
+
+    # admin tar bort Anna
+    s, d, _ = api.call('orgRemove', {'pid': 'pers1'}, query=q)
+    ok(s == 400, 'admin kan inte ta bort sig själv')
+    s, d, _ = api.call('orgRemove', {'pid': 'anna'}, query=q)
+    ok(s == 200, 'admin tar bort Anna')
+    api.token = tN
+    s, d, _ = api.call('get', raw=True, query=q)
+    ok(s == 403, 'Anna når inte organisationen längre')
+    s, d, _ = api.call('info')
+    ok(s == 200 and d['orgs'] == [], 'Annas konto finns kvar utan organisation')
+    api.token = tA
+    s, d, _ = api.call('put', fil(vA, 'pers1', {'log.anna': del_('pers1', ['pers1'], 6)}), headers={'X-Sisyfos-Base': '4'}, query=q)
+    ok(s == 200, 'admin förvaltar Annas logg igen')
+
+    # Anna går med igen med ett befintligt konto
+    s, d, _ = api.call('orgInvite', {'pid': 'anna'}, query=q); kodM2 = d['code']
+    api.token = tN
+    s, d, _ = api.call('orgJoin', {'code': kodM2})
+    ok(s == 200 and d['org']['pid'] == 'anna', 'ett befintligt konto går med med koden')
+    s, d, _ = api.call('orgJoin', {'code': kodM2})
+    ok(s == 403, 'koden kan inte användas igen')
+
+    # admin raderar sitt konto → organisationen tas bort
+    api.token = tA
+    s, d, _ = api.call('delete', {'login': lA})
+    ok(s == 200, 'admin raderar kontot')
+    ok(not os.path.isdir(os.path.join(datadir, 'org', oid)), 'organisationen är borttagen från disk')
+    api.token = tN
+    s, d, _ = api.call('info')
+    ok(s == 200 and d['orgs'] == [], 'Annas konto står kvar utan organisation')
+    api.token = None
+    api.call('remove', {'email': 'anna@byran.se'}, headers=adm)
 
 
 if __name__ == '__main__':

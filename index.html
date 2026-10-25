@@ -181,13 +181,21 @@ button{cursor:pointer}
 .sf-row .v .neg{color:var(--warn-ink)}
 .sf-row>.btn,.sf-row>span+.btn{justify-self:end}
 .sf-row:has(> .btn ~ .btn){grid-template-columns:minmax(150px,200px) minmax(0,1fr) auto auto auto}
-.adm-new{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:end}
+.adm-new{display:grid;grid-template-columns:2fr 1.4fr .7fr .7fr auto;gap:8px;align-items:end}
 @media (max-width:560px){.adm-new{grid-template-columns:1fr 1fr}}
 .adm-t{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
 .adm-t th{text-align:left;font-weight:600;color:var(--muted);border-bottom:1px solid var(--rule);padding:4px 6px}
 .adm-t td{border-bottom:1px solid var(--rule);padding:4px 6px;vertical-align:middle}
 .adm-t td.num{font-family:var(--font-data);text-align:right}
 .inv-code{margin:8px 0 0;font-size:14px}.inv-code b{font-size:18px;letter-spacing:.06em}
+.org-list{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+.org-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.org-row .r-text{flex:1;min-width:200px}.org-row .r-sub{white-space:normal}
+.org-acts{display:flex;gap:6px;flex-wrap:wrap}
+.org-row .ic{width:13px;height:13px;vertical-align:-2px}
+.warn-t{color:var(--warn-ink);font-weight:600}
+.org-pick{display:flex;flex-direction:column;gap:8px;margin:8px 0}.org-pick .btn{justify-content:flex-start;gap:8px;text-align:left}
+.org-code{margin-top:12px;padding:10px 12px;border:1px dashed var(--rule);border-radius:8px}.org-code b{font-size:18px;letter-spacing:.06em}
 .btn.danger{background:var(--warn-ink);border-color:var(--warn-ink);color:#fff}
 .snaps{list-style:none;margin:6px 0 0;padding:0;border:1px solid var(--rule);border-radius:10px;overflow:hidden;background:var(--chrome)}
 .snaps li{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto auto;gap:4px 12px;align-items:center;padding:6px 8px 6px 12px;border-top:1px solid var(--rule);font-size:13px}
@@ -1217,7 +1225,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 
 /* ───────────── Hjälpfunktioner ───────────── */
 const FORMAT = 'sisyfos', FORMAT_VERSION = 10, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.16.0', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const APP_VERSION = '0.16.1', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 { const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
@@ -2226,10 +2234,14 @@ async function encBookText(obj) {
     const z = await gz(bytes, 'zip'); if (z) { bytes = z; zip = 'gzip'; }
     return JSON.stringify({ format: ENC_FORMAT, version: 1, app: APP_VERSION, saved: now, vault: vaultPublic(e.vault), zip, data: await seal(e.key, bytes, AAD_DATA) });
   }
-  const { org, parts } = await encParts(obj, k);
+  const { org, parts } = await encParts(obj, k), env = await encEnvelope(k);
+  return JSON.stringify({ format: ENC_FORMAT, version: 2, app: APP_VERSION, saved: now, vault: env.vault, zip: env.zip, org, me: k.pid, keys: env.keys, parts, data: env.data });
+}
+// Filens omslag: valvet, nyckelringen och stubben (format 10) låst med boknyckeln
+async function encEnvelope(k, e = st.enc) {
   let stub = te(JSON.stringify({ format: FORMAT, version: FORMAT_VERSION, parts: true }));
   const z = await gz(stub, 'zip'); if (z) stub = z;
-  return JSON.stringify({ format: ENC_FORMAT, version: 2, app: APP_VERSION, saved: now, vault: vaultPublic(e.vault), zip: z ? 'gzip' : null, org, me: k.pid, keys: { [k.pid]: { at: k.at, fp: k.fp, box: k.box } }, parts, data: await seal(e.key, stub, AAD_DATA) });
+  return { vault: vaultPublic(e.vault), zip: z ? 'gzip' : null, keys: { [k.pid]: { at: k.at, fp: k.fp, box: k.box } }, data: await seal(e.key, stub, AAD_DATA) };
 }
 async function decBook(file, key) {
   if (file.version === 2) return decParts(file, key);
@@ -2316,8 +2328,10 @@ function bookJoin(P) {
 }
 // Vem som får skriva och läsa en del. Admin = personer med admin och nycklar (har ingen admin nycklar räknas alla med
 // nycklar – en bok där ingen markerats som admin ska inte låsa ute sig själv). me räknas som om den har nycklar.
+// Nycklar med gone (0.16.1: personen har tagits bort ur organisationen) används bara för att kontrollera gamla signaturer.
+const keyLive = p => !!(p?.keys && !p.keys.gone);
 function partRule(name, reg, mePid) {
-  const ppl = reg?.people || [], keyed = ppl.filter(p => p.keys || p.id === mePid), ad = keyed.filter(p => p.admin);
+  const ppl = reg?.people || [], keyed = ppl.filter(p => keyLive(p) || p.id === mePid), ad = keyed.filter(p => p.admin);
   const admins = (ad.length ? ad : keyed).map(p => p.id), all = ppl.map(p => p.id);
   const uniq = a => [...new Set(a)];
   if (name === 'reg') return { w: admins, r: uniq([...admins, ...all]) };
@@ -2325,7 +2339,7 @@ function partRule(name, reg, mePid) {
   const i = name.indexOf('.'), kind = name.slice(0, i), pid = name.slice(i + 1);
   if (kind === 'card') return { w: admins, r: uniq([pid, ...admins]) };
   // Tidloggen skrivs bara av personen själv – utom innan personen har egna nycklar (då förvaltar admin den)
-  if (kind === 'log') { const own = ppl.find(p => p.id === pid); return { w: own?.keys || pid === mePid ? [pid] : uniq([pid, ...admins]), r: uniq([pid, ...admins]) }; }
+  if (kind === 'log') { const own = ppl.find(p => p.id === pid); return { w: keyLive(own) || pid === mePid ? [pid] : uniq([pid, ...admins]), r: uniq([pid, ...admins]) }; }
   return { w: admins, r: admins };
 }
 // Organisationens id (format 10): räknas fram ur bokens skapad-datum – samma på alla enheter som migrerar samma bok
@@ -2378,13 +2392,15 @@ async function keysEnsure() {
   let k = await keysMine();
   if (!k) { const n = await keysCreate(me(), e.key); await keysStore({ ...n, vault: e.vault.id }); k = await keysMine(); if (!k) return null; }
   const P = byId(R().people, me());
-  if (P && P.keys?.fp !== k.fp && keyOlder(k, P.keys)) { P.keys = keysPublic(k); save(); }
+  // I en organisation för admin in medarbetarens nyckel (0.16.1) – medarbetaren skriver inte registret
+  // – och för admin i en organisation gäller enhetens nyckel (registret signeras med den), inte en äldre från en importerad bok
+  if (P && !orgMember() && P.keys?.fp !== k.fp && (webOrg() || keyOlder(k, P.keys))) { P.keys = keysPublic(k); save(); }
   return k;
 }
 // En krypterad fil (version 2) bär sin nyckelring. Är den äldre än den här enhetens (eller saknas en här) tas den över.
-async function keysAdopt(file, force) {
+async function keysAdopt(file, force, pid = me()) {
   if (file?.version !== 2 || !db || !st.enc) return;
-  const ent = file.keys?.[file.me]; if (!ent || file.me !== me()) return;
+  const ent = file.keys?.[file.me]; if (!ent || file.me !== pid) return;
   const cur = await kvGet('keys').catch(() => null);
   if (force || !cur || cur.vault !== file.vault?.id || cur.pid !== file.me || (cur.fp !== ent.fp && keyOlder(ent, cur))) await keysStore({ pid: file.me, at: ent.at, fp: ent.fp, box: ent.box, vault: file.vault.id });
 }
@@ -2435,18 +2451,21 @@ async function partVerify(org, name, p, pubSig) {
   return crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, key, unb64(p.sig), te(partSigText(org, name, p)));
 }
 // Boken → alla delar, var och en krypterad till sina läsare (den egna nyckeln alltid med) och signerad
+function partRecips(name, reg, k) {
+  const recips = [{ pid: k.pid, pub: k.pub.enc }];
+  for (const pid of partRule(name, reg, k.pid).r) { if (pid === k.pid) continue; const x = (reg.people || []).find(p => p.id === pid); if (keyLive(x) && x.keys.enc) recips.push({ pid, pub: x.keys.enc }); }
+  return recips;
+}
 async function encParts(obj, k) {
   const org = obj.register?.org?.id || 'o', P = bookSplit(obj), reg = obj.register, out = {};
-  for (const name of Object.keys(P)) {
-    const rule = partRule(name, reg, k.pid), recips = [{ pid: k.pid, pub: k.pub.enc }];
-    for (const pid of rule.r) { if (pid === k.pid) continue; const x = (reg.people || []).find(p => p.id === pid); if (x?.keys?.enc) recips.push({ pid, pub: x.keys.enc }); }
-    out[name] = await partSeal(org, name, P[name], recips, k);
-  }
+  for (const name of Object.keys(P)) out[name] = await partSeal(org, name, P[name], partRecips(name, reg, k), k);
   return { org, parts: out };
 }
 // Krypterad fil version 2 → boken. Delarna öppnas med filens egen nyckelring (låst med boknyckeln). Varje del
 // kontrolleras: signaturen ska stämma och skribenten ska få skriva delen enligt registret.
-async function decParts(file, master) {
+// opt (0.16.1, organisationer): wrote = personer som själva har skrivit sin tidlogg på servern – andras tidloggar får
+// fortfarande vara skrivna av admin (innan personen gått med). Ut: opt.P (de öppnade delarna) och opt.regFp (registrets nyckel).
+async function decParts(file, master, opt) {
   const ent = file.keys?.[file.me]; if (!ent) throw new Error('Filen saknar nyckelring.');
   let k; try { k = await keysOpen(ent, master); } catch (_) { throw new Error('Filens nyckelring går inte att låsa upp med den här nyckeln.'); }
   const org = file.org, parts = file.parts || {}, P = {};
@@ -2465,8 +2484,10 @@ async function decParts(file, master) {
     if (!ok) throw bad(n);
     // Skribenten ska få skriva delen. Det man skrivit själv litar man på (i 0.16.0 innehåller ens egen fil hela boken);
     // en del som någon annan skrivit utan att få det används inte – registret måste alltid vara rätt.
-    if (!partRule(n, reg, k.pid).w.includes(by) && by !== k.pid) { if (n === 'reg') throw new Error('Registret är skrivet av någon som inte är admin.'); delete P[n]; }
+    const handover = opt?.wrote && n.startsWith('log.') && !opt.wrote.includes(n.slice(4)) && partRule('reg', reg, k.pid).w.includes(by);
+    if (!partRule(n, reg, k.pid).w.includes(by) && by !== k.pid && !handover) { if (n === 'reg') throw new Error('Registret är skrivet av någon som inte är admin.'); delete P[n]; }
   }
+  if (opt) { const rb = parts.reg.by, rk = rb === k.pid ? k.pub : (reg.people || []).find(x => x.id === rb)?.keys; opt.P = P; opt.regFp = rk ? await keyFp(rk) : null; }
   return bookJoin(P);
 }
 
@@ -2547,7 +2568,7 @@ function encSectionHtml() {
   if (!encOk()) return h + `<p class="muted small">Kryptering kräver att Sisyfos öppnas över https i en uppdaterad webbläsare.</p>`;
   if (!e) return h + `<p class="muted small">Spara boken som en <b>krypterad kopia</b> (.sisyfos) som bara kan öppnas med ditt lösenord eller en återställningsnyckel som du skriver ut. Samma nyckel används när boken kan sparas på webben.</p><div class="btn-row"><button class="btn" data-act="encSetup">${ic('lock')}Slå på kryptering …</button></div>`;
   const row = (k, v) => `<div class="sf-row"><span class="k">${k}</span><span class="v">${v}</span></div>`;
-  h += `<div class="sf-grid">${row('Status', `${ic('check')} På sedan ${fwhen(e.vault.created)} · AES-256, lösenordet sträcks med PBKDF2 (${nk(e.vault.kdf.iter)} varv)`)}${row('Lösenord', `Senast ändrat ${fwhen(e.vault.pwAt || e.vault.created)}${e.key ? '' : ' · <span class="neg">låst på den här enheten</span>'}`)}${row('Återställningsnyckel', `Skapad ${fwhen(e.vault.rkAt || e.vault.created)} · id ${esc(e.vault.id)}`)}${(ki => row('Personlig nyckel', ki ? `<span class="mono">${esc(fpText(ki.fp))}</span> · skapad ${fwhen(ki.at)}` : '<span class="muted">Skapas nästa gång boken sparas krypterad</span>'))(st.keysInfo?.vault === e.vault.id && st.keysInfo?.pid === me() ? st.keysInfo : null)}${row('Delar', 'Registret, fakturorna, personkortet och tidloggen krypteras var för sig – var och en bara till dem som får läsa den. Förberett för flera personer.')}</div>`;
+  h += `<div class="sf-grid">${row('Status', `${ic('check')} På sedan ${fwhen(e.vault.created)} · AES-256, lösenordet sträcks med PBKDF2 (${nk(e.vault.kdf.iter)} varv)`)}${row('Lösenord', `Senast ändrat ${fwhen(e.vault.pwAt || e.vault.created)}${e.key ? '' : ' · <span class="neg">låst på den här enheten</span>'}`)}${row('Återställningsnyckel', `Skapad ${fwhen(e.vault.rkAt || e.vault.created)} · id ${esc(e.vault.id)}`)}${(ki => row('Personlig nyckel', ki ? `<span class="mono">${esc(fpText(ki.fp))}</span> · skapad ${fwhen(ki.at)}` : '<span class="muted">Skapas nästa gång boken sparas krypterad</span>'))(st.keysInfo?.vault === e.vault.id && st.keysInfo?.pid === me() ? st.keysInfo : null)}${row('Delar', 'Registret, fakturorna, personkortet och tidloggen krypteras var för sig – var och en bara till dem som får läsa den.' + (webOrg() ? ` I organisationen ${esc(st.web.orgName || '')} ligger de var för sig på servern.` : ' Gör boken till en organisation under Spara på webben för att dela den med medarbetare.'))}</div>`;
   h += `<div class="btn-row enc-acts"><button class="btn primary" data-act="encSave">${ic('save')}Spara krypterad kopia</button><button class="btn ghost" data-act="encPw">Byt lösenord …</button><button class="btn ghost" data-act="encRk">Ny återställningsnyckel …</button><button class="btn ghost" data-act="encOff">Stäng av …</button></div>`;
   return h;
 }
@@ -2628,6 +2649,10 @@ const WEB_API = 'api.php', WEB_DEBOUNCE = 5000;
 st.web = null; st.webS = { s: 'off' };
 let webT = null, webP = null, webAgain = false, webLast = 0;
 const webOn = () => !!st.web?.token;
+// Organisationer (0.16.1): st.web.org = organisationens id på servern, pid = personen i boken, role = 'admin' | 'member'
+const webOrg = () => !!(webOn() && st.web.org);
+const orgMember = () => !!(st.web?.token && st.web.org && st.web.role !== 'admin');
+const ORG_ACTS = ['info', 'get', 'put', 'history', 'orgKeys', 'orgInvite', 'orgUninvite', 'orgRemove'];
 function devName() {
   const u = navigator.userAgent;
   const os = /iPhone/.test(u) ? 'iPhone' : /iPad/.test(u) || (/Macintosh/.test(u) && navigator.maxTouchPoints > 1) ? 'iPad' : /Android/.test(u) ? 'Android' : /Windows/.test(u) ? 'Windows' : /Mac OS X/.test(u) ? 'Mac' : /Linux/.test(u) ? 'Linux' : 'Enhet';
@@ -2651,8 +2676,9 @@ async function api(a, o = {}) {
   if (o.admin) h['X-Sisyfos-Admin'] = encodeURIComponent(o.admin); // URL-kodad: rubriker tål bara vissa tecken
   let body;
   if (o.body !== undefined) { const s = typeof o.body === 'string'; body = s ? o.body : JSON.stringify(o.body); h['Content-Type'] = s ? 'text/plain;charset=utf-8' : 'application/json'; }
+  const org = o.org === false ? '' : o.org || (ORG_ACTS.includes(a) && !o.noAuth && !o.token ? st.web?.org : '') || '';
   let r;
-  try { r = await fetch(`${WEB_API}?a=${a}${o.query || ''}`, { method: body !== undefined ? 'POST' : 'GET', headers: h, body, cache: 'no-store', credentials: 'omit' }); }
+  try { r = await fetch(`${WEB_API}?a=${a}${org ? '&org=' + org : ''}${o.query || ''}`, { method: body !== undefined ? 'POST' : 'GET', headers: h, body, cache: 'no-store', credentials: 'omit' }); }
   catch (_) { const x = new Error('Ingen kontakt med servern – kontrollera nätet.'); x.offline = true; throw x; }
   if (o.raw && r.ok) return { text: await r.text(), rev: +r.headers.get('X-Sisyfos-Rev') || 0, head: +r.headers.get('X-Sisyfos-Head') || 0 };
   let j = null; try { j = await r.json(); } catch (_) {}
@@ -2736,14 +2762,17 @@ async function webSyncOnce() {
   if (!db) return;
   await webLoad();
   if (!webOn()) { webState(st.web?.expired ? 'auth' : 'off'); return; }
-  if (isExample() || st.noSave) { webState('paused'); return; }
+  // En organisation som ännu inte har hämtats får ersätta exempelboken (medarbetaren som just gått med)
+  const orgFirst = !!st.web.org && !st.web.base;
+  if ((isExample() || st.noSave) && !orgFirst) { webState('paused'); return; }
   if (!st.enc?.key) { webState('locked'); return; }
   if (navigator.onLine === false) { webState('offline'); return; }
   flush();
-  try { await keysEnsure(); } catch (_) {}
+  if (!orgFirst) { try { await keysEnsure(); } catch (_) {} }
   flush();
   const w = st.web, raw = JSON.stringify(S);
   webState('sync');
+  if (w.org) { try { await webSyncOrg(); webLast = Date.now(); webState('ok'); } catch (e) { webFail(e); } return; }
   try {
     if (w.replace) { const i = await api('info'); await webInfo(i); await webPut(raw, i.rev); await webStore({ replace: false }); }
     else if (raw !== w.base) {
@@ -2754,7 +2783,11 @@ async function webSyncOnce() {
       if (i.rev !== w.rev) await webPull();
     }
     webLast = Date.now(); webState('ok');
-  } catch (e) { webFail(e); }
+  } catch (e) {
+    // Boken har flyttat till en organisation (från en annan enhet, 0.16.1): fortsätt där – osynkade ändringar slås ihop
+    if (e.code === 'moved' && e.data?.org?.id) { try { await orgUse(e.data.org, true); await webSyncOrg(); webLast = Date.now(); webState('ok'); toast(`Boken är nu organisationen ”${e.data.org.name}”`); } catch (x) { webFail(x); } return; }
+    webFail(e);
+  }
 }
 async function webInfo(i) {
   st.webInfo = i;
@@ -2791,6 +2824,8 @@ function webApply(book) { S = book; derive(); lastRaw = null; writeNow(); render
 function webFail(e) {
   if (e.defer) { st.webS.s = 'pending'; renderSave(); return; }
   if (e.offline) return webState('offline');
+  if (e.waiting) return webState('waiting');
+  if (e.code === 'not_member') return webState('gone', e.message);
   if (e.status === 401) { if (st.web) webStore({ token: null, expired: true }); return webState('auth', e.message); }
   if (/nyare version/.test(e.message)) return webState('newer', e.message);
   if (e.code === 'vault') return webState('vault', e.message);
@@ -2810,12 +2845,14 @@ function webSaveText() {
     case 'vault': return ['Synken stoppad – fel nyckel', 'err'];
     case 'err': return ['Synken misslyckades – försöker igen', 'warn'];
     case 'auth': return ['Inloggningen på webben har gått ut – logga in', 'warn'];
+    case 'waiting': return ['Väntar på att admin tar in dig i boken', 'warn'];
+    case 'gone': return ['Du är inte med i organisationen längre', 'err'];
     default: return [st.saved ? `Sparat ${pad(st.saved.getHours())}:${pad(st.saved.getMinutes())} · synkas strax` : 'Synkas strax', ''];
   }
 }
 function webStatusLong() {
   const s = st.webS, m = s.msg ? ` <span class="muted">(${esc(s.msg)})</span>` : '';
-  return { ok: `${ic('check')} Synkad ${s.at ? fwhen(s.at.toISOString()) : ''}`, sync: 'Synkar …', pending: 'Ändringar synkas strax', offline: 'Offline – synkas när nätet finns', locked: '<span class="neg">Krypteringen är låst på den här enheten</span> – logga in igen', paused: 'Vilar medan exempelboken visas', newer: `<span class="neg">Boken på webben kommer från en nyare Sisyfos</span> – ladda om sidan${m}`, vault: `<span class="neg">Stoppad</span>${m}`, err: `<span class="neg">Misslyckades</span>${m}`, auth: '<span class="neg">Inloggningen har gått ut</span>' }[s.s] || 'Väntar';
+  return { ok: `${ic('check')} Synkad ${s.at ? fwhen(s.at.toISOString()) : ''}`, sync: 'Synkar …', pending: 'Ändringar synkas strax', offline: 'Offline – synkas när nätet finns', locked: '<span class="neg">Krypteringen är låst på den här enheten</span> – logga in igen', paused: 'Vilar medan exempelboken visas', newer: `<span class="neg">Boken på webben kommer från en nyare Sisyfos</span> – ladda om sidan${m}`, vault: `<span class="neg">Stoppad</span>${m}`, err: `<span class="neg">Misslyckades</span>${m}`, auth: '<span class="neg">Inloggningen har gått ut</span>', waiting: 'Väntar på att organisationens admin tar in dig i boken – det sker nästa gång admin synkar och godkänner din nyckel', gone: `<span class="neg">Du är inte med i organisationen längre</span>${m}` }[s.s] || 'Väntar';
 }
 
 /* ── Inställningar → Spara boken → Spara på webben ── */
@@ -2839,10 +2876,11 @@ function webSectionHtml() {
     h += `<div class="btn-row"><button class="btn primary" data-act="webLogin">${ic('lock')}Logga in …</button><button class="btn" data-act="webReg">Skapa konto …</button></div>`;
   } else {
     const i = st.webInfo, used = i?.used ?? w.used, quota = i?.quota ?? w.quota;
-    h += `<div class="sf-grid">${row('Konto', esc(w.email))}${row('Synk', webStatusLong(), `<button class="btn sm" data-act="webSyncNow">Synka nu</button>`)}${row('På webben', w.saved ? `Sparad ${fwhen(unixIso(w.saved))} · version ${w.rev}` : 'Ingen bok sparad än')}${used != null && quota ? row('Utrymme', `${fsize(used)} av ${fsize(quota)} (med tidigare versioner)`) : ''}`;
+    h += `<div class="sf-grid">${row('Konto', esc(w.email))}${row('Synk', webStatusLong(), `<button class="btn sm" data-act="webSyncNow">Synka nu</button>`)}${row('På webben', w.saved ? `Sparad ${fwhen(unixIso(w.saved))} · version ${w.rev}` : 'Ingen bok sparad än')}${used != null && quota ? row('Utrymme', `${fsize(used)} av ${fsize(quota)} ${w.org ? '(hela organisationens bok)' : '(med tidigare versioner)'}`) : ''}`;
     if (i?.devices?.length) h += row('Inloggade enheter', i.devices.slice().sort((a, b) => b.used - a.used).map(d => `${esc(d.device || 'Okänd enhet')}${d.this ? ' <b>(den här)</b>' : ''} <span class="muted">· senast ${fwhen(unixIso(d.used))}</span>`).join('<br>'));
     h += `</div><div class="btn-row enc-acts"><button class="btn ghost" data-act="webHist">Tidigare versioner …</button><button class="btn ghost" data-act="webOut">Logga ut …</button><button class="btn ghost" data-act="webDel">Radera kontot …</button></div>`;
   }
+  if (webOn() && (srv?.orgs || w.org)) h += orgSectionHtml();
   if (srv?.admin) h += `<p class="small" style="margin-top:8px"><button type="button" class="linkish" data-act="webAdmin">Administrera servern …</button></p>`;
   return h;
 }
@@ -2869,13 +2907,25 @@ async function webRegister(o) {
   const r = await api('register', { body: { invite: o.invite, email: o.email, login: o.login, vault: vaultPublic(o.vault), device: devName() }, noAuth: true });
   if (!st.enc || st.enc.vault.id !== o.vault.id || !st.enc.key) await encStore(o.vault, o.key);
   await webStore({ email: r.email, token: r.token, rev: 0, saved: null, base: null, replace: false, used: r.used, quota: r.quota }, true);
+  if (r.org) await orgJoined(r.org);
   closeDlg();
-  toast(isExample() ? 'Kontot är skapat. Exempelboken sparas inte på webben – skapa eller importera din bok.' : 'Kontot är skapat – boken sparas nu krypterad på webben');
+  toast(r.org ? `Kontot är skapat – du är med i ${r.org.name}. Boken visas när admin har tagit in dig.` : isExample() ? 'Kontot är skapat. Exempelboken sparas inte på webben – skapa eller importera din bok.' : 'Kontot är skapat – boken sparas nu krypterad på webben');
   webSync(); if (st.page === 'installningar') safetyRender();
 }
 const bookEmpty = () => !R().customers.length && Object.values(S.logs).every(l => !l.events.length);
 async function webLoginDone(L) {
   const prev = st.web;
+  // Organisationer (0.16.1): flyttad bok → organisationen; annars välj om kontot har fler böcker
+  if (L.orgs?.length && !L.pick) {
+    const mv = L.moved && L.orgs.find(o => o.id === L.moved);
+    if (mv) return orgLogin(L, mv);
+    if (L.orgs.length === 1 && !L.rev) return orgLogin(L, L.orgs[0]);
+    st.webLogin = L;
+    openDlg(`<h2 id="dlgTitle">Vilken bok?</h2><p>Kontot ${esc(L.email)} har flera böcker på webben. Välj den som ska öppnas här – boken i den här webbläsaren ersätts (en ögonblicksbild tas först).</p>
+     <div class="org-pick">${L.orgs.map(o => `<button class="btn" data-act="webLoginOrg" data-org="${esc(o.id)}">${ic('person')}${esc(o.name)} <span class="muted small">${o.role === 'admin' ? 'admin' : 'medarbetare'} · ${o.members} ${o.members === 1 ? 'person' : 'personer'}</span></button>`).join('')}${L.rev ? `<button class="btn" data-act="webLoginOrg" data-org="">${ic('save')}Min egen bok <span class="muted small">sparad ${fwhen(unixIso(L.saved))}</span></button>` : ''}</div>
+     <div class="dlg-foot"><button class="btn ghost" data-act="webLoginCancel">Avbryt</button></div>`);
+    return;
+  }
   // Samma konto som förut (inloggningen hade gått ut): synka som vanligt – osynkade ändringar slås ihop
   if (prev?.email === L.email && prev.base && st.enc?.vault.id === L.vault.id) {
     await encStore(vaultPublic(L.vault), L.key);
@@ -2938,14 +2988,17 @@ async function wipeLocal() {
   location.reload();
 }
 function webDelDlg() {
-  openDlg(`<h2 id="dlgTitle">Radera kontot</h2><p>Kontot <b>${esc(st.web.email)}</b>, boken på webben och alla tidigare versioner raderas från servern. Det går inte att ångra. Boken i den här webbläsaren och krypteringen ligger kvar.</p>
+  const o = st.webInfo?.org, orgTxt = !o ? '' : o.role === 'admin' ? ` <b>Organisationen ${esc(o.name)} tas bort</b> – också för medarbetarna, som behåller sina konton.` : ` Du går ur organisationen ${esc(o.name)}.`;
+  openDlg(`<h2 id="dlgTitle">Radera kontot</h2><p>Kontot <b>${esc(st.web.email)}</b>, boken på webben och alla tidigare versioner raderas från servern.${orgTxt} Det går inte att ångra. Boken i den här webbläsaren och krypteringen ligger kvar.</p>
    <div class="form"><div class="fld full"><label for="wPw">Lösenord${REQ}</label><input type="password" id="wPw" autocomplete="current-password" data-enter="webDelGo"></div><div class="err fld full" id="encErr"></div></div>
    <div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn danger" data-act="webDelGo">Radera kontot</button></div>`);
 }
 async function webHistDlg() {
   openDlg(`<h2 id="dlgTitle">Tidigare versioner på webben</h2><div id="whBox"><p class="muted small">Hämtar …</p></div><div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Stäng</button></div>`);
   try {
-    const h = await api('history'), li = (x, cur) => `<li><span class="sn-w">${fwhen(unixIso(x.saved))}</span><span class="sn-r">Version ${x.rev}${cur ? ' <span class="muted">· den senaste</span>' : ''}</span><span class="sn-s mono muted">${fsize(x.size)}</span>${cur ? '' : `<button class="btn sm" data-act="webHistAsk" data-rev="${x.rev}">Öppna …</button>`}</li>`;
+    const h = await api('history');
+    if (h.org) { $('#whBox').innerHTML = `<p class="small">Servern sparar inga tidigare versioner av en organisations bok än – varje del sparas för sig. Ögonblicksbilderna på den här enheten finns under <i>Spara boken → Ögonblicksbilder</i>.</p>`; return; }
+    const li = (x, cur) => `<li><span class="sn-w">${fwhen(unixIso(x.saved))}</span><span class="sn-r">Version ${x.rev}${cur ? ' <span class="muted">· den senaste</span>' : ''}</span><span class="sn-s mono muted">${fsize(x.size)}</span>${cur ? '' : `<button class="btn sm" data-act="webHistAsk" data-rev="${x.rev}">Öppna …</button>`}</li>`;
     $('#whBox').innerHTML = `<p class="muted small">Servern sparar de ${h.history.length ? 'tio senaste versionerna' : 'senaste versionerna'} av boken. En äldre version öppnas här och sparas sedan som den nya versionen på webben.</p>${h.rev ? `<ul class="snaps">${li({ rev: h.rev, saved: h.saved, size: h.size }, true)}${h.history.map(x => li(x)).join('')}</ul>` : '<p class="small">Ingen bok sparad än.</p>'}`;
   } catch (e) { $('#whBox').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
 }
@@ -2960,9 +3013,10 @@ async function webAdmLoad() {
   const k = st.webAdminKey;
   const [iv, ac] = await Promise.all([api('invites', { admin: k, noAuth: true }), api('accounts', { admin: k, noAuth: true })]);
   const day = s => s ? sdate(ymd(new Date(s * 1000))) + ' ' + new Date(s * 1000).getFullYear() : '–';
-  box.innerHTML = `<h3 class="dsub">Ny inbjudningskod</h3><div class="form adm-new"><div class="fld"><label for="aNote">Till vem (anteckning)</label><input id="aNote" maxlength="80" placeholder="t.ex. Anna, testare"></div><div class="fld"><label for="aMax">Antal konton</label><input id="aMax" type="number" min="1" max="100" value="1"></div><div class="fld"><label for="aDays">Giltig i dagar</label><input id="aDays" type="number" min="1" max="365" value="30"></div><div class="fld"><button class="btn primary" data-act="webAdmInvite">Skapa kod</button></div></div><div id="aNew"></div>
-   <h3 class="dsub">Inbjudningskoder</h3>${iv.invites.length ? `<table class="adm-t"><thead><tr><th>Kod</th><th>Anteckning</th><th>Använd</th><th>Gäller till</th><th></th></tr></thead><tbody>${iv.invites.map(x => `<tr><td class="mono">${esc(x.code)}</td><td>${esc(x.note || '')}</td><td class="num">${x.used} av ${x.max}</td><td>${day(x.until)}</td><td><button class="btn sm ghost" data-act="webAdmUninvite" data-code="${esc(x.code)}">Ta bort</button></td></tr>`).join('')}</tbody></table>` : '<p class="muted small">Inga koder.</p>'}
-   <h3 class="dsub">Konton</h3>${ac.accounts.length ? `<table class="adm-t"><thead><tr><th>E-post</th><th>Skapat</th><th>Senast sparad</th><th>Utrymme</th><th>Enheter</th><th></th></tr></thead><tbody>${ac.accounts.map(x => `<tr><td>${esc(x.email)}</td><td>${day(x.created)}</td><td>${x.saved ? fwhen(unixIso(x.saved)) : '–'}</td><td class="num">${fsize(x.used)}</td><td class="num">${x.devices}</td><td><button class="btn sm ghost" data-act="webAdmRemove" data-email="${esc(x.email)}">Ta bort …</button></td></tr>`).join('')}</tbody></table>` : '<p class="muted small">Inga konton.</p>'}`;
+  box.innerHTML = `<h3 class="dsub">Ny inbjudningskod</h3><div class="form adm-new"><div class="fld"><label for="aNote">Till vem (anteckning)</label><input id="aNote" maxlength="80" placeholder="t.ex. Anna, testare"></div><div class="fld"><label for="aKind">Gäller</label><select id="aKind"><option value="account">Nytt konto</option><option value="org">En organisation (upp till ${st.webSrv?.orgs || 10} personer)</option></select></div><div class="fld"><label for="aMax">Antal</label><input id="aMax" type="number" min="1" max="100" value="1"></div><div class="fld"><label for="aDays">Giltig i dagar</label><input id="aDays" type="number" min="1" max="365" value="30"></div><div class="fld"><button class="btn primary" data-act="webAdmInvite">Skapa kod</button></div></div><div id="aNew"></div>
+   <h3 class="dsub">Inbjudningskoder</h3>${iv.invites.length ? `<table class="adm-t"><thead><tr><th>Kod</th><th>Gäller</th><th>Anteckning</th><th>Använd</th><th>Gäller till</th><th></th></tr></thead><tbody>${iv.invites.map(x => `<tr><td class="mono">${esc(x.code)}</td><td>${x.kind === 'org' ? 'Organisation' : 'Konto'}</td><td>${esc(x.note || '')}</td><td class="num">${x.used} av ${x.max}</td><td>${day(x.until)}</td><td><button class="btn sm ghost" data-act="webAdmUninvite" data-code="${esc(x.code)}">Ta bort</button></td></tr>`).join('')}</tbody></table>` : '<p class="muted small">Inga koder.</p>'}
+   <h3 class="dsub">Konton</h3>${ac.accounts.length ? `<table class="adm-t"><thead><tr><th>E-post</th><th>Skapat</th><th>Senast sparad</th><th>Utrymme</th><th>Enheter</th><th></th></tr></thead><tbody>${ac.accounts.map(x => `<tr><td>${esc(x.email)}${x.orgs ? ` <span class="muted">· ${x.orgs} org.</span>` : ''}</td><td>${day(x.created)}</td><td>${x.saved ? fwhen(unixIso(x.saved)) : '–'}</td><td class="num">${fsize(x.used)}</td><td class="num">${x.devices}</td><td><button class="btn sm ghost" data-act="webAdmRemove" data-email="${esc(x.email)}">Ta bort …</button></td></tr>`).join('')}</tbody></table>` : '<p class="muted small">Inga konton.</p>'}
+   <h3 class="dsub">Organisationer</h3>${ac.orgs?.length ? `<table class="adm-t"><thead><tr><th>Namn</th><th>Admin</th><th>Personer</th><th>Skapad</th><th>Senast sparad</th><th>Utrymme</th></tr></thead><tbody>${ac.orgs.map(x => `<tr><td>${esc(x.name)}</td><td>${esc(x.admin)}</td><td class="num">${x.members}</td><td>${day(x.created)}</td><td>${x.saved ? fwhen(unixIso(x.saved)) : '–'}</td><td class="num">${fsize(x.used)}</td></tr>`).join('')}</tbody></table><p class="muted small">En organisation tas bort när dess admin raderar sitt konto (eller tas bort här ovan).</p>` : '<p class="muted small">Inga organisationer.</p>'}`;
   if (err) err.textContent = '';
 }
 // Före lösenordsbyte eller ny återställningsnyckel: skicka det nya valvet till servern först – går det inte ändras inget
@@ -2970,6 +3024,215 @@ async function webVault(vault, login, logoutOthers) {
   if (!webOn()) return;
   try { await api('vault', { body: { vault: vaultPublic(vault), ...(login ? { login } : {}), ...(logoutOthers ? { logoutOthers: true } : {}) } }); }
   catch (e) { throw new Error((e.offline ? 'Ingen kontakt med servern' : e.message) + ' Bytet är inte gjort – försök igen när du har nät.'); }
+}
+
+/* ───────────── Organisationer (0.16.1 – etapp 4, steg 2: servern) ─────────────
+   En organisation är en bok som flera personer delar via servern. Boken ligger där i delar (Delar och nycklar):
+   registret, fakturorna och personkorten skrivs av organisationens admin, varje tidlogg av personen själv. Servern
+   lagrar delarna var för sig och kontrollerar skribenten; den ser bara vem som skrev en del och till vilka den är
+   krypterad. Varje enhet hämtar de delar som är krypterade till personen, slår ihop dem med sin bok och skickar bara
+   de delar personen skriver och som har ändrats (st.web.ph = kontrollsumma per del som den ligger på servern).
+   Flödet: serverns ägare ger en kod för en organisation → admin gör boken till en organisation → admin bjuder in en
+   medarbetare (personen läggs in i boken och får en kod) → medarbetaren skapar konto med koden (eller går med med ett
+   befintligt konto) och lämnar sina offentliga nycklar → admin godkänner nyckeln (fingeravtrycket) → admins enhet
+   krypterar registret, personens kort och tidlogg till personen → medarbetaren ser boken och rapporterar tid.
+   Medarbetaren skriver bara sin tidlogg (och sina inställningar); ändringar i annat tas bort vid nästa synk.
+   Registrets signatur fästs på enheten första gången (st.web.pin) – byts registrets nyckel stoppas synken. */
+const partHash = async (obj, pids) => (await sha256(canon(obj))) + '|' + [...pids].sort().join(',');
+function orgCanWrite(n) {
+  const w = st.web; if (!w?.org) return false;
+  if (n === 'log.' + w.pid) return true;
+  if (w.role !== 'admin') return false;
+  // admin förvaltar en tidlogg tills personen själv har skrivit den (innan personen gått med)
+  return n.startsWith('log.') ? !(w.wrote || []).includes(n.slice(4)) : true;
+}
+// Läget i organisationen från servern (info eller get)
+async function orgSrv(o) {
+  if (!o || !st.web) return;
+  const p = {};
+  if (o.role && o.role !== st.web.role) p.role = o.role;
+  if (o.name && o.name !== st.web.orgName) p.orgName = o.name;
+  if (Array.isArray(o.wrote) && !jeq(o.wrote, st.web.wrote)) p.wrote = o.wrote;
+  if (Object.keys(p).length) await webStore(p);
+}
+// Byt den här enheten till organisationen. keep = behåll basen (samma bok som förut, t.ex. en flyttad bok)
+async function orgUse(o, keep) {
+  await webStore({ org: o.id, orgName: o.name, pid: o.pid, role: o.role, rev: 0, ph: {}, wrote: [], pin: null, ...(keep ? {} : { base: null }) });
+}
+// Medarbetaren har gått med: nycklar för personen i organisationen, de offentliga till servern så att admin kan ta in dem,
+// nyckelringen i kontots omslag (så att personens andra enheter får samma nyckel)
+async function orgJoined(o) {
+  const e = st.enc, n = await keysCreate(o.pid, e.key);
+  await keysStore({ ...n, vault: e.vault.id });
+  const k = await keysOpen(n, e.key);
+  await api('orgKeys', { body: { keys: keysPublic(k), env: await encEnvelope(k) }, org: o.id });
+  await orgUse(o);
+}
+async function orgLogin(L, o) {
+  st.webLogin = null;
+  const prev = st.web, again = prev?.email === L.email && prev.org === o.id && prev.base && st.enc?.vault.id === L.vault.id;
+  await encStore(vaultPublic(L.vault), L.key);
+  await webStore(again ? { token: L.token, expired: false, used: L.used, quota: L.quota } : { email: L.email, token: L.token, saved: null, base: null, replace: false, used: L.used, quota: L.quota, org: o.id, orgName: o.name, pid: o.pid, role: o.role, rev: 0, ph: {}, wrote: [], pin: null }, !again);
+  closeDlg(); toast(again ? 'Inloggad igen – boken synkas' : `Inloggad – boken för ${o.name} hämtas`);
+  webSync(); if (st.page === 'installningar') safetyRender();
+}
+
+async function webSyncOrg() {
+  const i = await api('info'); await webInfo(i); await orgSrv(i.org);
+  if (st.web.role === 'admin') orgSweep(i.org);
+  orgNotify(i.org);
+  flush();
+  const w = st.web, raw = JSON.stringify(S);
+  if (i.rev !== w.rev || !w.base) return webPullOrg();
+  if (raw !== w.base || w.replace) {
+    if (w.replace) await webStore({ replace: false });
+    let r; try { r = await orgPut(raw, w.rev); } catch (e) { if (e.status === 409 && e.code === 'conflict') return webPullOrg(); throw e; }
+    // inget att skicka (en ändring i något personen inte skriver – den tas bort) eller andra har ändrat → hämta
+    if (r !== false) await webPullOrg();
+  }
+}
+// Skicka de delar personen skriver och som har ändrats sedan servern såg dem. Returnerar 'none' (inget att skicka),
+// true (andra delar på servern är nyare) eller false.
+async function orgPut(raw, base, tries = 0) {
+  const k = await keysMine(); if (!k) throw new Error('Den personliga nyckeln saknas på den här enheten – logga in igen.');
+  const obj = JSON.parse(raw), reg = obj.register, org = reg?.org?.id || 'o', P = bookSplit(obj), parts = {}, H = {};
+  for (const n of Object.keys(P)) {
+    if (!orgCanWrite(n)) continue;
+    const rc = partRecips(n, reg, k), h = await partHash(P[n], rc.map(x => x.pid));
+    if (st.web.ph?.[n] === h) continue;
+    parts[n] = await partSeal(org, n, P[n], rc, k); H[n] = h;
+  }
+  if (!Object.keys(parts).length) { await webStore({ base: raw }); return 'none'; }
+  const env = await encEnvelope(k);
+  const r = await api('put', { body: JSON.stringify({ format: ENC_FORMAT, version: 2, app: APP_VERSION, saved: new Date().toISOString(), org, me: k.pid, ...env, parts }), headers: { 'X-Sisyfos-Base': String(base) } });
+  await webStore({ rev: r.rev, saved: r.saved, base: raw, ph: { ...(st.web.ph || {}), ...H }, used: r.used, quota: r.quota });
+  return !!r.behind;
+}
+async function webPullOrg(tries = 0) {
+  if (webBusyUi() && st.web.base) { webQueue(3000); throw Object.assign(new Error('väntar'), { defer: true }); }
+  const g = await api('get', { raw: true }), file = JSON.parse(g.text);
+  if (file.vault?.id && file.vault.id !== st.enc.vault.id) throw Object.assign(new Error('Boken på webben är krypterad med en annan nyckel än den här enhetens. Logga ut och logga in igen.'), { code: 'vault' });
+  await orgSrv(file.srv);
+  const w = st.web;
+  if (!file.parts?.reg) {
+    // Admin som just gjort boken till en organisation: skicka hela boken. En medarbetare väntar på admin.
+    if (w.role === 'admin') { await keysEnsure(); flush(); const raw = JSON.stringify(S); await webStore({ rev: g.rev }); await orgPut(raw, g.rev); return; }
+    await webStore({ rev: g.rev });
+    throw Object.assign(new Error('väntar på admin'), { waiting: true });
+  }
+  const opt = { wrote: w.wrote || [] };
+  const theirs = migrate(await decParts(file, st.enc.key, opt));
+  if (w.pin && opt.regFp && opt.regFp !== w.pin) throw Object.assign(new Error('Registret i organisationen är signerat med en annan nyckel än förut. Synken är stoppad – fråga organisationens admin.'), { code: 'vault' });
+  theirs.session = { personId: w.pid };
+  await keysAdopt(file, !w.base, w.pid);
+  const srvH = {};
+  for (const n in opt.P) if (orgCanWrite(n) && file.parts[n]) srvH[n] = await partHash(opt.P[n], Object.keys(file.parts[n].to || {}));
+  // Första gången: organisationens bok ersätter boken här (en ögonblicksbild tas först)
+  if (!w.base) {
+    st.webApplying = true; try { replaceBook(theirs, 'Före organisationens bok'); } finally { st.webApplying = false; }
+    await webStore({ rev: g.rev, base: JSON.stringify(theirs), ph: srvH, pin: opt.regFp || null });
+    toast(`Boken för ${w.orgName || 'organisationen'} är öppnad`);
+    const r = await orgPut(JSON.stringify(S), g.rev).catch(e => { if (e.status === 409 && tries < 3) return 'pull'; throw e; });
+    if (r === true || r === 'pull') return webPullOrg(tries + 1);
+    return;
+  }
+  const cur = JSON.stringify(S), base = migrate(JSON.parse(w.base)), cf = [];
+  const ov = orgOverlay(bookMerge(base, JSON.parse(cur), theirs, cf), theirs, base, JSON.parse(cur)), merged = ov.book;
+  merged.session = { personId: w.pid };
+  // Krockar i det personen inte skriver avgörs av servern – inget att fråga om
+  for (let i = cf.length - 1; i >= 0; i--) { const p = cf[i].path; if (p[0] === 'register' ? w.role !== 'admin' : p[0] === 'logs' && !orgCanWrite('log.' + p[1])) cf.splice(i, 1); }
+  const same = canon(merged) === canon(JSON.parse(cur));
+  if (!same) { if (cf.length) await snapshot('Före sammanslagning med webben', cur, 'event'); webApply(merged); }
+  await webStore({ rev: g.rev, base: JSON.stringify(theirs), ph: srvH, ...(w.pin ? {} : { pin: opt.regFp || null }) });
+  let r;
+  try { r = await orgPut(JSON.stringify(S), g.rev); }
+  catch (e) { if (e.status === 409 && e.code === 'conflict' && tries < 3) return webPullOrg(tries + 1); throw e; }
+  if (r === true && tries < 3) return webPullOrg(tries + 1);
+  if (ov.reverted) toast(w.role === 'admin' ? 'Medarbetarnas tid ändras bara av dem själva – ändringen togs bort' : 'Projekt, kunder och inställningar ändras av organisationens admin – ändringen togs bort');
+  else if (cf.length) webConflictDlg(cf.map(c => ({ ...c, label: cfLabel(c.path, JSON.parse(cur), theirs) })));
+  else if (!same) toast('Boken uppdaterades från webben');
+}
+// Det personen inte skriver tas från servern; det personen inte får läsa finns inte med. reverted = en ändring på den här
+// enheten i något personen inte skriver (t.ex. ett projekt för en medarbetare) har tagits bort.
+function orgOverlay(m, t, b, o) {
+  const A = bookSplit(m), T = bookSplit(t), Bs = bookSplit(b), O = bookSplit(o), P = {}; let reverted = false;
+  for (const n of new Set([...Object.keys(A), ...Object.keys(T)])) {
+    if (orgCanWrite(n)) { P[n] = A[n] !== undefined ? A[n] : T[n]; continue; }
+    if (T[n] !== undefined) P[n] = T[n];
+    if (O[n] !== undefined && canon(O[n]) !== canon(Bs[n] ?? null) && canon(O[n]) !== canon(T[n] ?? null)) reverted = true;
+  }
+  return { book: bookJoin(P), reverted };
+}
+// Admin: en person som tagits bort ur organisationen får sin nyckel markerad som borta – delarna krypteras om utan den
+function orgSweep(o) {
+  if (!o?.members) return;
+  const mem = new Set(o.members.map(m => m.pid)); let ch = false;
+  for (const p of R().people) if (p.id !== me() && keyLive(p) && !mem.has(p.id)) { p.keys = { ...p.keys, gone: new Date().toISOString() }; ch = true; }
+  if (ch) save();
+}
+// Medarbetare som har gått med men vars nyckel admin inte har tagit in än
+const orgPending = (o = st.webInfo?.org) => o?.role !== 'admin' ? [] : (o.members || []).filter(m => m.keys && m.pid !== me()).filter(m => { const p = byId(R().people, m.pid); return p && (!keyLive(p) || p.keys.fp !== m.keys.fp); });
+function orgNotify(o) {
+  const pend = orgPending(o).filter(m => !(st.orgNoted || (st.orgNoted = new Set())).has(m.pid));
+  if (!pend.length) return;
+  pend.forEach(m => st.orgNoted.add(m.pid));
+  toast(pend.length === 1 ? `${byId(R().people, pend[0].pid)?.name || 'En medarbetare'} har gått med i ${o.name} – ta in personen i boken` : `${pend.length} medarbetare har gått med – ta in dem i boken`, { label: 'Visa', fn: () => { st.toOrg = true; A.webGo(); } });
+}
+
+/* ── Inställningar → Spara på webben → Organisation ── */
+function orgSectionHtml() {
+  const w = st.web, o = st.webInfo?.org, row = (k, v, extra = '') => `<div class="sf-row"><span class="k">${k}</span><span class="v">${v}</span>${extra}</div>`;
+  let h = `<h3 class="dsub" id="set-org">Organisation</h3>`;
+  if (!w?.org) {
+    if (simple()) return h + `<p class="muted small">I enkelt läge är boken bara din. Byt till fullständigt läge för att dela boken med medarbetare.</p>`;
+    return h + `<p class="muted small">Är ni flera? Gör boken till en <b>organisation</b> – medarbetare får egna konton och rapporterar tid i samma bok. Varje persons tid syns bara för personen och dig som admin, och servern kan inte läsa något. Under testet behövs en kod från den som driver servern. Har du fått en kod från en organisations admin går du med i den i stället – då ersätts boken här av organisationens.</p><div class="btn-row"><button class="btn" data-act="orgCreate">${ic('person')}Gör boken till en organisation …</button><button class="btn ghost" data-act="orgJoin">Gå med i en organisation …</button></div>`;
+  }
+  const mine = byId(R().people, w.pid);
+  h += `<div class="sf-grid">${row('Organisation', `${esc(w.orgName || o?.name || '–')}${o ? ` <span class="muted">· ${o.members.length} av ${o.max} personer</span>` : ''}`)}${w.role === 'admin' ? '' : row('Du', `${esc(w.base && mine ? mine.name : w.email)} · medarbetare`)}`;
+  if (w.role !== 'admin') return h + `</div><p class="muted small">Din tid syns bara för dig och organisationens admin. Projekt, kunder, timpriser och inställningar ändras av admin, som också signerar veckorna och har fakturorna.</p>`;
+  if (!o) return h + `</div><p class="muted small">Hämtar medarbetarna …</p>`;
+  const mem = new Map(o.members.map(m => [m.pid, m])), inv = new Map(o.invites.map(x => [x.pid, x]));
+  h += `</div><div class="org-list">`;
+  for (const p of R().people) {
+    const m = mem.get(p.id), x = inv.get(p.id);
+    let st_ = '', acts = '';
+    if (p.id === me()) st_ = 'Du · admin';
+    else if (m && m.keys && (!keyLive(p) || p.keys.fp !== m.keys.fp)) { st_ = `<span class="warn-t">Har gått med (${esc(m.email || '')}) – väntar på att du tar in personen</span>`; acts = `<button class="btn sm primary" data-act="orgApprove" data-pid="${esc(p.id)}">Ta in i boken …</button>`; }
+    else if (m && !m.keys) st_ = `Konto ${esc(m.email || '')} – väntar på personens nycklar`;
+    else if (m) { st_ = `${ic('check')} ${esc(m.email || '')} · med sedan ${fwhen(unixIso(m.joined))} · nyckel <span class="mono">${esc(fpText(p.keys.fp))}</span>${m.wrote ? '' : ' · har inte rapporterat än'}`; acts = `<button class="btn sm ghost" data-act="orgRemove" data-pid="${esc(p.id)}">Ta bort …</button>`; }
+    else if (x) { st_ = `Inbjuden – kod <b class="mono">${esc(x.code)}</b>, gäller till ${sdate(ymd(new Date(x.until * 1000)))}`; acts = `<button class="btn sm ghost" data-act="orgCopy" data-code="${esc(x.code)}">${ic('copy')}Kopiera</button><button class="btn sm ghost" data-act="orgInviteAgain" data-pid="${esc(p.id)}">Ny kod</button><button class="btn sm ghost" data-act="orgUninvite" data-code="${esc(x.code)}">Ta bort koden</button>`; }
+    else { st_ = p.keys?.gone ? 'Borttagen ur organisationen – tiden finns kvar i boken' : 'Inget konto'; acts = `<button class="btn sm ghost" data-act="orgInviteAgain" data-pid="${esc(p.id)}">Bjud in …</button>`; }
+    h += `<div class="org-row"><span class="av">${esc(p.initials || '?')}</span><span class="r-text"><span class="r-name">${esc(p.name)}</span><span class="r-sub">${st_}</span></span><span class="org-acts">${acts}</span></div>`;
+  }
+  h += `</div><div class="btn-row"><button class="btn" data-act="orgInvite" ${o.members.length + o.invites.length >= o.max ? 'disabled' : ''}>${ic('plus')}Bjud in en medarbetare …</button></div><p class="muted small">Upp till ${o.max} personer under testet. Medarbetarens tid syns bara för personen och dig. Du signerar veckorna och kan öppna dem igen, men bara personen själv ändrar sin tid.</p>`;
+  return h;
+}
+function orgCreateDlg() {
+  openDlg(`<h2 id="dlgTitle">Gör boken till en organisation</h2><p>Boken <b>${esc(R().book.name)}</b> delas i organisationen och du blir dess admin. Du bjuder sedan in medarbetare, som får egna konton och rapporterar tid i samma bok.</p>
+   <ul class="small"><li>Varje del av boken krypteras till dem som får läsa den: registret (projekt, kunder, timpriser) till alla, fakturorna bara till dig, varje persons kort och tid till personen och dig.</li><li>Boken flyttar från ditt konto till organisationen – dina andra enheter följer med vid nästa synk.</li><li>Servern sparar inga tidigare versioner av en organisations bok än. Ögonblicksbilderna på enheten finns kvar.</li></ul>
+   <div class="form"><div class="fld full"><label for="oCode">Kod för en organisation${REQ}</label><input id="oCode" class="mono" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXXX-XXXXX" data-enter="orgCreateGo"></div><div class="fld full"><p class="muted small">Koden får du av den som driver servern (under testet Agrell Arkitektur).</p></div><div class="err fld full" id="encErr"></div></div>
+   <div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="orgCreateGo">Gör till organisation</button></div>`);
+  $('#oCode')?.focus();
+}
+function orgJoinDlg() {
+  openDlg(`<h2 id="dlgTitle">Gå med i en organisation</h2><p>Med koden från organisationens admin går ditt konto <b>${esc(st.web.email)}</b> med i organisationen. Boken i den här webbläsaren ersätts av organisationens när admin har tagit in dig (en ögonblicksbild tas först). Din egen bok på webben finns kvar och kan väljas när du loggar in.</p>
+   <div class="form"><div class="fld full"><label for="oCode">Inbjudningskod${REQ}</label><input id="oCode" class="mono" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXXX-XXXXX" data-enter="orgJoinGo"></div><div class="err fld full" id="encErr"></div></div>
+   <div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="orgJoinGo">Gå med</button></div>`);
+  $('#oCode')?.focus();
+}
+function orgInviteDlg(pid) {
+  const p = pid ? byId(R().people, pid) : null, roles = R().roles, B = R().book;
+  openDlg(`<h2 id="dlgTitle">${p ? `Bjud in ${esc(p.name)}` : 'Bjud in en medarbetare'}</h2><p>${p ? 'Personen får en kod att skapa konto med (eller gå med med ett befintligt konto).' : 'Medarbetaren läggs in i boken och får en kod att skapa konto med. Anställning, saldo och semester kan ändras senare.'}</p>
+   <div class="form" id="oiForm">${p ? '' : `<div class="fld"><label for="oiName">Namn${REQ}</label><input id="oiName" autocomplete="off"></div><div class="fld"><label for="oiIni">Initialer</label><input id="oiIni" maxlength="3" autocomplete="off"></div>
+   <div class="fld"><label for="oiRole">Roll</label><select id="oiRole">${roles.map(r => `<option value="${esc(r.id)}">${esc(r.name)} · ${fkr(r.rate)}/h</option>`).join('')}</select></div>
+   <div class="fld"><label for="oiEmp">Anställningsform</label><select id="oiEmp">${[['full', 'Heltid'], ['part', 'Deltid'], ['hourly', 'Timanställd']].map(([v, l]) => `<option value="${v}" ${(B.defaultEmployment || 'full') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`}
+   <div class="err fld full" id="encErr"></div></div><div id="oiOut"></div>
+   <div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Stäng</button><button class="btn primary" data-act="orgInviteGo" ${p ? `data-pid="${esc(p.id)}"` : ''}>Skapa kod</button></div>`);
+  $('#oiName')?.focus();
+}
+function orgCodeHtml(name, code, until) {
+  const link = location.origin + location.pathname;
+  return `<div class="org-code"><p>Kod till ${esc(name)}: <b class="mono">${esc(code)}</b> <button class="btn sm ghost" data-act="orgCopy" data-code="${esc(code)}">${ic('copy')}Kopiera</button></p><p class="small">Skicka koden och adressen <span class="mono">${esc(link)}</span> till ${esc(name)}. Under <i>Inställningar → Spara boken → Spara på webben</i> väljer personen <i>Skapa konto</i> och skriver koden – eller <i>Gå med i en organisation</i> med ett konto som redan finns. Koden gäller en gång, till ${sdate(ymd(new Date(until * 1000)))}. När personen har gått med tar du in henne eller honom i boken här.</p></div>`;
 }
 
 /* ── Autospar till mapp (File System Access API – Chrome och Edge på dator) ── */
@@ -3042,7 +3305,7 @@ async function safetyRender() {
   box.innerHTML = h;
   if (st.toBook) { st.toBook = false; $('#set-book')?.scrollIntoView({ block: 'start' }); }
   await webRender(true);
-  if (st.toWeb) { st.toWeb = false; $('#set-web')?.scrollIntoView({ block: 'start' }); }
+  if (st.toWeb) { st.toWeb = false; (st.toOrg && $('#set-org') || $('#set-web'))?.scrollIntoView({ block: 'start' }); st.toOrg = false; }
 }
 async function snapGet(id) { return idb('snaps', 'readonly', os => os.get(id)); }
 async function snapRestore(id) {
@@ -3877,7 +4140,7 @@ function repPanelHtml() {
 }
 function setPanelHtml() {
   const secs = [...document.querySelectorAll('#main .sset[id]')].map(s => [s.id, s.querySelector('h2')?.textContent || '']).filter(x => x[1]);
-  return pHead('Inställningar', 'Allt sparas direkt') + `<div class="p-body"><section class="psec"><h3>Innehåll</h3><ul class="toc">${secs.map(([id, t]) => `<li><button data-act="toSec" data-id="${id}">${esc(t)}</button></li>`).join('')}</ul></section>` + helpSec(['Ändringar <b>sparas direkt</b> – det finns ingen spara-knapp.', webOn() ? 'Boken sparas här och <b>krypterad på webben</b>. Servern sparar de tio senaste versionerna.' : 'Boken finns bara i den här webbläsaren. <b>Spara kopior</b> – eller spara den krypterad på webben – under Spara boken.', 'Ändrade timpriser gäller tid från och med nu – gammal tid behåller sitt pris.']) + `</div>`;
+  return pHead('Inställningar', 'Allt sparas direkt') + `<div class="p-body"><section class="psec"><h3>Innehåll</h3><ul class="toc">${secs.map(([id, t]) => `<li><button data-act="toSec" data-id="${id}">${esc(t)}</button></li>`).join('')}</ul></section>` + helpSec(['Ändringar <b>sparas direkt</b> – det finns ingen spara-knapp.', webOrg() ? `Boken sparas här och <b>krypterad på webben</b> i organisationen ${esc(st.web.orgName || '')} – varje del bara till dem som får läsa den.` : webOn() ? 'Boken sparas här och <b>krypterad på webben</b>. Servern sparar de tio senaste versionerna.' : 'Boken finns bara i den här webbläsaren. <b>Spara kopior</b> – eller spara den krypterad på webben – under Spara boken.', 'Ändrade timpriser gäller tid från och med nu – gammal tid behåller sitt pris.']) + `</div>`;
 }
 
 /* ───────────── Panelens läge ───────────── */
@@ -4365,6 +4628,7 @@ function dataDlg() {
   <li><b>Filer du själv sparar</b> – kopior av boken, autospar till en mapp, PDF- och CSV-rapporter – är vanliga, okrypterade filer. Hantera dem som andra affärshandlingar.</li>
   <li><b>Krypterade kopior</b> (.sisyfos, när du slagit på kryptering under <i>Spara boken</i>) kan bara öppnas med ditt lösenord eller din utskrivna återställningsnyckel. Lösenordet sparas ingenstans. Glömmer du båda går kopian inte att öppna – inte heller för oss. Sedan 0.16.0 krypteras boken i delar – registret, fakturorna, personkortet och tidloggen var för sig – och du har en personlig nyckel vars privata del bara finns låst i dina krypterade filer; den offentliga delen står i boken.</li>
   <li><b>På webben – bara om du skapar ett konto</b> under <i>Spara boken → Spara på webben</i>. Boken krypteras på enheten innan den skickas till servern där Sisyfos ligger (agrellarkitektur.se, ett webbhotell hos Loopia i Sverige). Servern sparar din e-postadress, när kontot skapades, vilka enheter som är inloggade (t.ex. ”iPhone · Safari”) och när de senast användes, och den krypterade boken med de tio senaste versionerna, deras storlek och tidpunkter. Lösenordet, boknyckeln och innehållet lämnar aldrig enheten okrypterade. Du kan logga ut och radera kontot med allt på servern när du vill.</li>
+  <li><b>I en organisation</b> (en bok som flera delar, 0.16.1) ligger boken på servern i delar – registret, fakturorna, ett personkort och en tidlogg per person – var och en krypterad till dem som får läsa den. Servern ser organisationens namn, medlemmarnas e-postadresser och roller, deras offentliga nycklar, vem som skrev varje del och till vilka den är krypterad, och delarnas storlek och tidpunkter – inte innehållet. En medarbetares tid kan bara läsas av personen och organisationens admin; fakturorna bara av admin. Admin bjuder in och tar bort medarbetare. Den som driver servern ser organisationens namn, admins e-post och antalet personer.</li>
   <li><b>Ingen annan kan läsa boken</b> – inte heller Agrell Arkitektur, som gör Sisyfos och driver servern. Det betyder också att ingen kan återställa den åt dig: glömmer du både lösenordet och återställningsnyckeln, eller rensar du webbplatsdata utan konto eller kopia, är boken borta.</li>
   <li><b>Ett ärligt förbehåll:</b> krypteringen görs av appen, som hämtas från samma server. Den som kontrollerar servern skulle i teorin kunna byta ut appen mot en som läser lösenordet. Sisyfos är öppen källkod och läggs bara ut på servern från GitHub, där varje ändring syns; en installerad app minskar risken ytterligare.</li></ul>
   <h3>Vad som skickas över nätet</h3>
@@ -4666,11 +4930,12 @@ const A = {
       const r = await api('login', { body: { email, login: b64(bits.slice(32)), device: devName() }, noAuth: true });
       let raw; try { raw = await unseal(await aesKey(bits.slice(0, 32), ['decrypt']), r.vault.pw, AAD_KEY); } catch (_) { throw new Error('Inloggningen gick igenom men bokens nyckel kunde inte låsas upp med lösenordet.'); }
       bits.fill(0); const key = await aesKey(raw, ['encrypt', 'decrypt']); raw.fill(0);
-      await webLoginDone({ email, token: r.token, vault: r.vault, key, rev: r.rev, saved: r.saved, used: r.used, quota: r.quota });
+      await webLoginDone({ email, token: r.token, vault: r.vault, key, rev: r.rev, saved: r.saved, used: r.used, quota: r.quota, orgs: r.orgs || [], moved: r.moved });
     } catch (x) { busy(btn, false); if ($('#encErr')) $('#encErr').textContent = x instanceof SyntaxError ? 'Boken på webben gick att låsa upp men innehållet är skadat.' : x.message; else toast(x.message); }
   },
   webLoginReplace: () => webLoginUse('replace').catch(e => toast('Inloggningen avbröts: ' + e.message)),
   webLoginMerge: () => webLoginUse('merge').catch(e => toast('Inloggningen avbröts: ' + e.message)),
+  webLoginOrg: el => { const L = st.webLogin; if (!L) return; const o = L.orgs.find(x => x.id === el.dataset.org); if (o) orgLogin(L, o).catch(e => toast('Inloggningen avbröts: ' + e.message)); else webLoginDone({ ...L, pick: true }).catch(e => toast('Inloggningen avbröts: ' + e.message)); },
   webLoginCancel: () => { const L = st.webLogin; st.webLogin = null; closeDlg(); if (L) api('logout', { body: {}, token: L.token }).catch(() => {}); },
   webRegGo: async () => {
     const err = $('#encErr'); err.textContent = '';
@@ -4736,6 +5001,79 @@ const A = {
     toast('Den andra enhetens version används', { label: 'Ångra', fn: () => { S = JSON.parse(before); derive(); save(); render(); } });
   },
   webAdmin: () => { closeFloating(); webAdminDlg(); },
+  orgCreate: () => { if (isExample() || st.noSave) { toast('Exempelboken kan inte bli en organisation – skapa eller importera din bok först.'); return; } orgCreateDlg(); },
+  orgCreateGo: async () => {
+    const err = $('#encErr'), code = $('#oCode').value.trim(), btn = $('#dlg [data-act="orgCreateGo"]'); err.textContent = '';
+    if (!code) { err.textContent = 'Skriv koden.'; return; }
+    busy(btn, true, 'Skapar …');
+    try {
+      flush(); const P = byId(R().people, me());
+      const r = await api('orgCreate', { body: { code, book: R().org.id, name: R().book.name || R().book.company || 'Organisationen', pid: me() } });
+      if (P && !P.admin) P.admin = true;
+      R().book.team = 'team'; save(); flush();
+      await orgUse(r.org, true); await webStore({ base: null });
+      closeDlg(); toast(`Boken är nu organisationen ${r.org.name} – bjud in medarbetare under Organisation`);
+      await webSync(); st.toOrg = true; if (st.page === 'installningar') safetyRender();
+    } catch (x) { busy(btn, false); err.textContent = x.message; }
+  },
+  orgJoin: () => orgJoinDlg(),
+  orgJoinGo: async () => {
+    const err = $('#encErr'), code = $('#oCode').value.trim(), btn = $('#dlg [data-act="orgJoinGo"]'); err.textContent = '';
+    if (!code) { err.textContent = 'Skriv koden.'; return; }
+    if (!st.enc?.key) { err.textContent = 'Lås upp krypteringen först (logga in igen).'; return; }
+    busy(btn, true, 'Går med …');
+    try {
+      flush(); if (webDirty()) await webSync();
+      const r = await api('orgJoin', { body: { code } });
+      await orgJoined(r.org); closeDlg();
+      toast(`Du är med i ${r.org.name}. Boken visas när admin har tagit in dig.`);
+      webSync(); if (st.page === 'installningar') safetyRender();
+    } catch (x) { busy(btn, false); err.textContent = x.message; }
+  },
+  orgInvite: () => orgInviteDlg(),
+  orgInviteAgain: el => orgInviteDlg(el.dataset.pid),
+  orgInviteGo: async el => {
+    const err = $('#encErr'); err.textContent = '';
+    let pid = el.dataset.pid, p = pid && byId(R().people, pid);
+    if (!p) {
+      const name = $('#oiName').value.trim(); if (!name) { err.textContent = 'Skriv namnet.'; $('#oiName').focus(); return; }
+      const emp = $('#oiEmp').value, ys = R().people[0]?.vacation?.yearStart || '04-01';
+      pid = 'pers' + uid();
+      p = { id: pid, name, initials: ($('#oiIni').value.trim() || initialsFrom(name)).toUpperCase(), defaultRoleId: $('#oiRole').value, admin: false, employment: emp, pct: 100, balanceStart: today(), balanceIn: 0, vacation: { perYear: 25, yearStart: ys, from: semStart(today(), ys), saved: [] } };
+      R().people.push(p); S.logs[pid] = { events: [] }; save(); flush();
+      el.dataset.pid = pid; $('#oiForm').innerHTML = `<p class="small fld full">${esc(name)} är tillagd i boken.</p><div class="err fld full" id="encErr"></div>`;
+    }
+    busy(el, true, 'Skapar kod …');
+    try {
+      const r = await api('orgInvite', { body: { pid, note: p.name } });
+      $('#oiOut').innerHTML = orgCodeHtml(p.name, r.code, r.until); el.hidden = true;
+      webSync().then(() => { if (st.page === 'installningar') webRender(true); });
+    } catch (x) { busy(el, false); $('#encErr').textContent = x.message; }
+  },
+  orgCopy: el => { navigator.clipboard?.writeText(el.dataset.code).then(() => toast('Koden är kopierad'), () => toast(el.dataset.code)); },
+  orgUninvite: async el => { try { await api('orgUninvite', { body: { code: el.dataset.code } }); toast('Koden gäller inte längre'); webRender(true); } catch (x) { toast(x.message); } },
+  orgApprove: el => {
+    const m = (st.webInfo?.org?.members || []).find(x => x.pid === el.dataset.pid), p = byId(R().people, el.dataset.pid); if (!m || !p) return;
+    st.orgAppr = m.pid;
+    openDlg(`<h2 id="dlgTitle">Ta in ${esc(p.name)} i boken</h2><p>${esc(p.name)} (${esc(m.email)}) har gått med i organisationen. Personens nyckel:</p><p class="mono" style="font-size:18px;letter-spacing:.06em">${esc(fpText(m.keys.fp))}</p>
+     <p class="small">Jämför gärna med fingeravtrycket under <i>Inställningar → Spara boken → Kryptering → Personlig nyckel</i> på personens enhet – så vet du att nyckeln kommer från ${esc(p.name)} och inte från någon annan. När du tar in personen krypteras registret, personens kort och personens tidlogg också till henne eller honom.</p>
+     <div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="orgApproveGo">Ta in i boken</button></div>`);
+  },
+  orgApproveGo: async () => {
+    const m = (st.webInfo?.org?.members || []).find(x => x.pid === st.orgAppr), p = m && byId(R().people, m.pid); closeDlg(); if (!p) return;
+    p.keys = { enc: m.keys.enc, sig: m.keys.sig, at: m.keys.at, fp: m.keys.fp }; save();
+    toast(`${p.name} är med i boken – synkar`);
+    await webSync(); if (st.page === 'installningar') webRender(true);
+  },
+  orgRemove: el => { const p = byId(R().people, el.dataset.pid); if (!p) return; st.orgRm = p.id; confirmPlain(`Ta bort ${p.name} ur organisationen`, `${p.name} loggas ut från organisationens bok och får inte läsa den längre. Boken krypteras om utan personen. Personens tid finns kvar i boken, och kontot finns kvar på servern.`, 'Ta bort', 'orgRemoveGo'); },
+  orgRemoveGo: async () => {
+    const p = byId(R().people, st.orgRm); closeDlg(); if (!p) return;
+    try {
+      await api('orgRemove', { body: { pid: p.id } });
+      if (p.keys) p.keys = { ...p.keys, gone: new Date().toISOString() }; save();
+      toast(`${p.name} är borttagen – boken krypteras om`); await webSync(); if (st.page === 'installningar') webRender(true);
+    } catch (x) { toast(x.message); }
+  },
   webAdmGo: async () => {
     const k = $('#wAdm')?.value.trim(), err = $('#encErr'); if (!k) { err.textContent = 'Skriv adminnyckeln.'; return; }
     st.webAdminKey = k;
@@ -4743,7 +5081,7 @@ const A = {
   },
   webAdmInvite: async () => {
     try {
-      const r = await api('invite', { admin: st.webAdminKey, noAuth: true, body: { note: $('#aNote').value, max: +$('#aMax').value || 1, days: +$('#aDays').value || 30 } });
+      const r = await api('invite', { admin: st.webAdminKey, noAuth: true, body: { note: $('#aNote').value, kind: $('#aKind')?.value, max: +$('#aMax').value || 1, days: +$('#aDays').value || 30 } });
       await webAdmLoad();
       $('#aNew').innerHTML = `<p class="inv-code">Ny kod: <b class="mono">${esc(r.code)}</b> <span class="muted small">gäller till ${sdate(ymd(new Date(r.until * 1000)))}</span> <button class="btn sm ghost" data-act="webAdmCopy" data-code="${esc(r.code)}">${ic('copy')}Kopiera</button></p>`;
     } catch (e) { $('#encErr').textContent = e.message; }
@@ -5936,9 +6274,9 @@ function invPanelHtml() {
 const INV_V = 1;
 const INV_DEF = { on: false, vatNo: '', bg: '', pg: '', iban: '', bic: '', swish: '', terms: 30, interest: 'Vid betalning efter förfallodagen debiteras dröjsmålsränta enligt räntelagen.', fskatt: true, prefix: '', start: 1, ocr: 'none', qr: true, roundOre: false, note: '' };
 const invCfg = () => Object.assign({}, INV_DEF, R().book.invoicing || {});
-const invOn = () => !!(R().book.invoicing?.on && R().book.invoicing?.accepted);
+const invOn = () => !orgMember() && !!(R().book.invoicing?.on && R().book.invoicing?.accepted);
 const INVS = () => R().invoices || (R().invoices = []);
-const invTab = () => invOn() || INVS().length > 0;
+const invTab = () => !orgMember() && (invOn() || INVS().length > 0);
 const nf2 = new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const nfQ = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 2 });
 const fkr2 = n => (n < -0.004 ? '-' : '') + nf2.format(Math.abs(n)) + ' kr';
@@ -7170,7 +7508,7 @@ const SH = {
     if (!a.length || a[0].lo === '') return { html: 'Enter visar alla kommandon', run: () => shAnswer(null), keep: true };
     const w = a[0].lo;
     if (a.length === 1 && (w === 'öppet' || w === 'öppen')) return { html: 'Enter visar allt att fakturera, äldst först', run: () => shAnswer(shAnsOpen()), keep: true };
-    if (a.length === 1 && ['synk', 'webb', 'webben'].includes(w)) return { html: 'Enter visar läget för synken med webben', run: () => shAnswer({ t: 'Spara på webben', sub: webOn() ? esc(st.web.email) : 'Inte inloggad', body: `<section class="psec">${webOn() ? pkv('Synk', webSaveText()?.[0] || '–') + pkv('På webben', st.web.saved ? `version ${st.web.rev} · ${fwhen(unixIso(st.web.saved))}` : 'ingen bok än') + (st.web.quota ? pkv('Utrymme', `${fsize(st.web.used)} av ${fsize(st.web.quota)}`) : '') : '<p class="p-note">Boken sparas bara i den här webbläsaren.</p>'}</section><section class="psec"><div class="p-acts">${webOn() ? `<button class="btn sm" data-act="webSyncNow">Synka nu</button>` : ''}<button class="btn sm" data-act="webGo">Spara på webben …</button></div></section>` }), keep: true };
+    if (a.length === 1 && ['synk', 'webb', 'webben'].includes(w)) return { html: 'Enter visar läget för synken med webben', run: () => shAnswer({ t: 'Spara på webben', sub: webOn() ? esc(st.web.email) : 'Inte inloggad', body: `<section class="psec">${webOn() ? pkv('Synk', webSaveText()?.[0] || '–') + (st.web.org ? pkv('Organisation', `${esc(st.web.orgName || '–')} · ${st.web.role === 'admin' ? 'admin' : 'medarbetare'}`) : '') + pkv('På webben', st.web.saved ? `version ${st.web.rev} · ${fwhen(unixIso(st.web.saved))}` : 'ingen bok än') + (st.web.quota ? pkv('Utrymme', `${fsize(st.web.used)} av ${fsize(st.web.quota)}`) : '') : '<p class="p-note">Boken sparas bara i den här webbläsaren.</p>'}</section><section class="psec"><div class="p-acts">${webOn() ? `<button class="btn sm" data-act="webSyncNow">Synka nu</button>` : ''}<button class="btn sm" data-act="webGo">Spara på webben …</button></div></section>` }), keep: true };
     if (a.length === 1 && ['saldo', 'komp', 'sem', 'semester'].includes(w)) return hasNorm() || vacInfo() ? { html: 'Enter visar kompsaldo och semester', run: () => shAnswer(shAnsSaldo()), keep: true } : { info: true, html: 'Timanställda har inget kompsaldo eller semesterkonto.' };
     if (w === 'kund') { const cr = shFindCust(a.slice(1)); return cr ? { html: `Enter visar kunden ${B(cr.C.name)}`, run: () => shAnswer(shAnsCust(cr.C)), keep: true } : { info: true, html: 'Skriv kundens namn.' }; }
     const p = shPeriod(a, 0); if (p?.err) return { bad: true, html: esc(p.err) };

@@ -1,5 +1,24 @@
 # Ändringar i Sisyfos
 
+## 0.16.1
+
+Filformat 10, oförändrat. **Organisationer på servern** – etapp 4, andra steget: flera personer i samma bok. Är du ensam och vill fortsätta så märks ingen skillnad. Servern (`api.php`) är ny och måste ligga ute samtidigt som appen (publiceringen gör det).
+
+- **Gör boken till en organisation** under *Inställningar → Spara boken → Spara på webben → Organisation*, med en kod från den som driver servern. Du blir organisationens admin och boken flyttar från ditt konto till organisationen; dina andra enheter följer med vid nästa synk (ändringar som inte var synkade slås ihop).
+- **Bjud in en medarbetare.** Personen läggs in i boken (namn, initialer, roll, anställningsform) och får en kod som gäller en gång i 30 dagar. Upp till 10 personer per organisation, admin inräknad. En kod kan tas bort eller bytas mot en ny.
+- **Medarbetaren går med** med *Skapa konto* och koden – eller *Gå med i en organisation …* med ett befintligt konto – och får en personlig nyckel. Sparindikatorn säger *Väntar på att admin tar in dig i boken*.
+- **Admin tar in personen** med *Ta in i boken …*, som visar nyckelns fingeravtryck att jämföra med personens enhet. Därefter krypteras registret, personens kort och tidlogg också till personen.
+- **Varje del för sig på servern.** Registret, fakturorna, personkorten och tidloggarna sparas var för sig, och servern kontrollerar skribenten: registret, fakturorna och korten bara admin, en tidlogg bara personen själv (admin förvaltar den tills personen har börjat rapportera). En enhet hämtar bara de delar som är krypterade till personen och skickar bara de delar personen skriver och som har ändrats. Krock bara när samma del har ändrats på två ställen.
+- **Medarbetaren** ser projekt, kunder och timpriser, sitt kort och sin egen tid – inte kollegornas tid, budgetens förbrukning eller fakturorna (fliken *Fakturor* syns inte). En ändring i något annat än den egna tiden tas bort vid nästa synk, med ett besked.
+- **Registrets nyckel fästs på enheten** första gången organisationens bok hämtas; byts den stoppas synken. Admins enhetsnyckel gäller i registret (också när boken en gång importerats med en äldre nyckel).
+- **Ta bort en medarbetare.** Personen når inte boken längre och delarna krypteras om utan henne eller honom; tiden ligger kvar.
+- **Inloggning med flera böcker.** Har kontot både en egen bok och organisationer får du välja vilken som öppnas.
+- **Radera kontot**: en medarbetare går ur organisationen, en admin tar bort organisationen (medarbetarna behåller sina konton).
+- **Serverns ägare** skapar koder för ett konto eller en organisation och ser organisationerna (namn, admin, antal personer, utrymme) under *Administrera servern*.
+- Servern sparar inga tidigare versioner av en organisations bok än.
+- README (*Organisationer*, *Servern*, *Data och integritet*) och Data och integritet i appen beskriver det nya. Kvar till 0.16.2: välja vems tidbok admin ser, vem som inte har checkat av, signera och öppna åt andra, smartshell åt andra och *Medarbetare* på projektsidan.
+- Test: `test/api_test.py` provar organisationerna på servern (koder, taket på 10, vem som får skriva vilken del, krock per del, att en medarbetare bara får sina delar, borttagning, radering); `test/org_test.py` (ny, körs i GitHub) provar en organisation i tre webbläsare – admin på två enheter och en medarbetare.
+
 ## 0.16.0
 
 Filformat 10 – **grunden för flera personer** (etapp 4, första steget). Är du ensam i boken märks ingen skillnad. Böcker i format 9 och äldre uppgraderas när de öppnas. Ladda om på alla enheter: en enhet med 0.15.x kan inte öppna boken efteråt och säger att den kommer från en nyare version.
