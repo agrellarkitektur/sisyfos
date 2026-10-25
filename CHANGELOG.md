@@ -1,5 +1,19 @@
 # Ändringar i Sisyfos
 
+## 0.14.0
+
+Filformat 8 – en migrering för allt som väntat på ett nytt format. Böcker i format 7 och äldre uppgraderas när de öppnas; en enhet med en äldre version av appen kan inte öppna boken efteråt (ladda om sidan så hämtas den nya). Samma bok uppgraderad på två enheter slås ihop utan dubbletter.
+
+- **Hantera valfri period.** Hanterad tid kan nu vara vilken period som helst – mitt i en månad, två månader eller 28 september – 3 oktober – i stället för bara hela månader. Från månadsmenyn (*Hantera en annan period …*), projektdagboken med *Egen period*, fakturaunderlaget och projektsidan, eller med smartshell: `hant 1/10-15/10 strand`, `hant v40-42 strand`, `häv 5/10-10/10 strand`. Det som redan är hanterat rörs inte, perioder kant i kant slås ihop och att häva en del delar perioden. Befintliga hanterade månader följer med oförändrade.
+- **Fakturaunderlaget markerar hela underlaget som hanterat** – från den äldsta öppna tiden som ingår till periodens slut, per projekt. Förut bara månader som helt ingick.
+- **Projektsidan: Hanterad tid** listar de senaste hanterade perioderna med timmar, belopp och *Häv*, och knappen *Hantera en period …*. Månadsöversikten och projektets månader visar en delvis hanterad månad med ett ljusare lås och perioden (t.ex. *1–15 okt*).
+- **Dagsanteckning** – en kort text för hela dagen, t.ex. *studieresa Sthlm*. Skrivs i dagvyn, i panelen för en dag eller med `dag tor studieresa Sthlm` (`dag mån-fre …` för flera dagar, `dag bort tor` tar bort). Syns i veckans dagrubriker, i månadsvyns dagrutor och i personsammanställningen (skärm och PDF). Sparas som händelse i din tidlogg och låses med veckan.
+- **Egna kommandon i smartshell.** `förk dbn = db ner` gör att `dbn okt strand` laddar ner dagboken; `förk bort dbn` tar bort det. Listas och ändras i dialogen *Smartshell och förkortningar* och i förteckningen. De tidigare inbyggda `db-rapp`, `db-rp` och `dbrapp` blir egna kommandon i befintliga böcker (och kan tas bort).
+- **Inställningar per enhet.** Tema, panelens bredd, kompakt läge, utfällda rader, helgen och listornas filter sparas på varje enhet och synkas inte längre med boken – telefonen kan ha mörkt tema och datorn ljust. Första gången tas värdena från boken, så inget ändras vid uppgraderingen.
+- **Enhets-id på händelser.** Varje ändring i tidloggen märks med ett slumpat id för enheten (`dev`) – grunden för synk per enhet när fler personer kommer.
+- Data och integritet och README beskriver dagsanteckningar, enhets-id och inställningarna per enhet.
+- Test: exempelbok `test/bocker/format-8.json`; `webb_test.py` kontrollerar att dagsanteckningar och hanterade perioder synkas men inte temat.
+
 ## 0.13.2
 
 Småjusteringar efter test och snabbare med stora böcker. Filformatet är oförändrat (7) – det som sparas om löpande-tipset ligger i projektets befintliga fält `notices`.

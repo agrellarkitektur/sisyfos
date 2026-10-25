@@ -125,6 +125,16 @@ def main():
             notes = json.dumps(ea, ensure_ascii=False)
             ok('Ritade på A' in notes and 'Möte på B' in notes, 'tiden från båda enheterna finns')
 
+            # --- Format 8: dagsanteckning och hanterad period synkas, temat stannar på enheten ---
+            shell(A, 'mörkt'); shell(A, 'dag igår mässa i Göteborg'); shell(A, 'hant 1/9-15/9 smeden')
+            synka(A); synka(B)
+            nb8 = json.dumps(bok(B)['bok']['logs'], ensure_ascii=False)
+            ok('Mässa i Göteborg' in nb8, 'B: dagsanteckningen från A kom fram')
+            hb = bok(B)['bok']['register']['handled'].get('proj2', [])
+            ok(any(x['from'] <= '2026-09-01' and x['to'] >= '2026-09-15' for x in hb), f"B: hanterad period från A kom fram {[(x['from'], x['to']) for x in hb]}")
+            ok(A.evaluate('document.documentElement.dataset.theme') == 'dark' and B.evaluate('document.documentElement.dataset.theme') != 'dark' and 'theme' not in bok(B)['bok']['prefs'], 'temat följer inte med till B')
+            shell(A, 'ljust')
+
             # --- Utan nät: ändringen väntar och skickas när nätet kommer tillbaka ---
             A.context.set_offline(True); shell(A, 'proj Offlineprojekt'); A.wait_for_timeout(6000)
             ok('Offline' in status(A), f'A utan nät: {status(A)}')

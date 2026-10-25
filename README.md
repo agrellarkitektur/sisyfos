@@ -38,7 +38,9 @@ Fältet överst på alla sidor. Raden under fältet säger vad Enter gör innan 
 | `db okt strand` · `db ner okt strand` · `db ner öppet strand` | visar eller laddar ner projektdagboken |
 | `pers fv` · `översikt 2025` | personsammanställning, månadsöversikt |
 | `fakt strand` · `fakt kund smeden` · `fakt ner fm strand` · `fakt csv öppet strand` | visar eller laddar ner fakturaunderlaget (PDF eller CSV) |
-| `hant fm strand` · `häv okt strand` | markerar som hanterad och låser, eller häver |
+| `hant fm strand` · `hant 1/10-15/10 strand` · `häv okt strand` | markerar en period som hanterad och låser, eller häver |
+| `dag tor studieresa Sthlm` · `dag bort tor` | dagsanteckning – en kort text för hela dagen |
+| `förk dbn = db ner` · `förk bort dbn` | egna kommandon: `dbn okt strand` blir `db ner okt strand` |
 | `proj strand` · `proj Kv. Lärkan 2 100000 Diamanten` · `proj Tennis 100k 850` · `proj Golf 850/h` | öppnar eller skapar projekt (budget, timpris och kund valfritt – ett tal direkt efter budgeten är timpriset) |
 | `kund Diamanten Bygg` · `uppg strand Bygglov` · `ant strand …` · `budget strand 180k` · `avsluta strand` | kunder, uppgifter, anteckningar, budget, status |
 | `? strand` · `? öppet` · `? saldo` · `? v43` | frågor – svaret visas i panelen |
@@ -57,10 +59,25 @@ För dig som fakturerar din egen tid – till exempel konsult med eget bolag. V�
 
 Sisyfos gör inga fakturor, men ett **underlag** att föra in i bokföringsprogrammet: *Rapporter → Fakturaunderlag*, eller knappen *Fakturaunderlag* på kund- och projektsidan.
 
-- Underlaget tar med **öppen debiterbar tid** för en kund (alla projekt) eller ett projekt, till och med vald månad – som standard även äldre öppen tid. Tid i hanterade månader ingår inte.
+- Underlaget tar med **öppen debiterbar tid** för en kund (alla projekt) eller ett projekt, till och med vald månad eller för en egen period – som standard även äldre öppen tid. Hanterad tid ingår inte.
 - Tiden summeras per projekt, uppgift, roll och timpris, med summa exkl. moms, moms och summa inkl. moms. Kundens fakturaadress, org.nr och referens står med.
 - **PDF** att läsa eller bifoga och **CSV** (semikolon, decimalkomma, UTF-8) att öppna i Excel eller föra in i bokföringsprogrammet. Projektdagboken är specifikationen.
-- **Markera som hanterat** låser de månader som helt ingår i underlaget, så att tiden inte kommer med nästa gång.
+- **Markera som hanterat** låser tiden i underlaget per projekt – från den äldsta öppna tiden som ingår till periodens slut – så att den inte kommer med nästa gång. Det som redan är hanterat rörs inte.
+
+### Hanterad tid
+
+*Hanterad* betyder avstämd och fakturerad: projektets tid i perioden låses och kan inte ändras förrän markeringen hävs. Från 0.14.0 kan det vara **vilken period som helst** – en månad, två månader, halva oktober eller 28 september – 3 oktober:
+
+- från månadsmenyn (en månad, eller *Hantera en annan period …*), projektdagboken (månad eller egen period), fakturaunderlaget och projektsidan (*Hanterad tid* listar perioderna med *Häv*),
+- eller med smartshell: `hant 1/10-15/10 strand`, `hant v40-42 strand`, `hant öppet strand` (all öppen tid till och med förra månaden), `häv okt strand`.
+
+Det som redan är hanterat rörs inte när en längre period markeras, och perioder som ligger kant i kant slås ihop. Att häva en del av en period delar den. Månadsöversikten visar en hel hanterad månad med ett lås och en delvis hanterad med ett ljusare lås.
+
+## Dagsanteckning och egna kommandon
+
+- **Dagsanteckning** – en kort text för hela dagen (”studieresa Sthlm”, ”kurs”, ”mässa”) utöver anteckningarna per projekt. Skrivs i dagvyn, i panelen för en dag eller med `dag tor studieresa Sthlm`. Syns i veckans dagrubriker, i månadsvyn och i personsammanställningen. Låses med veckan.
+- **Egna kommandon** i smartshell – ett eget ord som betyder ett kommando, med eller utan mer efter: `förk dbn = db ner` gör att `dbn okt strand` laddar ner dagboken. Listas och ändras under *Smartshell och förkortningar …* i Sisyfos-menyn (eller `förk`). Följer med boken till dina andra enheter.
+- **Inställningar per enhet** – tema, panelens bredd, kompakt läge, utfällda rader, helgen och listornas filter sparas på varje enhet för sig och synkas inte. Telefonen kan alltså ha mörkt tema och datorn ljust.
 
 Varför ingen riktig faktura? En faktura behöver löpnummer i obruten serie som aldrig återanvänds, kan inte ändras eller tas bort när den är utfärdad (bara krediteras) och ska arkiveras oförändrad. Det kräver ett eget, låst fakturaregister – det kan komma i en senare version.
 
@@ -123,7 +140,7 @@ Vill du ha boken på ditt eget webbhotell: lägg Sisyfos med `api.php` i en mapp
 
 Samma text finns i appen under *Sisyfos-menyn → Data och integritet*.
 
-**Vad boken innehåller.** Företagets uppgifter och logga. Kunder: namn, organisations- eller personnummer, referens, kontaktperson, e-post, telefon, adresser och anteckningar. Projekt: namn, nummer, fastighetsbeteckning, budget, timpriser, uppgifter och anteckningar. Tid: datum, timmar, pris och anteckning för varje tidpost, med historik över ändringar, avcheckning och signering. Om dig: namn, initialer, roll och timpris – i fullständigt läge även anställningsform, normtid, kompsaldo och semester. Personnummer, kontaktpersoner och anteckningar om människor är personuppgifter.
+**Vad boken innehåller.** Företagets uppgifter och logga. Kunder: namn, organisations- eller personnummer, referens, kontaktperson, e-post, telefon, adresser och anteckningar. Projekt: namn, nummer, fastighetsbeteckning, budget, timpriser, uppgifter och anteckningar. Tid: datum, timmar, pris och anteckning för varje tidpost, dagsanteckningar, med historik över ändringar, avcheckning och signering; varje ändring märks med ett slumpat id för enheten den gjordes på (inget om själva enheten). Inställningar för boken, till exempel egna kommandon – det som bara gäller skärmen (tema, panelbredd, kompakt läge, utfällda rader, listfilter) sparas på varje enhet för sig och följer inte med boken. Om dig: namn, initialer, roll och timpris – i fullständigt läge även anställningsform, normtid, kompsaldo och semester. Personnummer, kontaktpersoner och anteckningar om människor är personuppgifter.
 
 **Var den sparas.** I webbläsaren på enheten, tillsammans med automatiska ögonblicksbilder (se ovan). **Med konto på webben** dessutom krypterad på servern där Sisyfos ligger (agrellarkitektur.se, ett webbhotell hos Loopia i Sverige): e-postadressen, när kontot skapades, inloggade enheter och när de senast användes, och den krypterade boken med de tio senaste versionerna, deras storlek och tidpunkter. Lösenordet, boknyckeln och innehållet lämnar aldrig enheten okrypterade, och kontot med allt på servern kan raderas när du vill. Krypteringen görs av appen, som hämtas från samma server – se förbehållet under *Spara på webben*. Filer du själv sparar – kopior, autospar till mapp, PDF och CSV – är vanliga, okrypterade filer. Krypterade kopior (`.sisyfos`) kan bara öppnas med ditt lösenord eller din utskrivna återställningsnyckel; glömmer du båda går de inte att öppna, inte heller för oss. Ingen annan kan läsa boken, inte heller Agrell Arkitektur, och därför kan ingen heller återställa den åt dig.
 
@@ -141,6 +158,8 @@ Sisyfos är en PWA och fungerar utan nät.
 ## Filformat och bakåtkompatibilitet
 
 Boken är en JSON-fil med versionsnummer (`format`). Varje ändring av formatet får en migrering, och **gamla böcker går alltid att öppna** i nyare versioner. En bok från en nyare version öppnas inte av en äldre – och skrivs aldrig över.
+
+Format 8 (0.14.0) ändrade hanterad tid från hela månader till datumintervall per projekt (`register.handled[projekt] = [{from, to, …}]`), lade till dagsanteckningar (händelsetypen `daynote`), egna kommandon (`prefs.aliases`) och enhets-id på händelser (`dev`), och flyttade skärminställningarna ur boken till enheten.
 
 `test/bocker/` innehåller en exempelbok per filformat. Arbetsflödet *Test – gamla böcker öppnas* kontrollerar vid varje push att alla fortfarande öppnas:
 
