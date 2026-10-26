@@ -797,11 +797,17 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 .pcard .dc-head .icon-btn{width:32px;height:32px;color:var(--muted);margin-left:2px}
 .tk-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .tk-row{display:grid;grid-template-columns:minmax(0,1fr) auto 110px 36px;align-items:center;gap:8px}
+.tk-row:has(.tk-rate){grid-template-columns:minmax(0,1fr) auto 84px 110px 36px}.tk-rate{text-align:right}
+.rt.rt3{grid-template-columns:minmax(0,1fr) 80px 110px}
+.rhist{list-style:none;margin:6px 0 0;padding:0;font-size:12px;color:var(--muted)}.rhist b{font-weight:600;color:var(--ink)}
+.rf-opts{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center}.rf-opts .chk{display:inline-flex;align-items:center;gap:6px}.rf-opts input[type=date]{height:32px;padding:0 8px;border:1px solid var(--rule);border-radius:8px;background:var(--paper)}
+.role-list .rh{grid-column:1/-1;margin-top:-2px}
 .tk-row input,.tk-row select{height:36px;padding:0 10px;border:1px solid var(--rule);border-radius:9px;background:var(--paper);min-width:0}
 .tk-row select{max-width:280px}
 .tk-row input:focus,.tk-row select:focus{outline:none;border-color:var(--accent);background:var(--chrome)}
 .tk-row.arch input,.tk-row.arch select,.tk-row.arch .chk{opacity:.5;text-decoration:line-through}
-@media (width <= 620px){.tk-row{grid-template-columns:minmax(0,1fr) 36px}.tk-row .chk,.tk-row select{grid-column:1}.tk-row .tk-abbr{grid-column:1}}
+@media (width <= 620px){.tk-row{grid-template-columns:minmax(0,1fr) 36px}.tk-row .chk,.tk-row select{grid-column:1}.tk-row .tk-abbr{grid-column:1}
+  .tk-row:has(.tk-rate){grid-template-columns:auto minmax(0,1fr) minmax(0,1fr) 36px}.tk-row:has(.tk-rate) .tk-name{grid-column:1/-1}.tk-row:has(.tk-rate) .chk,.tk-row:has(.tk-rate) .tk-abbr{grid-column:auto}}
 .swatches{display:flex;flex-wrap:wrap;gap:8px}
 .swatches label{position:relative;cursor:pointer}
 .swatches input{position:absolute;opacity:0}
@@ -1224,8 +1230,8 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 'use strict';
 
 /* ───────────── Hjälpfunktioner ───────────── */
-const FORMAT = 'sisyfos', FORMAT_VERSION = 10, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.16.1', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const FORMAT = 'sisyfos', FORMAT_VERSION = 11, KEY = 'sisyfos.bok';
+const APP_VERSION = '0.17.0', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 { const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
@@ -1516,7 +1522,11 @@ const MIGRATIONS = {
     const B = d.register.book || {}, ev = Object.values(d.logs || {}).flatMap(l => l?.events || [])[0];
     if (!isObj(d.register.org) || !d.register.org.id) d.register.org = { id: 'o' + hashStr(String(B.created || ev?.id || 'sisyfos')), created: B.created || null };
     d.version = 10; return d;
-  }
+  },
+  // 10 → 11: timpriser med datum (ett pris kan vara en prislista [{from, rate}]), timpris hos kunden (customers[].roleRates)
+  // och på uppgiften (tasks[].rate), inställningen för signering (book.signWeeks). Inget behöver räknas om – ett tal
+  // är ett pris som gäller alltid. Formatet höjs för att en äldre app inte ska läsa en prislista som ett tal.
+  10: d => { d.version = 11; return d; }
 };
 function migrate(d) {
   if (!d || d.format !== FORMAT) throw new Error('Filen är inte en Sisyfos-bok.');
@@ -1619,8 +1629,52 @@ const taskOf = (p, id) => p?.tasks.find(t => t.id === id);
 const role = id => byId(R().roles, id);
 const cust = id => byId(R().customers, id);
 const roleFor = p => proj(p)?.memberRoles?.[me()] || R().people.find(x => x.id === me()).defaultRoleId;
-// Pris: per medarbetare i roll i projekt > per roll i projekt > centralt rollpris. Mest specifika vinner.
-const rateFor = (pId, roleId, personId) => { const p = proj(pId); return p?.personRates?.[personId]?.[roleId] ?? p?.roleRates?.[roleId] ?? role(roleId)?.rate ?? 0; };
+/* ───────────── Timpriser (0.17.0, filformat 11) ─────────────
+   Mest specifika priset vinner: uppgiften (ett pris för alla roller) > personens pris i projektet > rollens pris i
+   projektet > rollens pris hos kunden > rollens centrala pris. Ett pris är ett tal (gäller alltid) eller en prislista
+   [{from:'ÅÅÅÅ-MM-DD', rate}] – en dag gäller det senaste steget med from ≤ dagen; före första steget och där rate är
+   null gäller nästa nivå. Varje tidpost sparar sitt pris. Olåst tid (inte avcheckad, signerad eller hanterad) följer
+   prislistan: när ett pris ändras får de egna tidposter vars pris ändrades det nya priset (rateSnap → repriceSince),
+   också när ändringen kommer från en annan enhet. Låst tid behåller sitt pris. */
+const rv = (x, d) => { if (x == null) return undefined; if (!Array.isArray(x)) return +x; let v = null; for (const s of x) if ((s?.from || '') <= d) v = s.rate; return v ?? undefined; };
+const rNow = x => rv(x, today());
+// Nytt värde för ett pris när v (null = nästa nivå) gäller från from ('' = från början). undefined = inget eget pris.
+function rPut(x, v, from) {
+  from = from || ''; v = v == null || v === '' ? null : +v;
+  if (!from) return v ?? undefined;
+  const L = (x == null ? [] : Array.isArray(x) ? x : [{ from: '', rate: +x }]).filter(s => (s?.from || '') !== from).concat([{ from, rate: v }]);
+  L.sort((a, b) => (a.from || '') < (b.from || '') ? -1 : (a.from || '') > (b.from || '') ? 1 : 0);
+  const out = []; let prev = null;
+  for (const s of L) { const q = s.rate ?? null; if (q === prev) continue; out.push({ from: s.from || '', rate: q }); prev = q; }
+  if (!out.length) return undefined;
+  return out.length === 1 && !out[0].from ? out[0].rate ?? undefined : out;
+}
+function rSet(o, k, v, from) { const n = rPut(o[k], v, from); if (n === undefined) delete o[k]; else o[k] = n; }
+// Prislistan som text, t.ex. "900 kr/h · från 1 jan 2027 1 000 kr/h" ('' när priset inte har några steg)
+const rHist = (x, inh = 'nästa nivå') => Array.isArray(x) ? x.map(s => `${s.from ? 'från ' + ydate(s.from) + ' ' : ''}${s.rate == null ? inh : fkr(s.rate) + '/h'}`).join(' · ') : '';
+const rateFor = (pId, roleId, personId, d = today(), tId = null) => {
+  const p = proj(pId), t = tId ? taskOf(p, tId) : null, c = p && !p.internal ? cust(p.customerId) : null;
+  return rv(t?.rate, d) ?? rv(p?.personRates?.[personId]?.[roleId], d) ?? rv(p?.roleRates?.[roleId], d) ?? rv(c?.roleRates?.[roleId], d) ?? rv(role(roleId)?.rate, d) ?? 0;
+};
+const eRate = e => rateFor(e.projectId, e.roleId, e.person, e.date, e.taskId);
+const eOpen = e => !lockedK(e.projectId + '~' + e.taskId, e.date);
+// Prislistans pris för varje egen olåst tidpost – tas före en ändring
+function rateSnap() { const m = new Map(); if (!E || !S) return m; for (const e of live()) if (eOpen(e)) m.set(e.id, eRate(e)); return m; }
+// Efter ändringen: poster vars pris i prislistan ändrades får det nya priset (händelser i den egna loggen)
+function repriceSince(snap) {
+  const ch = [], now = new Date().toISOString();
+  for (const e of live()) { if (!snap.has(e.id) || !eOpen(e)) continue; const q = eRate(e); if (q !== snap.get(e.id) && q !== e.rate) ch.push({ id: e.id, from: e.rate, to: q }); }
+  for (const c of ch) { const ev = { id: uid(), entryId: c.id, type: 'update', at: now, by: me(), dev: devId(), data: { rate: c.to } }; log().push(ev); apply(ev, me()); }
+  return ch;
+}
+function repriceUndo(ch) {
+  const now = new Date().toISOString();
+  for (const c of ch) { const e = E.get(c.id); if (!e || e.deleted || e.rate !== c.to || !eOpen(e)) continue; const ev = { id: uid(), entryId: c.id, type: 'update', at: now, by: me(), dev: devId(), data: { rate: c.from } }; log().push(ev); apply(ev, me()); }
+}
+const rChTxt = ch => ch.length ? ` · ${ch.length === 1 ? 'en tidpost' : ch.length + ' tidposter'} fick det nya priset` : '';
+// "Ändrade timpriser gäller …": från början eller från ett datum (id = namnet på valet)
+const rfHtml = (id, attr = '') => `<div class="fld full rfrom" ${attr}><span class="lbl">Ändrade timpriser gäller</span><div class="rf-opts"><label class="chk"><input type="radio" name="${id}" value="d" checked> från <input type="date" id="${id}D" value="${today()}" aria-label="Gäller från datum"></label><label class="chk"><input type="radio" name="${id}" value=""> från början</label></div><span class="fld-hint">Tid som inte är avcheckad, signerad eller hanterad räknas om från datumet. Tid som skrivs in senare för en tidigare dag får priset som gällde då.</span></div>`;
+const rfVal = id => { const v = $(`input[name=${id}]:checked`)?.value; if (!v) return ''; const d = $('#' + id + 'D')?.value; return /^\d{4}-\d{2}-\d{2}$/.test(d || '') ? d : today(); };
 const weekdayNorm = d => +(R().book.norm[dow(d)] ?? 0);
 // Normtid för en dag: årskalenderns avvikelser (röda dagar, ändrade dagar) går före veckodagens normtid
 const bookNorm = d => { const dev = calDev(+d.slice(0, 4)); return d in dev ? +dev[d] : weekdayNorm(d); };
@@ -1632,6 +1686,8 @@ const hasNorm = () => !simple() && person().employment !== 'hourly';
 // Timanställda har varken kompsaldo eller semesterkonto – de uppgifterna döljs helt för dem
 const taskHidden = (P, T) => !!T?.archived || (P?.kind === 'absence' && simple()) || (P?.kind === 'absence' && !hasNorm() && (T.absence === 'comp' || T.absence === 'vacation'));
 const norm = d => { const p = person(); return p.employment === 'hourly' || simple() ? 0 : p.employment === 'part' ? bookNorm(d) * (+p.pct || 0) / 100 : bookNorm(d); };
+// Signering av veckor (0.17.0): book.signWeeks – saknas = på när boken har fler än en person
+const signOn = () => R().book.signWeeks ?? (R().people.length > 1);
 const weekState = wk => { const w = WEEKS.get(me() + '|' + wk), sg = R().signed[me() + '|' + wk]; return { checked: !!w?.checked, at: w?.at, signed: sg || null }; };
 const locked = d => { const w = weekState(monday(d)); return w.checked || !!w.signed; };
 /* Hanterad tid (format 8): register.handled[projektId] = [{ id, from, to, at, by, hours, amount }] – datumintervall,
@@ -1910,7 +1966,7 @@ function restoreRow(rk, wk) {
   return { h, n };
 }
 const perTxt = (from, to) => from.slice(8) === '01' && to === ymLast(ymOf(from)) ? ymLabel(ymOf(from)).toLowerCase() : dSpan(from, to);
-function lockMsg(d, rk) { const hx = rk && !locked(d) && handled(splitRow(rk)[0], d); if (hx) { toast(`${proj(splitRow(rk)[0]).name}: ${perTxt(hx.from, hx.to)} är hanterad och låst. Häv markeringen på projektsidan eller under Rapporter.`); return; } toast(weekState(monday(d)).signed ? 'Veckan är signerad av administratören och kan inte ändras.' : 'Veckan är avcheckad. Öppna den igen för att ändra.'); }
+function lockMsg(d, rk) { const hx = rk && !locked(d) && handled(splitRow(rk)[0], d); if (hx) { toast(`${proj(splitRow(rk)[0]).name}: ${perTxt(hx.from, hx.to)} är hanterad och låst. Häv markeringen på projektsidan eller under Rapporter.`); return; } toast(weekState(monday(d)).signed ? (person().admin ? 'Veckan är signerad. Lås upp den via veckans status för att ändra.' : 'Veckan är signerad av administratören och kan inte ändras.') : 'Veckan är avcheckad. Öppna den igen för att ändra.'); }
 function setCell(rk, date, patch) {
   const r = setCell0(rk, date, patch);
   const T = rowInfo(rk).T;
@@ -1930,7 +1986,7 @@ function setCell0(rk, date, patch) {
     const hours = patch.hours ?? 0, note = patch.note ?? '';
     if (!(hours > 0) && !note.trim()) return;
     const roleId = roleFor(p);
-    const ev = { id: uid(), entryId: uid(), type: 'create', at: now, by: me(), dev: devId(), data: { date, projectId: p, taskId: t, roleId, hours, note, rate: rateFor(p, roleId, me()) } };
+    const ev = { id: uid(), entryId: uid(), type: 'create', at: now, by: me(), dev: devId(), data: { date, projectId: p, taskId: t, roleId, hours, note, rate: rateFor(p, roleId, me(), date, t) } };
     L.push(ev); apply(ev, me()); pin(rk, monday(date));
   } else {
     const nh = 'hours' in patch ? patch.hours : cur.hours, nn = 'note' in patch ? patch.note : cur.note;
@@ -1955,7 +2011,7 @@ function moveCell(key, toRk) {
   const [p, t] = splitRow(toRk), tgt = cell(toRk, d), now = new Date().toISOString();
   if (!tgt) {
     const roleId = roleFor(p);
-    const ev = { id: uid(), entryId: cur.id, type: 'update', at: now, by: me(), dev: devId(), data: { projectId: p, taskId: t, roleId, rate: rateFor(p, roleId, me()) } };
+    const ev = { id: uid(), entryId: cur.id, type: 'update', at: now, by: me(), dev: devId(), data: { projectId: p, taskId: t, roleId, rate: rateFor(p, roleId, me(), d, t) } };
     log().push(ev); apply(ev, me()); pin(toRk, monday(d)); save();
   } else {
     const h = cur.hours, n = cur.note;
@@ -2226,7 +2282,7 @@ async function gz(bytes, dir) {
 }
 const vaultPublic = v => ({ v: v.v, id: v.id, created: v.created, kdf: v.kdf, pw: v.pw, pwAt: v.pwAt, rk: v.rk, rkAt: v.rkAt });
 // Version 2 (0.16.0): boken i delar, var och en krypterad till sina läsare och signerad av skribenten (se Delar och nycklar).
-// data är en liten stubb (format 10) låst med boknyckeln – en äldre app säger då "nyare version" i stället för ett obegripligt fel.
+// data är en liten stubb (formatversionen) låst med boknyckeln – en äldre app säger då "nyare version" i stället för ett obegripligt fel.
 async function encBookText(obj) {
   const e = st.enc, k = await keysEnsure(), now = new Date().toISOString();
   if (!k) {  // reserv utan nycklar (ingen IndexedDB): hela boken i ett stycke, som version 1
@@ -2237,7 +2293,7 @@ async function encBookText(obj) {
   const { org, parts } = await encParts(obj, k), env = await encEnvelope(k);
   return JSON.stringify({ format: ENC_FORMAT, version: 2, app: APP_VERSION, saved: now, vault: env.vault, zip: env.zip, org, me: k.pid, keys: env.keys, parts, data: env.data });
 }
-// Filens omslag: valvet, nyckelringen och stubben (format 10) låst med boknyckeln
+// Filens omslag: valvet, nyckelringen och stubben (formatversionen) låst med boknyckeln
 async function encEnvelope(k, e = st.enc) {
   let stub = te(JSON.stringify({ format: FORMAT, version: FORMAT_VERSION, parts: true }));
   const z = await gz(stub, 'zip'); if (z) stub = z;
@@ -2820,7 +2876,8 @@ async function webPull(tries = 0) {
   if (cf.length) webConflictDlg(cf.map(c => ({ ...c, label: cfLabel(c.path, JSON.parse(cur), theirs) })));
   else if (!same) toast('Boken uppdaterades från webben');
 }
-function webApply(book) { S = book; derive(); lastRaw = null; writeNow(); render(); }
+// Olåst tid följer prislistan också när priset ändrats på en annan enhet eller av organisationens admin (0.17.0)
+function webApply(book) { const snap = rateSnap(); S = book; derive(); if (S.logs?.[me()]) repriceSince(snap); lastRaw = null; writeNow(); render(); }
 function webFail(e) {
   if (e.defer) { st.webS.s = 'pending'; renderSave(); return; }
   if (e.offline) return webState('offline');
@@ -3224,7 +3281,7 @@ function orgInviteDlg(pid) {
   const p = pid ? byId(R().people, pid) : null, roles = R().roles, B = R().book;
   openDlg(`<h2 id="dlgTitle">${p ? `Bjud in ${esc(p.name)}` : 'Bjud in en medarbetare'}</h2><p>${p ? 'Personen får en kod att skapa konto med (eller gå med med ett befintligt konto).' : 'Medarbetaren läggs in i boken och får en kod att skapa konto med. Anställning, saldo och semester kan ändras senare.'}</p>
    <div class="form" id="oiForm">${p ? '' : `<div class="fld"><label for="oiName">Namn${REQ}</label><input id="oiName" autocomplete="off"></div><div class="fld"><label for="oiIni">Initialer</label><input id="oiIni" maxlength="3" autocomplete="off"></div>
-   <div class="fld"><label for="oiRole">Roll</label><select id="oiRole">${roles.map(r => `<option value="${esc(r.id)}">${esc(r.name)} · ${fkr(r.rate)}/h</option>`).join('')}</select></div>
+   <div class="fld"><label for="oiRole">Roll</label><select id="oiRole">${roles.map(r => `<option value="${esc(r.id)}">${esc(r.name)} · ${fkr(rNow(r.rate))}/h</option>`).join('')}</select></div>
    <div class="fld"><label for="oiEmp">Anställningsform</label><select id="oiEmp">${[['full', 'Heltid'], ['part', 'Deltid'], ['hourly', 'Timanställd']].map(([v, l]) => `<option value="${v}" ${(B.defaultEmployment || 'full') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`}
    <div class="err fld full" id="encErr"></div></div><div id="oiOut"></div>
    <div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Stäng</button><button class="btn primary" data-act="orgInviteGo" ${p ? `data-pid="${esc(p.id)}"` : ''}>Skapa kod</button></div>`);
@@ -3439,9 +3496,9 @@ function groupRows(rows) {
 }
 function wkStateHtml(wk, ws) {
   const adm = person().admin;
-  if (ws.signed) return `<div class="wkstate signed">${ic('lock')}<div class="txt"><b>Veckan är signerad</b> av administratören ${sdate(ws.signed.at.slice(0, 10))}. Den kan inte ändras eller öppnas igen.</div></div>`;
+  if (ws.signed) return `<div class="wkstate signed">${ic('lock')}<div class="txt"><b>Veckan är signerad</b> av administratören ${sdate(ws.signed.at.slice(0, 10))}. ${adm ? 'Den är låst tills du låser upp den.' : 'Bara administratören kan låsa upp den.'}</div>${adm ? `<button class="btn sm" data-act="unsignWeek">${ic('unlock')}Lås upp …</button>` : ''}</div>`;
   const at = ws.at ? sdate(ymd(new Date(ws.at))) : '';
-  return `<div class="wkstate">${ic('check')}<div class="txt"><b>Veckan är avcheckad</b>${at ? ' ' + at : ''}. Rutorna är låsta tills du öppnar veckan igen.</div><button class="btn sm" data-act="reopenWeek">${ic('unlock')}Öppna igen</button>${adm ? `<button class="btn sm" data-act="signWeek" title="I version 1 är du både administratör och medarbetare">${ic('sign')}Signera som administratör</button>` : ''}</div>`;
+  return `<div class="wkstate">${ic('check')}<div class="txt"><b>Veckan är avcheckad</b>${at ? ' ' + at : ''}. Rutorna är låsta tills du öppnar veckan igen.</div><button class="btn sm" data-act="reopenWeek">${ic('unlock')}Öppna igen</button>${adm && signOn() ? `<button class="btn sm" data-act="signWeek" title="I version 1 är du både administratör och medarbetare">${ic('sign')}Signera som administratör</button>` : ''}</div>`;
 }
 function cellHtml(rk, d, ri, ci, P, selDate, lk) {
   lk = lk || !!handled(P.id, d);
@@ -3663,7 +3720,7 @@ function renderPanel() {
   if (!st.sel && !st.selDay) { el.innerHTML = panelChrome() + `<div class="p-head"><div><h2>Översikt</h2><p>Markera en dag eller en ruta för detaljer.</p></div>${pTools(false)}</div><div class="p-body">${st.view === 'month' ? monthOverviewHtml() : overviewHtml()}</div>`; return; }
   if (!st.sel) { el.innerHTML = panelChrome() + dayPanelHtml(st.selDay); return; }
   const [rk, d] = splitKey(st.sel), { P, T, color } = rowInfo(rk), e = cell(rk, d), key = st.sel, lk = lockedK(rk, d), ro = lk ? 'readonly' : '';
-  const r = role(e?.roleId || roleFor(P.id)), rate = e ? e.rate : rateFor(P.id, r?.id, me());
+  const r = role(e?.roleId || roleFor(P.id)), rate = e ? e.rate : rateFor(P.id, r?.id, me(), d, T?.id);
   const bill = !P.internal && T.billable;
   el.innerHTML = panelChrome() + `<div class="p-head" style="--pc:${color}"><span class="dot"></span><div><h2>${esc(P.name)}</h2><p>${T.absence ? esc(T.name) : `${esc(P.number)} · ${esc(T.name)}${bill ? ` · ${simple() ? '' : esc(r?.name || '') + ' '}${fkr(rate)}/h` : ' · ej debiterbar'}`}</p></div>${pTools(true)}</div>
   <div class="p-body" style="--pc:${color}">
@@ -4191,8 +4248,8 @@ function doCheckWeek(wk) {
 function weekStateMenu(btn) {
   const wk = curWeek(), ws = weekState(wk), adm = person().admin, m = $('#menu');
   m.innerHTML = ws.signed
-    ? `<div class="mh">${ic('lock')}Signerad ${sdate(ws.signed.at.slice(0, 10))}</div><hr><div class="mh">En signerad vecka är slutgiltig och kan inte öppnas igen.</div>`
-    : `<div class="mh">${ic('check')}Avcheckad${ws.at ? ' ' + sdate(ymd(new Date(ws.at))) : ''}</div><hr><button role="menuitem" data-act="reopenWeek">${ic('unlock')}Öppna veckan igen</button>${adm ? `<button role="menuitem" data-act="signWeek">${ic('sign')}Signera som administratör</button>` : ''}`;
+    ? `<div class="mh">${ic('lock')}Signerad ${sdate(ws.signed.at.slice(0, 10))}</div><hr>${adm ? `<button role="menuitem" data-act="unsignWeek">${ic('unlock')}Lås upp veckan …</button>` : '<div class="mh">Bara administratören kan låsa upp en signerad vecka.</div>'}`
+    : `<div class="mh">${ic('check')}Avcheckad${ws.at ? ' ' + sdate(ymd(new Date(ws.at))) : ''}</div><hr><button role="menuitem" data-act="reopenWeek">${ic('unlock')}Öppna veckan igen</button>${adm && signOn() ? `<button role="menuitem" data-act="signWeek">${ic('sign')}Signera som administratör</button>` : ''}`;
   const r = btn.getBoundingClientRect(); placeMenu(m, r.left, r.bottom + 6); $('button', m)?.focus();
 }
 
@@ -4399,7 +4456,7 @@ function newProjectDlg(pre) {
    <div class="fld full"><label for="npName">Projektnamn${REQ}</label><input id="npName" required aria-required="true" placeholder="Kv. Exempel"></div>
    <div class="fld"><label for="npNum">Projektnummer</label><input id="npNum" class="mono" value="${esc(numFmt(fmt).next)}" data-numdup="" autocomplete="off"><span class="fld-msg" id="npNumMsg" aria-live="polite"></span><button type="button" class="linkish fmt-tog" data-act="npFmtTog" aria-expanded="false">Format <span class="mono">${esc(fmt)}</span> · Ändra</button></div>
    <div class="fld"><label for="npProp">Fastighetsbeteckning</label><input id="npProp" placeholder="Exempel 1:23"></div>
-   ${simple() ? `<div class="fld"><label for="npRate">Timpris, kr exkl. moms</label><input id="npRate" class="mono" inputmode="numeric" placeholder="${nfKr.format(role(person().defaultRoleId)?.rate || 0)}"><span class="fld-hint">Tomt = ditt vanliga pris</span></div>` : `<div class="fld"><label for="npCust">Kund</label>${custAcHtml('npCust', pre?.customer || '')}</div>`}
+   ${simple() ? `<div class="fld"><label for="npRate">Timpris, kr exkl. moms</label><input id="npRate" class="mono" inputmode="numeric" placeholder="${nfKr.format(rNow(role(person().defaultRoleId)?.rate) || 0)}"><span class="fld-hint">Tomt = ditt vanliga pris</span></div>` : `<div class="fld"><label for="npCust">Kund</label>${custAcHtml('npCust', pre?.customer || '')}</div>`}
    <div class="fld"><label for="npBud">Budget, kr exkl. moms</label><input id="npBud" inputmode="numeric" placeholder="120 000"><span class="fld-hint">Tomt eller 0 = löpande utan budget</span></div>
    <div class="fld"><label for="npTasks">Uppgifter, kommaseparerade</label><input id="npTasks" value="${esc(defTasks().join(', '))}"></div>
    <div class="fld" data-ext><label for="npIdle">Blir inaktivt efter</label>${idleSel('npIdle', R().book.idleDays ?? 90)}<span class="fld-hint">utan registrerad tid</span></div>
@@ -4616,7 +4673,7 @@ function dataDlg() {
   openDlg(`<div class="about data-info"><h2 id="dlgTitle">Data och integritet</h2><p class="muted small">Gäller Sisyfos ${APP_VERSION} (alfa). Texten uppdateras när något ändras. ${webOn() ? `Du har ett konto på webben (${esc(st.web.email)}).` : 'Du har inget konto på webben – boken finns bara på dina enheter.'}</p>
   <h3>Vad boken innehåller</h3>
   <ul><li><b>Företaget:</b> namn, organisationsnummer, adress, e-post, telefon, webbplats och logga.</li>
-  <li><b>Kunder:</b> namn, organisations- eller personnummer, referens, kontaktperson, e-post, telefon, adresser och anteckningar.</li>
+  <li><b>Kunder:</b> namn, organisations- eller personnummer, referens, kontaktperson, e-post, telefon, adresser, timpriser och anteckningar.</li>
   <li><b>Projekt:</b> namn, nummer, fastighetsbeteckning, budget, timpriser, uppgifter och anteckningar.</li>
   <li><b>Tid:</b> datum, timmar, pris och anteckning för varje tidpost, dagsanteckningar, med historik över ändringar, avcheckning och signering. Varje ändring märks med ett slumpat id för enheten den gjordes på (inget om själva enheten).</li>
   <li><b>Du:</b> namn, initialer, roll och timpris – och i fullständigt läge anställningsform, normtid, kompsaldo och semester.</li>
@@ -4832,7 +4889,11 @@ const A = {
   checkWeek: () => checkWeekDlg(),
   forceCheck: () => doCheckWeek(curWeek()),
   reopenWeek: () => { const wk = curWeek(); if (weekState(wk).signed) { lockMsg(wk); return; } weekEvent(wk, false); toast(`Vecka ${isoWeek(wk).w} är öppen igen`); },
-  signWeek: () => { const wk = curWeek(); closeFloating(); confirmPlain(`Signera vecka ${isoWeek(wk).w}?`, 'En signerad vecka är slutgiltig. Den kan inte öppnas igen, och ingen tid i den kan ändras eller tas bort.', `${ic('sign')}Signera`, 'doSign', SIGN_WORDS); },
+  signWeek: () => { const wk = curWeek(); closeFloating(); confirmPlain(`Signera vecka ${isoWeek(wk).w}?`, 'En signerad vecka är låst – ingen tid i den kan ändras eller tas bort. Bara administratören kan låsa upp den igen.', `${ic('sign')}Signera`, 'doSign', SIGN_WORDS); },
+  // Lås upp en signerad vecka (0.17.0): signeringen tas bort och veckan öppnas, så att tiden kan rättas. Hanterad tid förblir låst.
+  rrCancel: () => { closeDlg(); renderMain(); },
+  unsignWeek: () => { const wk = curWeek(); closeFloating(); if (!person().admin) return; confirmPlain(`Lås upp vecka ${isoWeek(wk).w}?`, 'Signeringen tas bort och veckan öppnas igen, så att tiden kan ändras. Tid som är hanterad eller fakturerad förblir låst.', `${ic('unlock')}Lås upp`, 'doUnsign', ['ok', 'lås']); },
+  doUnsign: () => { const wk = curWeek(), k = me() + '|' + wk, prev = R().signed[k]; if (!prev) { closeDlg(); return; } delete R().signed[k]; weekEvent(wk, false); toast(`Vecka ${isoWeek(wk).w} är upplåst och öppen`, { label: 'Ångra', fn: () => { R().signed[k] = prev; weekEvent(wk, true); } }); },
   doSign: () => { const wk = curWeek(); R().signed[me() + '|' + wk] = { at: new Date().toISOString(), by: me() }; save(); closeDlg(); renderMain(); renderPanel(); renderStatus(); toast(`Vecka ${isoWeek(wk).w} är signerad`, { label: 'Ångra', fn: () => { delete R().signed[me() + '|' + wk]; save(); renderMain(); renderPanel(); renderStatus(); } }); },
   weekStateMenu: el => { if (!$('#menu').hidden) { closeFloating(); return; } weekStateMenu(el); },
   gotoMiss: el => {
@@ -5392,11 +5453,11 @@ function calSave() {
 
 /* ───────────── Inställningar ───────────── */
 const ROUND = [[0, 'Ingen avrundning'], [0.1, '0,1 h (6 min)'], [0.25, '0,25 h (15 min)'], [0.5, '0,5 h (30 min)'], [1, '1 h']];
-const SET_NAV = [['set-mode', 'Läge'], ['set-company', 'Företaget'], ['set-time', 'Arbetstid'], ['set-cal', 'Årsarbetstid'], ['set-roles', 'Roller och priser'], ['set-person', 'Du'], ['set-num', 'Nya projekt'], ['set-inv', 'Fakturor'], ['set-book', 'Spara boken']];
+const SET_NAV = [['set-mode', 'Läge'], ['set-company', 'Företaget'], ['set-time', 'Arbetstid'], ['set-cal', 'Årsarbetstid'], ['set-roles', 'Roller och priser'], ['set-person', 'Du'], ['set-week', 'Signering'], ['set-num', 'Nya projekt'], ['set-inv', 'Fakturor'], ['set-book', 'Spara boken']];
 function roleUse(id) {
   let n = 0; for (const e of E.values()) if (!e.deleted && e.roleId === id) n++;
   const ppl = R().people.filter(p => p.defaultRoleId === id).length;
-  const prj = R().projects.filter(p => id in (p.roleRates || {}) || Object.values(p.memberRoles || {}).includes(id) || Object.values(p.personRates || {}).some(x => id in x)).length;
+  const prj = R().projects.filter(p => id in (p.roleRates || {}) || Object.values(p.memberRoles || {}).includes(id) || Object.values(p.personRates || {}).some(x => id in x)).length + R().customers.filter(c => id in (c.roleRates || {})).length;
   return { n, ppl, prj, any: n + ppl + prj > 0 };
 }
 function logoHtml() {
@@ -5428,13 +5489,15 @@ function settingsHtml() {
     <div class="norm-row">${[1, 2, 3, 4, 5, 6, 0].map(i => `<div class="fld"><label for="sn${i}">${cap(DOW[i])}</label><input id="sn${i}" class="mono" data-normd="${i}" inputmode="decimal" value="${fhs(+b.norm[i] || 0)}"></div>`).join('')}<div class="fld sumf"><span class="lbl">Vecka</span><div class="vacnow"><b class="mono">${fh(Object.values(b.norm).reduce((s, x) => s + +x, 0))}</b> h</div></div></div>
     <div class="form" style="margin-top:10px"><div class="fld"><label for="s_round">Avrundning av timmar</label><select id="s_round" data-set="book.rounding">${ROUND.map(([v, l]) => `<option value="${v}" ${+b.rounding === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div></section>`;
   if (!simple()) h += `<section class="sset" id="set-cal"><h2>Årsarbetstid</h2><p class="muted small">Svenska röda dagar räknas bort ur normtiden. Justera enskilda dagar, se årstimmarna summeras och spara. Det påverkar saldo, semesteravräkning och smartshell (till exempel <span class="mono">v52 sem</span>).</p><div id="calBox">${calHtml()}</div></section>`;
-  h += `<section class="sset" id="set-roles"><h2>Roller och timpriser</h2><p class="muted small">Centralt pris per roll, exklusive moms. Priset kan överstyras per projekt i projektets inställningar. Varje tidpost behåller priset som gällde när den registrerades – ändringar gäller tid från och med nu.</p>
-    <ul class="role-list">${R().roles.map(r => { const u = roleUse(r.id); return `<li data-role="${r.id}"><input data-rolef="name" value="${esc(r.name)}" aria-label="Rollens namn"><span class="rate-in"><input class="mono" data-rolef="rate" inputmode="numeric" value="${r.rate}" aria-label="Timpris för ${esc(r.name)}"><span class="muted small">kr/h</span></span><span class="small muted ru">${u.n ? `${u.n} tidposter` : 'oanvänd'}</span><button class="icon-btn" data-act="delRole" data-r="${r.id}" ${u.any || R().roles.length < 2 ? 'disabled title="Rollen används och kan inte tas bort"' : 'title="Ta bort rollen"'} aria-label="Ta bort ${esc(r.name)}">${ic('trash')}</button></li>`; }).join('')}</ul>
+  h += `<section class="sset" id="set-roles"><h2>Roller och timpriser</h2><p class="muted small">Centralt pris per roll, exklusive moms. Priset kan överstyras för en kund, ett projekt, en person i projektet och en uppgift – det mest specifika gäller. När du ändrar ett pris väljer du från vilken dag det gäller; låst tid (avcheckad, signerad eller hanterad) behåller sitt pris.</p>
+    <ul class="role-list">${R().roles.map(r => { const u = roleUse(r.id); return `<li data-role="${r.id}"><input data-rolef="name" value="${esc(r.name)}" aria-label="Rollens namn"><span class="rate-in"><input class="mono" data-rolef="rate" inputmode="numeric" value="${rNow(r.rate)}" aria-label="Timpris för ${esc(r.name)}"><span class="muted small">kr/h</span></span><span class="small muted ru">${u.n ? `${u.n} tidposter` : 'oanvänd'}</span>${Array.isArray(r.rate) ? `<span class="small muted rh">Prislista: ${rHist(r.rate)}</span>` : ''}<button class="icon-btn" data-act="delRole" data-r="${r.id}" ${u.any || R().roles.length < 2 ? 'disabled title="Rollen används och kan inte tas bort"' : 'title="Ta bort rollen"'} aria-label="Ta bort ${esc(r.name)}">${ic('trash')}</button></li>`; }).join('')}</ul>
     <div class="form" style="margin-top:8px"><div><button class="btn sm" data-act="addRole">${ic('plus')}Ny roll</button></div><div class="fld"><label for="s_vat">Momssats i rapporter, %</label><input id="s_vat" class="mono" data-set="book.vatRate" inputmode="decimal" value="${fhs(+b.vatRate || 0)}"></div></div></section>`;
   h += `<section class="sset" id="set-person"><h2>Du</h2><div class="form">${f('person.name', 'Namn' + REQ, p.name)}${f('person.initials', 'Initialer', p.initials, 'maxlength="4" class="mono"')}
-    <div class="fld"><label for="s_prole">Standardroll</label><select id="s_prole" data-set="person.defaultRoleId">${R().roles.map(r => `<option value="${r.id}" ${p.defaultRoleId === r.id ? 'selected' : ''}>${esc(r.name)} · ${fkr(r.rate)}/h</option>`).join('')}</select></div>
+    <div class="fld"><label for="s_prole">Standardroll</label><select id="s_prole" data-set="person.defaultRoleId">${R().roles.map(r => `<option value="${r.id}" ${p.defaultRoleId === r.id ? 'selected' : ''}>${esc(r.name)} · ${fkr(rNow(r.rate))}/h</option>`).join('')}</select></div>
     ${simple() ? '' : `<div class="fld"><span class="lbl">Anställning</span><div class="vacnow">${p.employment === 'hourly' ? 'Timanställd' : p.employment === 'part' ? `Deltid ${p.pct} %` : 'Heltid'}${cb != null ? ` · komp ${sgn(cb)} h` : ''}${vi ? ` · semester ${fdays(vi.left)} d kvar` : ''}</div></div>
     <div class="fld full"><div><button class="btn sm" data-act="personDlg">${ic('person')}Anställning, saldo och semester …</button></div></div>`}</div></section>`;
+  h += `<section class="sset" id="set-week"><h2>Avcheckning och signering</h2><p class="muted small">När veckans tid är klar checkar du av veckan – rutorna låses tills du öppnar den igen. Avcheckade veckor räcker för att hantera och fakturera tiden.</p>
+    <label class="chk"><input type="checkbox" id="setSign" ${signOn() ? 'checked' : ''}> Administratören signerar veckorna</label><p class="small muted" style="margin:6px 0 0">En signerad vecka är låst – bara administratören kan låsa upp den igen.${R().people.length > 1 ? '' : ' Behövs sällan när du är ensam i boken, därför är det av som standard.'}</p></section>`;
   const nf = numFmt(b.numberFormat || DEF_NUMFMT);
   h += `<section class="sset" id="set-num"><h2>Nya projekt, nummer och förkortningar</h2><div class="form">${fmtEditorHtml('setFmt', b.numberFormat || DEF_NUMFMT)}
     ${nf.serial && !nf.err ? `<div class="fld"><label for="setStart">Nästa löpnummer</label><input id="setStart" class="mono" inputmode="numeric" value="${nf.n}"><span class="fld-hint" id="setStartHint">Lägst ${nf.minN}. Höj det om du har projektnummer från tiden före Sisyfos.</span></div>` : ''}
@@ -5471,6 +5534,19 @@ async function processLogo(file) {
   catch (e) { toast('Bilden gick inte att läsa – prova en PNG eller JPEG'); }
 }
 
+// Nytt centralt pris för en roll: från vilken dag gäller det?
+function roleRateDlg(rid, v) {
+  const r = role(rid); if (!r) return; st.rrEdit = { rid, v };
+  openDlg(`<h2 id="dlgTitle">Nytt pris för ${esc(r.name)}</h2><p>${fkr(rNow(r.rate))}/h blir <b>${fkr(v)}/h</b>.${Array.isArray(r.rate) ? ` Prislistan i dag: ${rHist(r.rate)}.` : ''}</p><form class="form" id="rrForm" novalidate>${rfHtml('rrF')}
+   <div class="dlg-foot fld full"><button type="button" class="btn ghost" data-act="rrCancel">Avbryt</button><button class="btn primary" type="submit">${ic('check')}Spara priset</button></div></form>`);
+}
+function saveRoleRate() {
+  const { rid, v } = st.rrEdit || {}, r = role(rid); if (!r) return closeDlg();
+  const from = rfVal('rrF'), prev = r.rate, snap = rateSnap();
+  rSet(r, 'rate', v, from); if (r.rate == null) r.rate = v;
+  save(); const ch = repriceSince(snap); save(); closeDlg(); renderMain();
+  toast(`${r.name}: ${fkr(v)}/h ${from ? 'från ' + ydate(from) : 'från början'}${rChTxt(ch)}`, { label: 'Ångra', fn: () => { repriceUndo(ch); r.rate = prev; save(); renderMain(); } });
+}
 function custDlg(id) {
   const c = id ? cust(id) : {}, n = id ? R().projects.filter(p => p.customerId === id).length : 0;
   st.editCust = id || null;
@@ -5485,9 +5561,15 @@ function custDlg(id) {
    ${invOn() ? `<div class="fld"><label for="cuZone">Kunden finns i</label><select id="cuZone">${INV_ZONES.map(([v, l]) => `<option value="${v}" ${(c.zone || 'se') === v ? 'selected' : ''}>${l}</option>`).join('')}</select><span class="fld-hint">EU-företag: omvänd betalningsskyldighet. Utanför EU: ingen svensk moms. Skriv landet sist i adressen.</span></div><div class="fld"><label for="cuVat">Momsregistreringsnummer</label><input id="cuVat" class="mono" value="${esc(c.vatNo)}" autocomplete="off"><span class="fld-hint">Står på fakturan – krävs för företag i andra EU-länder</span></div><div class="fld"><label for="cuTerms">Betalningsvillkor, dagar</label><input id="cuTerms" class="mono" inputmode="numeric" value="${esc(c.terms ?? '')}" placeholder="${esc(invCfg().terms)}"><span class="fld-hint">Tomt = bokens (${esc(invCfg().terms)} dagar)</span></div>` : ''}
    <label class="chk fld full"><input type="checkbox" id="cuInvTog" ${c.invoiceAddress ? 'checked' : ''}> Annan fakturaadress</label>
    <div class="fld full" id="cuInvF" ${c.invoiceAddress ? '' : 'hidden'}><label for="cuInv">Fakturaadress</label><textarea id="cuInv" class="ta" rows="3">${esc(c.invoiceAddress)}</textarea></div>
+   <h3 class="fld full dsub">Timpriser för kunden</h3><div class="fld full"><div class="rt rt3"><span class="rt-h">Roll</span><span class="rt-h">Centralt</span><span class="rt-h">För kunden</span>
+     ${R().roles.map(r => `<span class="rt-n">${esc(r.name)}</span><span class="mono muted">${nfKr.format(rNow(r.rate))}</span><input class="mono" data-cr="${r.id}" inputmode="numeric" value="${rNow(c.roleRates?.[r.id]) ?? ''}" placeholder="${nfKr.format(rNow(r.rate))}" aria-label="Pris för ${esc(r.name)} hos kunden">`).join('')}</div>
+     ${rHistList(R().roles.map(r => [r.name, c.roleRates?.[r.id]]))}<p class="small muted" style="margin:4px 0 0">Gäller kundens projekt. Ett pris i projektet, för en person eller en uppgift går före. Tomt = centralt pris.</p></div>
+   ${id ? rfHtml('cuRF') : ''}
    ${REQNOTE}<div class="err fld full" id="cuErr"></div>
    <div class="dlg-foot fld full">${id ? `<button type="button" class="btn ghost" data-act="custArchive" style="margin-right:auto" title="${c.archived ? 'Kunden blir aktiv igen' : 'Kunden visas bland de inaktiva tills du ändrar det'}">${c.archived ? `${ic('sample')}Gör aktiv igen` : `${ic('hide')}Sätt som inaktiv`}</button>${n ? '' : `<button type="button" class="btn ghost" data-act="custDelete">${ic('trash')}Ta bort</button>`}` : ''}<button type="button" class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" type="submit">${ic('check')}Spara</button></div></form>`);
 }
+// Prislistor (priser med datum) under en tabell med priser: [[namn, pris] …]
+const rHistList = L => { const x = L.filter(([, v]) => Array.isArray(v)); return x.length ? `<ul class="rhist">${x.map(([n, v]) => `<li><b>${esc(n)}</b> ${rHist(v)}</li>`).join('')}</ul>` : ''; };
 function saveCust() {
   const g = id => $('#' + id).value.trim(), name = g('cuName'), err = $('#cuErr');
   if (!name) { err.textContent = 'Ge kunden ett namn.'; $('#cuName').focus(); return; }
@@ -5505,10 +5587,18 @@ function saveCust() {
     data.zone = zn;
     data.vatNo = vn; data.terms = tm ? Math.floor(pNum(tm)) : null; if (data.terms == null) delete data.terms;
   }
+  const cr = {};
+  for (const inp of $$('[data-cr]')) { const v = parseKr(inp.value); if (v != null && !(v >= 0)) { err.textContent = 'Timpriset ska vara ett tal i kronor.'; inp.focus(); return; } cr[inp.dataset.cr] = v; }
   let c = st.editCust && cust(st.editCust);
+  const snap = rateSnap(), prevRates = c?.roleRates ? JSON.parse(JSON.stringify(c.roleRates)) : undefined, from = c ? rfVal('cuRF') : '';
+  const rates = { ...(c?.roleRates || {}) }; let rch = false;
+  for (const k in cr) if ((cr[k] ?? undefined) !== rNow(rates[k])) { rSet(rates, k, cr[k], from); rch = true; }
+  if (Object.keys(rates).length) data.roleRates = rates; else if (c) delete c.roleRates;
   if (data.zone === 'se') delete data.zone;
   if (c) { Object.assign(c, data); if ($('#cuTerms') && data.terms == null) delete c.terms; if ($('#cuZone') && !data.zone) delete c.zone; } else { c = { id: 'k' + uid(), archived: false, notes: [], created: new Date().toISOString(), ...data }; R().customers.push(c); }
-  save(); closeDlg(); st.focus = c.id; renderMain(); toast(`${c.name} är sparad`);
+  save(); const ch = rch ? repriceSince(snap) : []; if (ch.length) save(); closeDlg(); st.focus = c.id; renderMain();
+  if (rch && st.editCust) { const C = c; toast(`${c.name} är sparad${rChTxt(ch)}`, { label: 'Ångra priserna', fn: () => { repriceUndo(ch); if (prevRates) C.roleRates = prevRates; else delete C.roleRates; save(); renderMain(); } }); }
+  else toast(`${c.name} är sparad`);
 }
 
 /* ───────────── Listor: filter, sökning och sortering (kunder och projekt) ─────────────
@@ -5621,7 +5711,11 @@ function projPageHtml(P) {
   if (!abs) h += `<section class="dsec"><h2>Senaste i dagboken</h2>${recent.length ? `<ul class="hist">${recent.map(e => `<li><span class="hd">${sdate(e.date)}</span><span class="ht">${esc(e.note)}${P.tasks.length > 1 ? ` <span class="muted">· ${esc(taskOf(P, e.taskId)?.name || '')}</span>` : ''}</span><span class="mono small">${fh(e.hours)} h</span></li>`).join('')}</ul>` : '<p class="muted small">Inga anteckningar än.</p>'}</section>`;
   // Fakta
   if (!abs) {
-    const rr = R().roles.filter(r => P.roleRates?.[r.id] != null).map(r => `${esc(r.name)} ${fkr(P.roleRates[r.id])}/h`);
+    const rtx = x => Array.isArray(x) ? esc(rHist(x)) : fkr(x) + '/h', C0 = cust(P.customerId);
+    const rr = [...R().roles.filter(r => P.roleRates?.[r.id] != null).map(r => `${esc(r.name)} ${rtx(P.roleRates[r.id])}`),
+      ...R().roles.filter(r => P.personRates?.[me()]?.[r.id] != null).map(r => `${simple() ? 'Ditt pris' : 'Du som ' + esc(r.name)} ${rtx(P.personRates[me()][r.id])}`),
+      ...(P.internal ? [] : R().roles.filter(r => C0?.roleRates?.[r.id] != null && P.roleRates?.[r.id] == null).map(r => `${esc(r.name)} ${rtx(C0.roleRates[r.id])} (kunden)`)),
+      ...P.tasks.filter(t => t.rate != null && !t.archived).map(t => `${esc(t.name)} ${rtx(t.rate)}`)];
     h += `<section class="dsec"><h2>Uppgifter om projektet</h2><dl class="dfacts"><dt>Status</dt><dd>${STATUS1[P.status]}${s === 'idle' ? ' – men ingen tid på ' + idleLabel(idleOf(P)) : ''}</dd>${P.internal ? '' : `<dt>Inaktivt efter</dt><dd>${idleOf(P) ? cap(idleLabel(idleOf(P))) + ' utan tid' : 'Aldrig av sig självt'}</dd><dt>Budget</dt><dd>${running(P) ? 'Löpande, ingen budget' : fkr(P.budgetKr) + ' exkl. moms'}</dd>`}${P.property ? `<dt>Fastighet</dt><dd>${esc(P.property)}</dd>` : ''}${P.abbr ? `<dt>Förkortning</dt><dd class="mono">${esc(P.abbr)}</dd>` : ''}${rr.length ? `<dt>Timpriser</dt><dd>${rr.join(' · ')}</dd>` : ''}<dt>Skapat</dt><dd>${P.created ? sdate(P.created.slice(0, 10)) + ' ' + P.created.slice(0, 4) : '–'}</dd></dl></section>`;
   }
   return h + `</div></div></div>`;
@@ -5683,6 +5777,7 @@ function taskRowHtml(P, t) {
   const abs = P.kind === 'absence', ht = t.id && hasTime(P.id, t.id);
   return `<li class="tk-row${t.archived ? ' arch' : ''}" data-tid="${t.id || ''}" data-arch="${t.archived ? 1 : ''}"><input class="tk-name" value="${esc(t.name || '')}" placeholder="Uppgiftens namn" aria-label="Uppgiftens namn">
    ${abs ? `<select class="tk-abs" aria-label="Frånvarotyp">${ABSENCE.map(([k, n]) => `<option value="${k}" ${t.absence === k ? 'selected' : ''}>${n} – ${ABS_INFO[k]}</option>`).join('')}</select>` : `<label class="chk small"><input type="checkbox" class="tk-bill" ${t.billable ? 'checked' : ''}> Debiterbar</label>`}
+   ${abs ? '' : `<input class="tk-rate mono" inputmode="numeric" value="${rNow(t.rate) ?? ''}" placeholder="kr/h" aria-label="Timpris för uppgiften" title="${Array.isArray(t.rate) ? 'Prislista: ' + esc(rHist(t.rate, 'projektets pris')) : 'Timpris för uppgiften, alla roller – tomt = projektets pris'}">`}
    <input class="tk-abbr mono" value="${esc(t.abbr || '')}" placeholder="förk." aria-label="Förkortning">
    <button type="button" class="icon-btn" data-act="pjTaskX" data-ht="${ht ? 1 : ''}" title="${ht ? (t.archived ? 'Återställ uppgiften' : 'Arkivera – uppgiften har tid och tas inte bort') : 'Ta bort uppgiften'}">${ic(ht ? (t.archived ? 'sample' : 'hide') : 'trash')}</button></li>`;
 }
@@ -5702,7 +5797,7 @@ function projDlg(id) {
    <div class="fld"><label for="pjStatus">Status</label><select id="pjStatus">${Object.entries(STATUS1).map(([k, l]) => `<option value="${k}" ${P.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select>${pState(P) === 'idle' ? `<span class="fld-hint">Inaktivt just nu – ingen tid på ${idleLabel(idleOf(P))}</span>` : ''}</div>
    <div class="fld" data-ext><label for="pjIdle">Blir inaktivt efter</label>${idleSel('pjIdle', idleOf(P))}<span class="fld-hint">utan registrerad tid</span></div>
    <div class="fld" data-ext data-full><label for="pjCust">Kund</label>${custAcHtml('pjCust', c?.name || '')}</div>
-   <div class="fld" data-ext data-simple><label for="pjSRate">Timpris, kr exkl. moms</label><input id="pjSRate" class="mono" inputmode="numeric" value="${P.personRates?.[me()]?.[roleFor(P.id)] ?? P.roleRates?.[roleFor(P.id)] ?? ''}" placeholder="${nfKr.format(role(roleFor(P.id))?.rate || 0)}"><span class="fld-hint">Tomt = ditt vanliga pris, ${fkr(role(roleFor(P.id))?.rate || 0)}/h</span></div>
+   <div class="fld" data-ext data-simple><label for="pjSRate">Timpris, kr exkl. moms</label><input id="pjSRate" class="mono" inputmode="numeric" value="${rNow(P.personRates?.[me()]?.[roleFor(P.id)]) ?? rNow(P.roleRates?.[roleFor(P.id)]) ?? ''}" placeholder="${nfKr.format(rNow(role(roleFor(P.id))?.rate) || 0)}"><span class="fld-hint">Tomt = ditt vanliga pris, ${fkr(rNow(role(roleFor(P.id))?.rate) || 0)}/h${Array.isArray(P.personRates?.[me()]?.[roleFor(P.id)]) ? ' · prislista: ' + esc(rHist(P.personRates[me()][roleFor(P.id)], 'ditt vanliga pris')) : ''}</span></div>
    <div class="fld"><label for="pjProp">Fastighetsbeteckning</label><input id="pjProp" value="${esc(P.property)}"></div>
    <div class="fld" data-ext><label for="pjBud">Budget, kr exkl. moms</label><input id="pjBud" class="mono" inputmode="numeric" value="${P.budgetKr ? nfKr.format(P.budgetKr) : ''}" placeholder="0 = löpande"><span class="fld-hint">Tomt eller 0 = löpande utan budget</span></div>
    <div class="fld"><label for="pjAbbr">Förkortningar i smartshell</label><input id="pjAbbr" class="mono" value="${esc(P.abbr || '')}" placeholder="t.ex. vs, strand" autocapitalize="off"></div>
@@ -5712,9 +5807,11 @@ function projDlg(id) {
    <div class="fld full"><div><button type="button" class="btn sm" data-act="pjAddTask">${ic('plus')}${abs ? 'Ny frånvarotyp' : 'Ny uppgift'}</button></div><p class="small muted" style="margin:4px 0 0">Uppgifter med registrerad tid kan inte tas bort, bara arkiveras. Arkiverade syns inte i radväljaren.</p></div>`;
   if (!abs) {
     h += `<h3 class="fld full dsub" data-ext data-full>Timpriser i projektet</h3><div class="fld full" data-ext data-full><div class="rt"><span class="rt-h">Roll</span><span class="rt-h">Centralt</span><span class="rt-h">I projektet</span><span class="rt-h">Ditt pris</span>
-     ${R().roles.map(r => `<span class="rt-n">${esc(r.name)}</span><span class="mono muted">${nfKr.format(r.rate)}</span><input class="mono" data-rr="${r.id}" inputmode="numeric" value="${P.roleRates?.[r.id] ?? ''}" placeholder="${nfKr.format(r.rate)}" aria-label="Pris för ${esc(r.name)} i projektet"><input class="mono" data-pr="${r.id}" inputmode="numeric" value="${P.personRates?.[me()]?.[r.id] ?? ''}" placeholder="–" aria-label="Ditt pris som ${esc(r.name)} i projektet">`).join('')}</div></div>
+     ${R().roles.map(r => { const inh = rNow(c?.roleRates?.[r.id]) ?? rNow(r.rate); return `<span class="rt-n">${esc(r.name)}</span><span class="mono muted" title="${rNow(c?.roleRates?.[r.id]) != null ? 'Kundens pris' : 'Centralt pris'}">${nfKr.format(inh)}${rNow(c?.roleRates?.[r.id]) != null ? '*' : ''}</span><input class="mono" data-rr="${r.id}" inputmode="numeric" value="${rNow(P.roleRates?.[r.id]) ?? ''}" placeholder="${nfKr.format(inh)}" aria-label="Pris för ${esc(r.name)} i projektet"><input class="mono" data-pr="${r.id}" inputmode="numeric" value="${rNow(P.personRates?.[me()]?.[r.id]) ?? ''}" placeholder="–" aria-label="Ditt pris som ${esc(r.name)} i projektet">`; }).join('')}</div>
+     ${rHistList([...R().roles.map(r => [r.name + ' i projektet', P.roleRates?.[r.id]]), ...R().roles.map(r => [`Ditt pris som ${r.name}`, P.personRates?.[me()]?.[r.id]])])}${R().roles.some(r => rNow(c?.roleRates?.[r.id]) != null) ? '<p class="small muted" style="margin:4px 0 0">* kundens pris</p>' : ''}</div>
      <div class="fld" data-ext data-full><label for="pjRole">Din roll i projektet</label><select id="pjRole"><option value="">Standard (${esc(role(person().defaultRoleId)?.name || '')})</option>${R().roles.map(r => `<option value="${r.id}" ${myRole === r.id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select></div>
-     <p class="small muted fld" data-ext data-full style="margin:0;align-self:end">Mest specifika priset gäller. Tomt fält = nästa nivå. Ändrade priser gäller tid som registreras från och med nu.</p>`;
+     <p class="small muted fld" data-ext data-full style="margin:0;align-self:end">Mest specifika priset gäller: uppgiften, ditt pris, projektet, kunden, centralt. Tomt fält = nästa nivå.</p>`;
+    h += rfHtml('pjRF', 'data-ext');
   }
   h += `${REQNOTE.replace('resten kan lämnas tomt eller fyllas i senare', 'minst en aktiv uppgift, och varje uppgift behöver ett namn')}<div class="err fld full" id="pjErr"></div><div class="dlg-foot fld full">${canDel ? `<button type="button" class="btn ghost" data-act="projDelete" style="margin-right:auto">${ic('trash')}Ta bort projektet</button>` : ''}<button type="button" class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" type="submit">${ic('check')}Spara</button></div></form>`;
   openDlg(h, 'wide'); syncProjDlg();
@@ -5730,7 +5827,7 @@ function saveProj() {
   const P = proj(st.editProj), abs = P.kind === 'absence', err = $('#pjErr'), fail = (m, el) => { err.textContent = m; if (el) { el.focus(); el.scrollIntoView({ block: 'center' }); } else err.scrollIntoView({ block: 'nearest' }); };
   const seen = new Map();
   for (const p of R().projects) if (p.id !== P.id) { toks(p.abbr).forEach(a => seen.set(a, p.name)); p.tasks.forEach(t => toks(t.abbr).forEach(a => seen.set(a, `${p.name}, ${t.name}`))); }
-  const upd = {};
+  const upd = {}, snap = rateSnap(), prevP = JSON.parse(JSON.stringify(P)), rfrom = rfVal('pjRF'); let rch = false;
   if (!abs) {
     const name = $('#pjName').value.trim(); if (!name) return fail('Ge projektet ett namn.', $('#pjName'));
     const num = $('#pjNum').value.trim(), dup = num && R().projects.find(p => p.id !== P.id && String(p.number).toLowerCase() === num.toLowerCase());
@@ -5738,11 +5835,12 @@ function saveProj() {
     const internal = $('#pjInt').checked, bud = parseKr($('#pjBud').value);
     if (!internal && bud != null && !(bud >= 0)) return fail('Ange budgeten i kronor, till exempel 120000 – eller lämna tomt för löpande räkning.', $('#pjBud'));
     for (const a of toks($('#pjAbbr').value)) { const b = abbrCheck(a, seen); if (b) return fail(b, $('#pjAbbr')); seen.set(a, name); }
-    const rr = {}, pr = {};
-    for (const inp of $$('[data-rr]')) { const v = parseKr(inp.value); if (v == null) continue; if (!(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', inp); rr[inp.dataset.rr] = v; }
-    for (const inp of $$('[data-pr]')) { const v = parseKr(inp.value); if (v == null) continue; if (!(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', inp); pr[inp.dataset.pr] = v; }
+    // Priserna: bara de fält som ändrats skrivs, med datumet de gäller från (0.17.0)
+    const rr = JSON.parse(JSON.stringify(P.roleRates || {})), pr = JSON.parse(JSON.stringify(P.personRates?.[me()] || {}));
+    for (const inp of $$('[data-rr]')) { const v = parseKr(inp.value); if (v != null && !(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', inp); if ((v ?? undefined) !== rNow(rr[inp.dataset.rr])) { rSet(rr, inp.dataset.rr, v, rfrom); rch = true; } }
+    for (const inp of $$('[data-pr]')) { const v = parseKr(inp.value); if (v != null && !(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', inp); if ((v ?? undefined) !== rNow(pr[inp.dataset.pr])) { rSet(pr, inp.dataset.pr, v, rfrom); rch = true; } }
     const cn = $('#pjCust').value.trim();
-    if (simple() && !internal) { const v = parseKr($('#pjSRate').value), rl = roleFor(P.id); if (v != null && !(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', $('#pjSRate')); delete rr[rl]; if (v == null) delete pr[rl]; else pr[rl] = v; }
+    if (simple() && !internal) { const v = parseKr($('#pjSRate').value), rl = roleFor(P.id); if (v != null && !(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', $('#pjSRate')); if ((v ?? undefined) !== (rNow(pr[rl]) ?? rNow(rr[rl]))) { if (!rfrom) delete rr[rl]; rSet(pr, rl, v, rfrom); rch = true; } }
     const cv = $('input[name=pjColor]:checked')?.value;
     let color = cv === 'free' ? $('#pjColorFree').value.toLowerCase() : +(cv ?? 0); if (internal) color = -1; else if (!cv && !isHex(P.color) && P.color < 0) color = 0;
     const idle = +($('#pjIdle')?.value ?? idleOf(P));
@@ -5758,6 +5856,8 @@ function saveProj() {
     const t = { ...(taskOf(P, li.dataset.tid) || { id: 'u' + uid() }), name };
     if (abs) t.absence = $('.tk-abs', li).value; else t.billable = $('.tk-bill', li).checked;
     if (li.dataset.arch) t.archived = true; else delete t.archived;
+    const ri = $('.tk-rate', li);
+    if (ri) { const v = parseKr(ri.value); if (v != null && !(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', ri); if ((v ?? undefined) !== rNow(t.rate)) { rSet(t, 'rate', v, li.dataset.tid ? rfrom : ''); rch = true; } }
     const ab = toks($('.tk-abbr', li).value);
     for (const a of ab) { const b = abbrCheck(a, seen); if (b) return fail(b, $('.tk-abbr', li)); seen.set(a, `${upd.name || P.name}, ${name}`); }
     if (ab.length) t.abbr = ab.join(', '); else delete t.abbr;
@@ -5773,7 +5873,10 @@ function saveProj() {
     upd.customerId = upd.internal ? null : c?.id || null;
   }
   Object.assign(P, upd, { tasks });
-  save(); closeDlg(); st.focus = P.id; if (st.page === 'projekt' && P.status !== (st.pf || 'active')) st.pf = P.status; render(); toast(`${P.kind === 'absence' ? 'Frånvaron' : P.name} är sparad`);
+  save(); const ch = rch ? repriceSince(snap) : []; if (ch.length) save();
+  closeDlg(); st.focus = P.id; if (st.page === 'projekt' && P.status !== (st.pf || 'active')) st.pf = P.status; render();
+  if (rch) toast(`${P.name} är sparad${rChTxt(ch)}`, { label: 'Ångra', fn: () => { repriceUndo(ch); for (const k of Object.keys(P)) delete P[k]; Object.assign(P, prevP); save(); render(); } });
+  else toast(`${P.kind === 'absence' ? 'Frånvaron' : P.name} är sparad`);
 }
 
 /* ───────────── PDF – egen enkel skrivare (inga tredjepartsbibliotek) ─────────────
@@ -6984,7 +7087,7 @@ Object.assign(A, {
   calUndo: () => { st.calDraft = null; renderCal(); },
   calReset: () => { const y = st.calY || +today().slice(0, 4); st.calDraft = { y, days: Object.fromEntries(Object.keys(holidays(y)).map(d => [d, 0])) }; renderCal(); toast('Bara de röda dagarna är kvar – spara för att använda det'); },
   logoRemove: () => { delete R().book.logo; save(); $('#logoRow').innerHTML = logoHtml(); toast('Loggan är borttagen'); },
-  addRole: () => { const r = { id: 'roll' + uid(), name: 'Ny roll', rate: R().roles[0]?.rate || 900 }; R().roles.push(r); save(); renderMain(); const i = $(`[data-role="${r.id}"] input`); i?.focus(); i?.select(); },
+  addRole: () => { const r = { id: 'roll' + uid(), name: 'Ny roll', rate: rNow(R().roles[0]?.rate) || 900 }; R().roles.push(r); save(); renderMain(); const i = $(`[data-role="${r.id}"] input`); i?.focus(); i?.select(); },
   delRole: el => { const id = el.dataset.r; if (roleUse(id).any) return; R().roles = R().roles.filter(r => r.id !== id); save(); renderMain(); toast('Rollen är borttagen'); },
   custEdit: el => { closeFloating(); custDlg(el.dataset.c); },
   custArchive: () => { const c = cust(st.editCust); c.archived = !c.archived; save(); closeDlg(); renderMain(); toast(c.archived ? `${c.name} är inaktiv` : `${c.name} är aktiv igen`); },
@@ -7031,11 +7134,12 @@ document.addEventListener('change', ev => {
   if (t.matches('[data-rolef]')) {
     const r = role(t.closest('[data-role]').dataset.role);
     if (t.dataset.rolef === 'name') { if (!t.value.trim()) { t.value = r.name; return; } r.name = t.value.trim(); }
-    else { const v = parseKr(t.value); if (!(v >= 0)) { t.value = r.rate; toast('Timpriset ska vara ett tal i kronor'); return; } r.rate = v; }
+    else { const v = parseKr(t.value); if (!(v >= 0)) { t.value = rNow(r.rate); toast('Timpriset ska vara ett tal i kronor'); return; } if (v === rNow(r.rate)) return; t.value = rNow(r.rate); roleRateDlg(r.id, v); return; }
     save(); flashSaved(t); return;
   }
   if (t.id === 'setFmt') { const v = t.value.trim() || DEF_NUMFMT, f = numFmt(v); if (f.err) { toast(f.err); return; } R().book.numberFormat = v; save(); flashSaved(t); const ss = $('#setStart'); if (ss) { ss.value = f.n; $('#setStartHint').textContent = `Lägst ${f.minN}. Höj det om du har projektnummer från tiden före Sisyfos.`; } return; }
   if (t.id === 'setStart') { const f = numFmt(R().book.numberFormat || DEF_NUMFMT), v = Math.floor(+t.value.replace(/\s/g, '')); if (!(v >= f.minN)) { t.value = f.n; toast(`Nästa löpnummer kan inte vara lägre än ${f.minN} – det numret finns redan`); return; } R().book.serialStart = { re: f.re, n: v }; save(); flashSaved(t); const inf = $('#setFmtInfo'); if (inf) inf.innerHTML = numFmtInfo(numFmt(R().book.numberFormat)); return; }
+  if (t.id === 'setSign') { R().book.signWeeks = t.checked; save(); flashSaved(t); return; }
   if (t.id === 's_idle') { R().book.idleDays = +t.value; save(); flashSaved(t); return; }
   if (t.id === 'setLogo') { processLogo(t.files[0]); return; }
   if (t.id === 'wzLogo') { const f = t.files[0]; if (!f) return; wizCollect(); logoFrom(f).then(lg => { st.wiz.d.logo = lg; wizRender(); }, () => toast('Bilden gick inte att läsa – prova en PNG eller JPEG')); return; }
@@ -7067,7 +7171,7 @@ document.addEventListener('change', ev => {
     renderMain();
   }
 });
-document.addEventListener('submit', ev => { if (ev.target.id === 'ieForm' || ev.target.id === 'ioForm') { ev.preventDefault(); return; } if (ev.target.id === 'wzForm') { ev.preventDefault(); wizNext(1); return; } if (ev.target.id === 'cuForm') { ev.preventDefault(); saveCust(); } if (ev.target.id === 'pjForm') { ev.preventDefault(); saveProj(); } });
+document.addEventListener('submit', ev => { if (ev.target.id === 'ieForm' || ev.target.id === 'ioForm') { ev.preventDefault(); return; } if (ev.target.id === 'wzForm') { ev.preventDefault(); wizNext(1); return; } if (ev.target.id === 'rrForm') { ev.preventDefault(); saveRoleRate(); return; } if (ev.target.id === 'cuForm') { ev.preventDefault(); saveCust(); } if (ev.target.id === 'pjForm') { ev.preventDefault(); saveProj(); } });
 document.addEventListener('keydown', ev => {
   if (ev.target.id === 'calIn' && ev.key === 'Enter') { ev.preventDefault(); const v = +ev.target.value.replace(',', '.'); if (!(v >= 0 && v <= 24)) { toast('Ange 0–24 timmar'); return; } calSet(ev.target.dataset.d, roundH(v)); }
 });
@@ -7133,7 +7237,7 @@ const SH_PER_WORDS = ['fv', 'dv', 'nv', 'fm', 'dm', 'nm', 'öppet', 'öppen'];
 const SHC = [
   { k: 'ch', w: ['ch', 'checka', 'avcheck'], g: 'Vecka', t: 'Checka av veckan', ex: [['ch', 'checkar av veckan du står i'], ['ch v43', 'vecka 43'], ['ch fv', 'förra veckan'], ['ch v40-43', 'flera veckor']] },
   { k: 'open', w: ['öppna'], g: 'Vecka', t: 'Öppna en avcheckad vecka', ex: [['öppna v43', 'öppnar vecka 43 igen']] },
-  { k: 'sign', w: ['sign', 'signera'], g: 'Vecka', t: 'Signera – slutgiltigt', ex: [['sign v43', 'signerar, frågar först']] },
+  { k: 'sign', w: ['sign', 'signera'], g: 'Vecka', t: 'Signera – låser veckan', ex: [['sign v43', 'signerar, frågar först']] },
   { k: 'db', w: ['db', 'dagbok'], g: 'Rapporter', t: 'Projektdagbok', ex: [['db okt strand', 'visar dagboken'], ['db ner okt strand', 'laddar ner som PDF'], ['db ner öppet strand', 'all öppen tid'], ['db ner sept- strand', 'från september och framåt'], ['db ner fm', 'en per projekt med tid förra månaden']] },
   { k: 'fakt', w: ['fakt', 'faktura', 'fu', 'fakturaunderlag'], g: 'Rapporter', t: 'Fakturaunderlag', ex: [['fakt strand', 'visar öppen tid i projektet'], ['fakt kund smeden', 'alla kundens projekt'], ['fakt ner fm strand', 'PDF till och med förra månaden'], ['fakt csv öppet strand', 'CSV med all öppen tid']] },
   { k: 'pers', w: ['pers', 'person', 'personsammanställning'], g: 'Rapporter', t: 'Personsammanställning', ex: [['pers okt', 'visar oktober'], ['pers ner fv', 'laddar ner förra veckan']] },
@@ -7349,20 +7453,27 @@ const SH = {
     const r = shPeriodAny(a); if (r.err) return { bad: true, html: esc(r.err) };
     const ws = r.per ? shWeeksOf(r.per) : [shRefWeek()]; if (!ws || r.rest.length) return { bad: true, html: 'Öppna veckor: <b>öppna v43</b>.' };
     const sg = ws.filter(w => weekState(w).signed), todo = ws.filter(w => weekState(w).checked && !weekState(w).signed);
-    if (!todo.length) return { info: true, html: sg.length ? `${cap(fmtWeeks(sg))} är signerad – en signerad vecka kan inte öppnas igen.` : `${cap(fmtWeeks(ws))} är inte avcheckad.` };
+    // Signerade veckor låser administratören upp – efter en bekräftelse (0.17.0)
+    if (sg.length && person().admin) return { ask: true, html: `Enter låser upp <b>${fmtWeeks(sg)}</b> (signerad)${todo.length ? ` och öppnar ${fmtWeeks(todo)}` : ''} – du får bekräfta`,
+      run: () => {
+        st.shPending = () => { const prev = sg.map(w => [w, R().signed[me() + '|' + w]]); sg.forEach(w => delete R().signed[me() + '|' + w]); [...sg, ...todo].forEach(w => shWeekEv(w, false)); save(); closeDlg(); shRefresh(); toast(`${cap(fmtWeeks([...sg, ...todo].sort()))} är öppen igen`, { label: 'Ångra', fn: () => { prev.forEach(([w, v]) => { R().signed[me() + '|' + w] = v; }); [...sg, ...todo].forEach(w => shWeekEv(w, true)); save(); shRefresh(); } }); };
+        confirmPlain(`Lås upp ${fmtWeeks(sg)}?`, 'Signeringen tas bort och veckan öppnas igen, så att tiden kan ändras. Tid som är hanterad eller fakturerad förblir låst.', `${ic('unlock')}Lås upp`, 'shPending', ['ok', 'lås']);
+      } };
+    if (!todo.length) return { info: true, html: sg.length ? `${cap(fmtWeeks(sg))} är signerad – bara administratören kan låsa upp den.` : `${cap(fmtWeeks(ws))} är inte avcheckad.` };
     return { html: `Enter öppnar <b>${fmtWeeks(todo)}</b> igen${sg.length ? ` · ${fmtWeeks(sg)} är signerad och förblir låst` : ''}`, run: () => { todo.forEach(w => shWeekEv(w, false)); save(); shRefresh(); toast(`${cap(fmtWeeks(todo))} är öppen igen`, { label: 'Ångra', fn: () => { todo.forEach(w => shWeekEv(w, true)); save(); shRefresh(); } }); } };
   },
   sign(a) {
     const r = shPeriodAny(a); if (r.err) return { bad: true, html: esc(r.err) };
     if (r.rest.length) return { bad: true, html: 'Att signera åt någon annan kommer när Sisyfos får flera användare.' };
     if (!person().admin) return { bad: true, html: 'Bara administratören kan signera veckor.' };
+    if (!signOn()) return { bad: true, html: 'Signering av veckor är avstängd – avcheckning räcker. Slå på den under Inställningar → Avcheckning och signering.' };
     const ws = r.per ? shWeeksOf(r.per) : [shRefWeek()]; if (!ws) return { bad: true, html: 'Signera veckor: <b>sign v43</b>.' };
     const todo = ws.filter(w => !weekState(w).signed); if (!todo.length) return { info: true, html: `${cap(fmtWeeks(ws))} är redan signerad.` };
     const unch = todo.filter(w => !weekState(w).checked);
-    return { ask: true, html: `Enter signerar <b>${fmtWeeks(todo)}</b>${unch.length ? ` (checkar av ${unch.length === todo.length ? 'den' : fmtWeeks(unch)} först)` : ''} – du får bekräfta, en signerad vecka är slutgiltig`,
+    return { ask: true, html: `Enter signerar <b>${fmtWeeks(todo)}</b>${unch.length ? ` (checkar av ${unch.length === todo.length ? 'den' : fmtWeeks(unch)} först)` : ''} – du får bekräfta, en signerad vecka låses`,
       run: () => {
         st.shPending = () => { const t0 = new Date().toISOString(); unch.forEach(w => shWeekEv(w, true)); todo.forEach(w => { R().signed[me() + '|' + w] = { at: t0, by: me() }; }); save(); closeDlg(); shRefresh(); toast(`${cap(fmtWeeks(todo))} är signerad`, { label: 'Ångra', fn: () => { todo.forEach(w => delete R().signed[me() + '|' + w]); unch.forEach(w => shWeekEv(w, false)); save(); shRefresh(); } }); };
-        confirmPlain(`Signera ${fmtWeeks(todo)}?`, 'En signerad vecka är slutgiltig. Den kan inte öppnas igen, och ingen tid i den kan ändras eller tas bort.', `${ic('sign')}Signera`, 'shPending', SIGN_WORDS);
+        confirmPlain(`Signera ${fmtWeeks(todo)}?`, 'En signerad vecka är låst – ingen tid i den kan ändras eller tas bort. Bara administratören kan låsa upp den igen.', `${ic('sign')}Signera`, 'shPending', SIGN_WORDS);
       } };
   },
   db(a) {
@@ -7797,7 +7908,8 @@ I.more = '<circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circ
 })();
 // Provkrok för testerna (test/delar_test.py): bara med ?test i adressen
 if (/[?&]test\b/.test(location.search)) window.SISYFOS = { get S() { return S; }, set S(v) { S = v; }, st, me, R, byId, canon, migrate, sampleBook, bookSplit, bookJoin, partRule, bookMerge,
-  encCreate, encStore, keysEnsure, keysAdopt, keysCreate, keysOpen, keysPublic, encBookText, decBook, decParts, unseal, gz, aesKey, rnd, b64, unb64, kvGet, AAD_DATA, FORMAT_VERSION };
+  encCreate, encStore, keysEnsure, keysAdopt, keysCreate, keysOpen, keysPublic, encBookText, decBook, decParts, unseal, gz, aesKey, rnd, b64, unb64, kvGet, AAD_DATA, FORMAT_VERSION,
+  rateFor, rv, rPut, rHist, rateSnap, repriceSince, signOn, setCell, weekEvent, weekState, webApply, save, log, get E() { return E; } };
 })();
 </script>
 </body>

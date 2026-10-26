@@ -1,5 +1,18 @@
 # Ändringar i Sisyfos
 
+## 0.17.0
+
+Filformat 11 – **timpriser med datum, på kund och uppgift, och signering efter behov**. Böcker i format 10 och äldre uppgraderas när de öppnas, och inga belopp ändras. Ladda om på alla enheter: en enhet med 0.16.x kan inte öppna boken efteråt och säger att den kommer från en nyare version.
+
+- **Timpris på kunden och på uppgiften.** Ordningen är bok → kund → projekt → du i projektet → uppgift, och det mest specifika priset gäller. Kunden får pris per roll (*Redigera kund → Timpriser för kunden*), uppgiften ett pris för alla roller (rutan *kr/h* på uppgiftens rad i *Redigera projekt*).
+- **Priset gäller från ett datum.** När ett pris ändras väljer du *från* ett datum (i dag som standard) eller *från början*. Ett pris med datum blir en prislista: tid som skrivs in i efterhand för en tidigare dag får priset som gällde då. Prislistan visas under priserna, i Inställningar och på projektsidan.
+- **Olåst tid följer prislistan.** Förut behöll varje tidpost priset den fick när den skrevs in, även när priset varit fel från början. Nu får de egna tidposter som inte är avcheckade, signerade eller hanterade det nya priset från datumet – låst tid behåller sitt. Beskedet säger hur många poster som räknades om, och *Ångra* lägger tillbaka priset och posterna. En prisändring från en annan enhet (eller från organisationens admin) räknar om den här enhetens olåsta tid vid synken.
+- **Centralt pris** under *Inställningar → Roller och timpriser* frågar från när det nya priset gäller.
+- **Signering behövs inte för den som är ensam.** Inställningen *Avcheckning och signering* (ny i Inställningar) är av som standard när boken har en person: knapparna *Signera som administratör* syns inte och avcheckning räcker – som förut för att hantera och fakturera. Med flera personer är den på. Redan signerade veckor syns som förut.
+- **En signerad vecka kan låsas upp.** Administratören kan låsa upp en signerad vecka (veckans status → *Lås upp veckan …*, eller `öppna v43` i smartshell) efter en bekräftelse – veckan blir öppen och tiden kan rättas. Hanterad och fakturerad tid förblir låst. Texterna säger inte längre att en signerad vecka är slutgiltig.
+- README (*Timpriser*, *Avcheckning och signering*, *Filformat*) uppdaterad. Arbetet med flera personer (välja vems tidbok, signera åt andra med mera) kommer i 0.17.1.
+- Test: `test/priser_test.py` (ny, körs i GitHub) och `test/bocker/format-11.json`.
+
 ## 0.16.1
 
 Filformat 10, oförändrat. **Organisationer på servern** – etapp 4, andra steget: flera personer i samma bok. Är du ensam och vill fortsätta så märks ingen skillnad. Servern (`api.php`) är ny och måste ligga ute samtidigt som appen (publiceringen gör det).

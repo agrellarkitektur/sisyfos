@@ -34,7 +34,7 @@ Fältet överst på alla sidor. Raden under fältet säger vad Enter gör innan 
 |---|---|
 | `3,5 strand ritade fasad` · `tor 8 strand` · `v43 fl` | tid – timmarna först, sedan projekt och anteckning |
 | `v43` · `okt` · `idag` | går dit i tidboken |
-| `ch` · `ch v43` · `öppna v43` · `sign v43` | checkar av, öppnar, signerar (bekräfta med `sign` eller `ok` + Enter, Esc avbryter) |
+| `ch` · `ch v43` · `öppna v43` · `sign v43` | checkar av, öppnar, signerar (bekräfta med `sign` eller `ok` + Enter, Esc avbryter); `öppna` på en signerad vecka låser upp den (administratören, bekräfta med `ok`) |
 | `db okt strand` · `db ner okt strand` · `db ner öppet strand` | visar eller laddar ner projektdagboken |
 | `pers fv` · `översikt 2025` | personsammanställning, månadsöversikt |
 | `fakt strand` · `fakt kund smeden` · `fakt ner fm strand` · `fakt csv öppet strand` | visar eller laddar ner fakturaunderlaget (PDF eller CSV) |
@@ -54,6 +54,26 @@ För dig som fakturerar din egen tid – till exempel konsult med eget bolag. V�
 - **Projekt med timpris och budget.** Timpriset anges direkt på projektet; tomt = ditt vanliga pris. Interna projekt (administration och liknande) finns kvar.
 - **Inga kunder, ingen normtid, inget kompsaldo, ingen semester eller frånvaro.** Det som döljs ligger kvar i boken och syns igen i fullständigt läge.
 - **En rapport: Öppen tid** – timmar och belopp som inte är hanterade, för alla projekt eller ett projekt, till och med vald månad. Med eller utan dagboksrader, som PDF eller CSV, och med *Markera som hanterat* när fakturan är skickad.
+
+## Timpriser
+
+Timpriset kan sättas på fem nivåer. Det mest specifika gäller:
+
+1. **Uppgiften** – ett pris för alla roller, t.ex. restid (*Redigera projekt → Uppgifter*).
+2. **Du i projektet** – ditt pris i en roll (i enkelt läge projektets timpris).
+3. **Projektet** – pris per roll.
+4. **Kunden** – pris per roll för alla kundens projekt, t.ex. ett ramavtal (*Redigera kund → Timpriser för kunden*).
+5. **Boken** – rollens centrala pris (*Inställningar → Roller och timpriser*).
+
+Tomt fält = nästa nivå. **Varje pris gäller från ett datum.** När du ändrar ett pris väljer du *från* ett datum (i dag som standard) eller *från början*. Priset blir då en prislista – tid som skrivs in i efterhand för en tidigare dag får priset som gällde den dagen. Prislistan visas under priserna och på projektsidan.
+
+**Olåst tid följer prislistan.** Varje tidpost sparar sitt pris. När ett pris ändras får de egna tidposter vars pris ändrades det nya priset – men bara tid som inte är avcheckad, signerad eller hanterad. Låst tid behåller sitt pris (öppna veckan först om den ska räknas om). Beskedet säger hur många tidposter som fick det nya priset, och *Ångra* lägger tillbaka både priset och posterna. Kommer ändringen från en annan enhet eller från organisationens admin räknas den här enhetens olåsta tid om vid synken.
+
+## Avcheckning och signering
+
+När veckans tid är klar **checkar du av veckan** – rutorna låses tills du öppnar den igen. Avcheckade veckor räcker för att hantera och fakturera tiden.
+
+**Signering** är administratörens slutliga markering. Den är **av som standard när du är ensam i boken** och slås på under *Inställningar → Avcheckning och signering* (med flera personer är den på). En signerad vecka är låst; **administratören kan låsa upp den** igen (veckans status → *Lås upp veckan …*, eller `öppna v43` i smartshell) – då är veckan öppen och tiden kan rättas. Tid som är hanterad eller fakturerad förblir låst.
 
 ## Fakturaunderlag
 
@@ -185,7 +205,7 @@ Vad var och en ser och gör:
 - **Ta bort en medarbetare:** personen når inte boken längre, och admins enhet krypterar om delarna utan henne eller honom. Tiden ligger kvar i boken.
 - **Radera kontot** som medarbetare = gå ur organisationen; som admin tas organisationen bort, också för medarbetarna (som behåller sina konton).
 - Servern sparar inga tidigare versioner av en organisations bok än – ögonblicksbilderna på varje enhet finns kvar.
-- Kvar till 0.16.2: välja vems tidbok admin ser, se vem som inte har checkat av, signera och öppna åt andra, smartshell åt andra och *Medarbetare* på projektsidan. Ändra en medarbetares anställning och semester görs också då.
+- Kvar till nästa steg (0.17.1): välja vems tidbok admin ser, se vem som inte har checkat av, signera och öppna åt andra, smartshell åt andra och *Medarbetare* på projektsidan. Ändra en medarbetares anställning och semester görs också då.
 
 **Vad servern ser.** E-postadressen, när kontot skapades, vilka enheter som är inloggade och när de senast användes, och den krypterade boken med storlek och tidpunkter. Lösenordet lämnar aldrig enheten: ur det räknas 512 bitar fram med PBKDF2 – de första 256 låser upp boknyckeln, de sista 256 blir inloggningen, och servern sparar bara ett hashvärde (`password_hash`) av dem. Utan lösenordet eller återställningsnyckeln kan ingen läsa boken, inte heller den som driver servern.
 
@@ -211,7 +231,7 @@ Vill du ha boken på ditt eget webbhotell: lägg Sisyfos med `api.php` i en mapp
 
 Samma text finns i appen under *Sisyfos-menyn → Data och integritet*.
 
-**Vad boken innehåller.** Företagets uppgifter och logga. Kunder: namn, organisations- eller personnummer, referens, kontaktperson, e-post, telefon, adresser och anteckningar. Projekt: namn, nummer, fastighetsbeteckning, budget, timpriser, uppgifter och anteckningar. Tid: datum, timmar, pris och anteckning för varje tidpost, dagsanteckningar, med historik över ändringar, avcheckning och signering; varje ändring märks med ett slumpat id för enheten den gjordes på (inget om själva enheten). Inställningar för boken, till exempel egna kommandon – det som bara gäller skärmen (tema, panelbredd, kompakt läge, utfällda rader, listfilter) sparas på varje enhet för sig och följer inte med boken. Om dig: namn, initialer, roll och timpris – i fullständigt läge även anställningsform, normtid, kompsaldo och semester. Med fakturor påslagna: fakturorna (köparens namn, adress, org.nr och referens, rader och belopp) och när de betalades, dina betalningsuppgifter (bankgiro, plusgiro, IBAN, Swish) och momsregistreringsnummer, och när villkoren godkändes. Personnummer, kontaktpersoner och anteckningar om människor är personuppgifter.
+**Vad boken innehåller.** Företagets uppgifter och logga. Kunder: namn, organisations- eller personnummer, referens, kontaktperson, e-post, telefon, adresser, timpriser och anteckningar. Projekt: namn, nummer, fastighetsbeteckning, budget, timpriser, uppgifter och anteckningar. Tid: datum, timmar, pris och anteckning för varje tidpost, dagsanteckningar, med historik över ändringar, avcheckning och signering; varje ändring märks med ett slumpat id för enheten den gjordes på (inget om själva enheten). Inställningar för boken, till exempel egna kommandon – det som bara gäller skärmen (tema, panelbredd, kompakt läge, utfällda rader, listfilter) sparas på varje enhet för sig och följer inte med boken. Om dig: namn, initialer, roll och timpris – i fullständigt läge även anställningsform, normtid, kompsaldo och semester. Med fakturor påslagna: fakturorna (köparens namn, adress, org.nr och referens, rader och belopp) och när de betalades, dina betalningsuppgifter (bankgiro, plusgiro, IBAN, Swish) och momsregistreringsnummer, och när villkoren godkändes. Personnummer, kontaktpersoner och anteckningar om människor är personuppgifter.
 
 **Var den sparas.** I webbläsaren på enheten, tillsammans med automatiska ögonblicksbilder (se ovan). **Med konto på webben** dessutom krypterad på servern där Sisyfos ligger (agrellarkitektur.se, ett webbhotell hos Loopia i Sverige): e-postadressen, när kontot skapades, inloggade enheter och när de senast användes, och den krypterade boken med de tio senaste versionerna, deras storlek och tidpunkter. Lösenordet, boknyckeln och innehållet lämnar aldrig enheten okrypterade, och kontot med allt på servern kan raderas när du vill. Krypteringen görs av appen, som hämtas från samma server – se förbehållet under *Spara på webben*. Filer du själv sparar – kopior, autospar till mapp, PDF och CSV – är vanliga, okrypterade filer. Krypterade kopior (`.sisyfos`) kan bara öppnas med ditt lösenord eller din utskrivna återställningsnyckel; glömmer du båda går de inte att öppna, inte heller för oss. Sedan 0.16.0 krypteras boken i delar och du har en personlig nyckel, vars privata del bara finns låst i dina krypterade filer. **I en organisation** (0.16.1) ligger delarna var för sig på servern, krypterade till dem som får läsa dem; servern ser organisationens namn, medlemmarnas e-postadresser, roller och offentliga nycklar, vem som skrev varje del och till vilka den är krypterad – inte innehållet. En medarbetares tid läses bara av personen och admin, fakturorna bara av admin. Ingen annan kan läsa boken, inte heller Agrell Arkitektur, och därför kan ingen heller återställa den åt dig.
 
@@ -229,6 +249,8 @@ Sisyfos är en PWA och fungerar utan nät.
 ## Filformat och bakåtkompatibilitet
 
 Boken är en JSON-fil med versionsnummer (`format`). Varje ändring av formatet får en migrering, och **gamla böcker går alltid att öppna** i nyare versioner. En bok från en nyare version öppnas inte av en äldre – och skrivs aldrig över.
+
+Format 11 (0.17.0) lade till timpriser med datum: ett pris (`roles[].rate`, `projects[].roleRates`, `projects[].personRates`, och de nya `customers[].roleRates` och `tasks[].rate`) är ett tal som gäller alltid eller en prislista `[{from: 'ÅÅÅÅ-MM-DD', rate}]`, där `rate: null` betyder nästa nivå. Dessutom inställningen för signering (`book.signWeeks`). Inget räknas om i migreringen – formatet höjs för att en äldre app inte ska läsa en prislista som ett tal.
 
 Format 10 (0.16.0) lade till organisationen (`register.org = {id, created}` – id:t räknas fram ur bokens skapad-datum, så samma bok får samma id på alla enheter) och personernas offentliga nycklar (`register.people[].keys`, när boken sparas krypterad). Den krypterade filen fick version 2 med delar – se *Kryptering*.
 
@@ -264,7 +286,7 @@ Lägg alla filer i roten (utom `test/`, README och LICENSE) i samma mapp, till e
 - **Publicera på webbhotellet** – laddar upp appen via FTPS vid varje push till `main`. Aktiveras när hemligheterna `FTP_SERVER`, `FTP_USERNAME` och `FTP_PASSWORD` finns (frivilligt `FTP_DIR`, standard `/sisyfos/`, och `FTP_PROTOCOL`, standard `ftps`).
 - **Release-zip** – när en release publiceras på GitHub (tagg `vX.Y.Z`) läggs `sisyfos-vX.Y.Z.zip` till, färdig att lägga på webbhotellet (appen, `feedback.php` och `api.php`). Taggen måste ligga på en commit där `APP_VERSION` i `index.html` är samma version – GitHub föreslår `main` som *Target*, så har `main` hunnit få en nyare version väljs rätt commit under *Target → Recent commits*. Blir det fel säger körningen vilken commit som har versionen. Arbetsflödet kan också köras för hand med taggen och en annan commit (`ref`).
 - **Publicera på webbhotellet** skriver också `api-config.php` med sha256 av hemligheten `SISYFOS_ADMIN_KEY` (adminnyckeln för inbjudningskoder) och kontrollerar efteråt att `api.php?a=status` svarar och att datamappen inte går att läsa från webben.
-- **Test – gamla böcker öppnas** – se ovan. Kör också `test/delar_test.py` (boken i delar och nycklarna), `test/api_test.py` (servern i båda lagringslägena, med organisationer) och `test/org_test.py` (en organisation i tre webbläsare).
+- **Test – gamla böcker öppnas** – se ovan. Kör också `test/delar_test.py` (boken i delar och nycklarna), `test/priser_test.py` (timpriser med datum och signering), `test/api_test.py` (servern i båda lagringslägena, med organisationer) och `test/org_test.py` (en organisation i tre webbläsare).
 
 ## Licens
 

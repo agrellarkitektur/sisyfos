@@ -43,7 +43,7 @@ with sync_playwright() as p:
     b = p.chromium.launch()
     ctx, pg, js = starta(b, BOK)
     r = ev(pg, "() => ({ v: S.version, org: S.register.org, fmt: FORMAT_VERSION })")
-    ok(r['v'] == r['fmt'] == 10 and r['org']['id'].startswith('o') and len(r['org']['id']) == 17, f"format 9 → {r['v']}, organisation {r['org']['id']}")
+    ok(r['v'] == r['fmt'] == 11 and r['org']['id'].startswith('o') and len(r['org']['id']) == 17, f"format 9 → {r['v']}, organisation {r['org']['id']}")
     ctx2, pg2, js2 = starta(b, BOK)
     org2 = ev(pg2, "() => S.register.org.id"); ctx2.close()
     ok(org2 == r['org']['id'], 'samma organisations-id på en annan enhet')
@@ -81,7 +81,7 @@ with sync_playwright() as p:
     r = ev(pg, """async t => { const f = JSON.parse(t); let b = await unseal(st.enc.key, f.data, AAD_DATA); if (f.zip === 'gzip') b = await gz(b, 'unzip');
       return JSON.parse(new TextDecoder().decode(b)); }""", fil)
     # En äldre app (FORMAT_VERSION 9) säger då: "Boken är sparad i en nyare version av Sisyfos (format 10)."
-    ok(r.get('format') == 'sisyfos' and r.get('version') == 10, f"stubben för äldre appar: format {r.get('version')} (ger ”nyare version”)")
+    ok(r.get('format') == 'sisyfos' and r.get('version') == 11, f"stubben för äldre appar: format {r.get('version')} (ger ”nyare version”)")
 
     # Ändrad del och fel skribent upptäcks
     r = ev(pg, """async t => {
@@ -146,7 +146,7 @@ with sync_playwright() as p:
         p3.set_input_files('#imFile', str(fp)); p3.click('[data-act=doImport]'); p3.wait_for_timeout(300)
         p3.fill('#ulPw', PW); p3.click('[data-act=encOpenGo]'); p3.wait_for_timeout(2500)
         r = ev(p3, "async () => ({ name: R().book.name, keys: (await kvGet('keys'))?.fp, reg: byId(R().people, me()).keys?.fp, v: S.version })")
-        ok(r['name'] == BOK['register']['book']['name'] and r['v'] == 10, f"Importera bok öppnar filen version 2 (”{r['name']}”)")
+        ok(r['name'] == BOK['register']['book']['name'] and r['v'] == 11, f"Importera bok öppnar filen version 2 (”{r['name']}”)")
         ok(r['keys'] and r['keys'] == r['reg'], 'nyckelringen följer med importen')
         ok(not js3, 'inga JavaScript-fel vid importen' + (f': {js3}' if js3 else ''))
         c3.close()
