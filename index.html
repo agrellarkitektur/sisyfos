@@ -452,6 +452,18 @@ button.stat:hover{border-color:var(--rule)}
 .wkstate>.ic{color:var(--ok)}
 .wkstate .txt{flex:1 1 240px}
 .wkstate.signed{background:color-mix(in srgb,var(--sig) 12%,var(--chrome));border-color:color-mix(in srgb,var(--sig) 40%,transparent)}.wkstate.signed>.ic{color:var(--sig)}
+/* Vems tidbok (0.18.0) */
+.wkstate.as-bar{background:color-mix(in srgb,var(--accent) 9%,var(--chrome));border-color:color-mix(in srgb,var(--accent) 38%,transparent)}.wkstate.as-bar>.ic{color:var(--accent-ink)}
+.as-btn .as-n{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.as-btn.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}
+#menu .as-it{display:flex;align-items:center;gap:10px;text-align:left;min-height:44px}
+.as-it .as-i{flex:0 0 30px;height:30px;border-radius:50%;display:grid;place-items:center;font:650 11px/1 var(--font-data);background:var(--faint);color:var(--ink)}
+.as-it.cur .as-i{background:var(--accent);color:var(--chrome)}
+.as-it .as-t{display:flex;flex-direction:column;gap:1px;min-width:0}
+.as-it .as-w{font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:4px}.as-it .as-w .ic{width:13px;height:13px;color:var(--ok)}
+.as-it .as-w.warn{color:var(--warn-ink)}
+.ro-sec{opacity:.62}.set-ro{margin:0 0 12px}
+.ro-note{background:var(--accent-soft);color:var(--accent-ink);border-radius:8px;padding:8px 10px;margin:0}
 .btn.done.sig{background:color-mix(in srgb,var(--sig) 14%,var(--chrome));border-color:color-mix(in srgb,var(--sig) 50%,transparent);color:var(--sig)}
 .btn.sm{height:30px;padding:0 10px;font-size:12.5px}
 .btn.done{background:color-mix(in srgb,var(--ok) 14%,var(--chrome));border-color:color-mix(in srgb,var(--ok) 50%,transparent);color:var(--ok)}
@@ -1041,6 +1053,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 .ppl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .ppl li{display:flex;align-items:center;gap:10px}
 .ppl .r-text{flex:1;min-width:0}
+.ppl .ppl-n{display:flex;flex-direction:column;align-items:flex-end;gap:1px}.ppl .ppl-w{display:flex;align-items:center;gap:4px;color:var(--warn-ink)}.ppl .ppl-w .ic{width:13px;height:13px}
 .note-add{display:flex;gap:8px;align-items:flex-end}
 .note-add textarea{flex:1;min-width:0;min-height:40px;padding:8px 10px;border:1px solid var(--rule);border-radius:9px;background:var(--paper);font:13px/1.4 var(--font-ui);resize:vertical}
 .note-add textarea:focus{outline:none;border-color:var(--accent);background:var(--chrome)}
@@ -1252,7 +1265,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 
 /* ───────────── Hjälpfunktioner ───────────── */
 const FORMAT = 'sisyfos', FORMAT_VERSION = 11, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.17.2', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const APP_VERSION = '0.18.0', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 { const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
@@ -1580,7 +1593,7 @@ function migrate(d) {
    Administratörens signatur ligger i registret (register.signed['personId|vecka']). */
 const ck = (pid, p, t, d) => `${pid}|${p}~${t}|${d}`;
 let WEEKS, DN = new Map();
-const dayNote = (d, pid = me()) => DN.get(pid + '|' + d) || '';
+const dayNote = (d, pid = who()) => DN.get(pid + '|' + d) || '';
 function apply(ev, pid) {
   AGG = null;
   if (ev.type === 'week') { WEEKS.set(pid + '|' + ev.data.week, { checked: !!ev.data.checked, at: ev.at }); return; }
@@ -1605,6 +1618,16 @@ function derive() { AGG = null; E = new Map(); IDX = new Map(); WEEKS = new Map(
 
 const R = () => S.register;
 const me = () => S.session.personId;
+/* Vems tidbok (0.18.0): administratören kan se en medarbetares tidbok (st.as). Det som visar tid – veckan, månaden,
+   dagen, summorna, saldot och semestern, personsammanställningen – gäller den personen (who()); det som skrivs i loggen,
+   och vem som gör det, gäller alltid den inloggade (me()). En annans tid är skrivskyddad: admin öppnar, signerar och
+   låser upp veckor åt personen (personkortet, register.signed/reopened), men skriver inte i hennes tid. */
+const isAdm = () => !!byId(R().people, S.session.personId)?.admin;
+const who = () => { const a = st.as; return a && a !== S.session.personId && S.logs?.[a] && byId(R().people, a) && isAdm() ? a : S.session.personId; };
+const viewing = () => who() !== S.session.personId;
+const meP = () => byId(R().people, S.session.personId);
+const pName = id => byId(R().people, id)?.name || 'okänd';
+const fName = id => pName(id).split(' ')[0];
 const log = () => S.logs[me()].events;
 /* Enheten (format 8): ett eget id (följer med varje händelse som dev) och inställningar som hör till skärmen –
    tema, panelens bredd, kompakt läge, utfällda rader, helgen och listornas filter. De ligger i localStorage
@@ -1649,7 +1672,7 @@ const proj = id => byId(R().projects, id);
 const taskOf = (p, id) => p?.tasks.find(t => t.id === id);
 const role = id => byId(R().roles, id);
 const cust = id => byId(R().customers, id);
-const roleFor = p => proj(p)?.memberRoles?.[me()] || R().people.find(x => x.id === me()).defaultRoleId;
+const roleFor = (p, pid = who()) => proj(p)?.memberRoles?.[pid] || byId(R().people, pid)?.defaultRoleId;
 /* ───────────── Timpriser (0.17.0, filformat 11) ─────────────
    Mest specifika priset vinner: uppgiften (ett pris för alla roller) > personens pris i projektet > rollens pris i
    projektet > rollens pris hos kunden > rollens centrala pris. Ett pris är ett tal (gäller alltid) eller en prislista
@@ -1678,9 +1701,13 @@ const rateFor = (pId, roleId, personId, d = today(), tId = null) => {
   return rv(t?.rate, d) ?? rv(p?.personRates?.[personId]?.[roleId], d) ?? rv(p?.roleRates?.[roleId], d) ?? rv(c?.roleRates?.[roleId], d) ?? rv(role(roleId)?.rate, d) ?? 0;
 };
 const eRate = e => rateFor(e.projectId, e.roleId, e.person, e.date, e.taskId);
-const eOpen = e => !lockedK(e.projectId + '~' + e.taskId, e.date);
+// Olåst för personen som äger posten (inte avcheckad, signerad eller hanterad) – oberoende av vems tidbok som visas
+const eOpen = e => { const wk = monday(e.date); return !wkChecked(e.person, wk) && !R().signed[e.person + '|' + wk] && !handled(e.projectId, e.date); };
+const eSig = e => !!R().signed[e.person + '|' + monday(e.date)];
+// Den inloggades egna poster (live() gäller tidboken som visas)
+const mine = () => viewing() ? [...E.values()].filter(e => !e.deleted && e.person === me()) : live();
 // Prislistans pris för varje egen tidpost som inte är hanterad – tas före en ändring
-function rateSnap() { const m = new Map(); if (!E || !S) return m; for (const e of live()) if (!handled(e.projectId, e.date)) m.set(e.id, eRate(e)); return m; }
+function rateSnap() { const m = new Map(); if (!E || !S) return m; for (const e of (isAdm() ? [...E.values()].filter(e => !e.deleted) : mine())) if (!handled(e.projectId, e.date)) m.set(e.id, eRate(e)); return m; }
 // Vilken nivå i prislistan som bestämmer postens pris (0.17.1) – nyckeln som en dialog markerar när ett fält ändras
 function rateSrc(e) {
   const p = proj(e.projectId), t = taskOf(p, e.taskId), d = e.date, rl = e.roleId, c = p && !p.internal ? cust(p.customerId) : null;
@@ -1703,13 +1730,13 @@ const rfTouched = id => !!$(`input[name=${id}]`)?.closest('.rfrom')?.dataset.t;
 // som har ett annat sparat pris. Olåst tid räknas om direkt; avcheckad tid samlas i ch.ask (frågas om), signerad i ch.sig.
 function repriceSince(snap, opt = {}) {
   const ch = [], ask = [], sig = [], now = new Date().toISOString();
-  for (const e of live()) {
+  for (const e of mine()) {
     if (handled(e.projectId, e.date)) continue;
     const q = eRate(e); if (q === e.rate) continue;
     const hit = (snap.has(e.id) && q !== snap.get(e.id)) || (opt.keys?.has(rateSrc(e)) && (!opt.from || e.date >= opt.from));
     if (!hit) continue;
     const c = { id: e.id, from: e.rate, to: q, date: e.date };
-    if (eOpen(e)) ch.push(c); else if (weekState(monday(e.date)).signed) sig.push(c); else ask.push(c);
+    if (eOpen(e)) ch.push(c); else if (eSig(e)) sig.push(c); else ask.push(c);
   }
   for (const c of ch) { const ev = { id: uid(), entryId: c.id, type: 'update', at: now, by: me(), dev: devId(), data: { rate: c.to } }; log().push(ev); apply(ev, me()); }
   ch.ask = ask; ch.sig = sig;
@@ -1718,15 +1745,16 @@ function repriceSince(snap, opt = {}) {
 // Så påverkas summan (0.17.2): en prisändring som rör rapporterad tid visas i en dialog innan den sparas – samma
 // dialog oavsett varifrån priset ändras (projekt, kund, uppgift, roll). Ändringen ligger i minnet under tiden;
 // Avbryt (eller Esc) lägger tillbaka registret som det var och inget sparas.
+const andList = a => a.length > 1 ? a.slice(0, -1).join(', ') + ' och ' + a.at(-1) : a[0] || '';
 const wkList = L => [...new Set(L.map(c => isoWeek(c.date).w))].sort((a, b) => a - b).join(', ');
 // Samma urval som repriceSince, utan att ändra något: [{e, q (nya priset), k: open | ask | sig | hd}]
 function rePlan(snap, opt = {}) {
   const L = [];
-  for (const e of live()) {
+  for (const e of (isAdm() ? [...E.values()].filter(e => !e.deleted) : mine())) {
     const q = eRate(e); if (q === e.rate) continue;
     const hit = (snap.has(e.id) && q !== snap.get(e.id)) || (opt.keys?.has(rateSrc(e)) && (!opt.from || e.date >= opt.from));
     if (!hit) continue;
-    L.push({ e, q, k: handled(e.projectId, e.date) ? 'hd' : eOpen(e) ? 'open' : weekState(monday(e.date)).signed ? 'sig' : 'ask' });
+    L.push({ e, q, k: handled(e.projectId, e.date) ? 'hd' : eOpen(e) ? 'open' : eSig(e) ? 'sig' : 'ask' });
   }
   return L;
 }
@@ -1740,6 +1768,7 @@ function priceGate(o) {
 function pgHtml() {
   const o = st.pg, inc = x => x.k === 'open' || (x.k === 'ask' && o.mode === 'new'), am = e => billable(e) ? e.hours : 0;
   const ask = o.L.filter(x => x.k === 'ask'), sig = o.L.filter(x => x.k === 'sig'), hd = o.L.filter(x => x.k === 'hd'), N = n => n === 1 ? 'en tidpost' : n + ' tidposter';
+  const oth = [...new Set(o.L.filter(x => x.e.person !== me() && x.k !== 'hd').map(x => x.e.person))];
   const G = new Map();
   for (const x of o.L.filter(inc)) {
     const P = proj(x.e.projectId), g = G.get(P.id) || { P, h: 0, a: 0, b: 0, T: new Map() }; G.set(P.id, g);
@@ -1761,7 +1790,7 @@ function pgHtml() {
   const kept = [sig.length && `${N(sig.length)} i signerade veckor (v. ${wkList(sig.map(x => x.e))}) – lås upp veckan och spara priset igen om de också ska räknas om`, hd.length && `${N(hd.length)} i hanterad och fakturerad tid`, ask.length && o.mode === 'keep' && `${N(ask.length)} i avcheckade veckor (v. ${wkList(ask.map(x => x.e))})`].filter(Boolean);
   return `<h2 id="dlgTitle">Så påverkas summan</h2><p>Det nya timpriset ${o.from ? 'gäller från ' + ydate(o.from) : 'gäller från början'} och ändrar beloppet för rapporterad tid. Belopp exkl. moms.</p>
    ${ask.length ? `<div class="pg-ask"><span>${cap(N(ask.length))} i avcheckade veckor (v. ${wkList(ask.map(x => x.e))}):</span><div class="seg" role="group" aria-label="Avcheckad tid"><button data-act="pgMode" data-v="new" aria-pressed="${o.mode === 'new'}">Använd det nya priset</button><button data-act="pgMode" data-v="keep" aria-pressed="${o.mode === 'keep'}">Behåll de gamla priserna</button></div></div>` : ''}
-   ${tab}${kept.length ? `<p class="small muted">Behåller sitt pris: ${kept.join(' · ')}.</p>` : ''}
+   ${tab}${oth.length ? `<p class="small muted pg-oth">Gäller också tid för ${andList(oth.map(pName))}. Admin skriver inte i någon annans tid – den räknas om på medarbetarens enhet nästa gång hon synkar.</p>` : ''}${kept.length ? `<p class="small muted">Behåller sitt pris: ${kept.join(' · ')}.</p>` : ''}
    <div class="dlg-foot"><button class="btn ghost" data-act="pgCancel">Avbryt – inget sparas</button><button class="btn primary" data-act="pgGo">${ic('check')}Spara</button></div>`;
 }
 function pgMode(v) { if (!st.pg) return; st.pg.mode = v; $('#dlg').innerHTML = pgHtml(); $(`#dlg [data-act=pgMode][data-v="${v}"]`)?.focus(); }
@@ -1769,23 +1798,59 @@ function pgGo() {
   const o = st.pg; if (!o) return; st.pg = null;
   save(); const ch = repriceSince(o.snap, o), now = new Date().toISOString(); ch.done = [];
   if (o.mode === 'new') for (const c of ch.ask) { const e = E.get(c.id); if (!e || e.deleted || e.rate !== c.from) continue; const ev = { id: uid(), entryId: c.id, type: 'update', at: now, by: me(), dev: devId(), data: { rate: c.to } }; log().push(ev); apply(ev, me()); ch.done.push(c); }
+  ch.orders = repriceOrder(o); ch.others = ch.orders.reduce((n, k) => n + Object.keys(R().reprice[k].items).length, 0);
   save(); o.finish(ch);
+}
+/* Andras tid (0.18.0): admin skriver inte i någon annans logg. De poster som admin godkänt i dialogen – olåst tid och,
+   med "Använd det nya priset", avcheckad tid – sparas som en omräkning i personens kort
+   (register.reprice['person|id'] = {at, by, items: {post: nytt pris}}) och görs på personens enhet vid nästa synk
+   (repriceOrders). Signerad och hanterad tid rörs inte. När personens tid har det nya priset tar admin bort
+   omräkningen (repricePrune). */
+function repriceOrder(o) {
+  const by = new Map(), keys = [];
+  for (const x of o.L) { if (x.e.person === me() || !(x.k === 'open' || (x.k === 'ask' && o.mode === 'new'))) continue; if (!by.has(x.e.person)) by.set(x.e.person, {}); by.get(x.e.person)[x.e.id] = x.q; }
+  if (!by.size) return keys;
+  const at = new Date().toISOString(), R0 = R().reprice = R().reprice || {};
+  for (const [pid, items] of by) { const k = pid + '|' + uid(); R0[k] = { at, by: me(), items }; keys.push(k); }
+  return keys;
+}
+function repriceOrders() {
+  const R0 = R().reprice; if (!R0 || !S.logs?.[me()]) return 0;
+  const now = new Date().toISOString(); let n = 0;
+  for (const k in R0) {
+    if (!k.startsWith(me() + '|')) continue;
+    for (const [id, q] of Object.entries(R0[k].items || {})) {
+      const e = E.get(id); if (!e || e.deleted || e.person !== me() || e.rate === q || eRate(e) !== q || eSig(e) || handled(e.projectId, e.date)) continue;
+      const ev = { id: uid(), entryId: id, type: 'update', at: now, by: me(), dev: devId(), data: { rate: q } }; log().push(ev); apply(ev, me()); n++;
+    }
+  }
+  return n;
+}
+function repricePrune() {
+  const R0 = R().reprice; if (!R0 || !isAdm()) return false; let ch = false;
+  for (const k in R0) {
+    const it = R0[k].items || {};
+    for (const [id, q] of Object.entries(it)) { const e = E.get(id); if (!e || e.deleted || e.rate === q || eRate(e) !== q || eSig(e) || handled(e.projectId, e.date)) { delete it[id]; ch = true; } }
+    if (!Object.keys(it).length) { delete R0[k]; ch = true; }
+  }
+  return ch;
 }
 // Avbryt: registret tillbaka som det var före ändringen (anropas av closeDlg, så också Esc och klick utanför)
 function pgDrop() { const o = st.pg; if (!o) return false; st.pg = null; S.register = JSON.parse(o.prevReg); derive(); setTimeout(() => { render(); toast('Inget är ändrat'); }, 0); return true; }
 function repriceUndo(ch) {
   const now = new Date().toISOString();
+  for (const k of ch.orders || []) delete R().reprice?.[k];
   for (const c of ch.done || []) { const e = E.get(c.id); if (!e || e.deleted || e.rate !== c.to) continue; const ev = { id: uid(), entryId: c.id, type: 'update', at: now, by: me(), dev: devId(), data: { rate: c.from } }; log().push(ev); apply(ev, me()); }
   for (const c of ch) { const e = E.get(c.id); if (!e || e.deleted || e.rate !== c.to || !eOpen(e)) continue; const ev = { id: uid(), entryId: c.id, type: 'update', at: now, by: me(), dev: devId(), data: { rate: c.from } }; log().push(ev); apply(ev, me()); }
 }
-const rChTxt = ch => { const n = ch.length + (ch.done?.length || 0); return n ? ` · ${n === 1 ? 'en tidpost' : n + ' tidposter'} fick det nya priset` : ''; };
+const rChTxt = ch => { const n = ch.length + (ch.done?.length || 0), o = ch.others || 0; return (n ? ` · ${n === 1 ? 'en tidpost' : n + ' tidposter'} fick det nya priset` : '') + (o ? ` · ${o === 1 ? 'en tidpost' : o + ' tidposter'} för medarbetare räknas om när de synkar` : ''); };
 // "Ändrade timpriser gäller …": från början eller från ett datum (id = namnet på valet)
 const rfHtml = (id, attr = '') => `<div class="fld full rfrom" ${attr}><span class="lbl">Ändrade timpriser gäller</span><div class="rf-opts"><label class="chk"><input type="radio" name="${id}" value="d" checked> från <input type="date" id="${id}D" value="${today()}" aria-label="Gäller från datum"></label><label class="chk"><input type="radio" name="${id}" value=""> från början</label></div><span class="fld-hint">Rapporterad tid från datumet får det nya priset – innan något sparas visar Sisyfos hur summorna ändras. Signerad och hanterad tid behåller sitt pris. Tid som skrivs in senare för en tidigare dag får priset som gällde då.</span></div>`;
 const rfVal = id => { const v = $(`input[name=${id}]:checked`)?.value; if (!v) return ''; const d = $('#' + id + 'D')?.value; return /^\d{4}-\d{2}-\d{2}$/.test(d || '') ? d : today(); };
 const weekdayNorm = d => +(R().book.norm[dow(d)] ?? 0);
 // Normtid för en dag: årskalenderns avvikelser (röda dagar, ändrade dagar) går före veckodagens normtid
 const bookNorm = d => { const dev = calDev(+d.slice(0, 4)); return d in dev ? +dev[d] : weekdayNorm(d); };
-const person = () => R().people.find(x => x.id === me());
+const person = () => byId(R().people, who());
 // Normtid för personen: heltid = bokens normtid, deltid = andel av den, timanställd = ingen normtid.
 // Enkelt läge (0.11.0): bara projekt, timpris och budget – inga kunder, ingen normtid eller frånvaro. Data ligger kvar orörd.
 const simple = () => R().book.mode === 'simple';
@@ -1795,8 +1860,12 @@ const taskHidden = (P, T) => !!T?.archived || (P?.kind === 'absence' && simple()
 const norm = d => { const p = person(); return p.employment === 'hourly' || simple() ? 0 : p.employment === 'part' ? bookNorm(d) * (+p.pct || 0) / 100 : bookNorm(d); };
 // Signering av veckor (0.17.0): book.signWeeks – saknas = på när boken har fler än en person
 const signOn = () => R().book.signWeeks ?? (R().people.length > 1);
-const weekState = wk => { const w = WEEKS.get(me() + '|' + wk), sg = R().signed[me() + '|' + wk]; return { checked: !!w?.checked, at: w?.at, signed: sg || null }; };
-const locked = d => { const w = weekState(monday(d)); return w.checked || !!w.signed; };
+/* Avcheckad: personens senaste veckohändelse – om inte administratören öppnat veckan efter den (0.18.0,
+   register.reopened['person|vecka'] = {at, by} i personkortet). Checkar personen av igen gäller det på nytt. */
+const wkChecked = (pid, wk) => { const k = pid + '|' + wk, w = WEEKS.get(k), o = R().reopened?.[k]; return !!w?.checked && !(o && o.at > (w.at || '')); };
+const weekState = (wk, pid = who()) => { const k = pid + '|' + wk, w = WEEKS.get(k), sg = R().signed[k], o = R().reopened?.[k]; return { checked: wkChecked(pid, wk), at: w?.at, signed: sg || null, reopened: o && w?.checked && o.at > (w.at || '') ? o : null }; };
+// Låst: avcheckad eller signerad vecka – och allt i en annans tidbok (bara personen själv skriver sin tid)
+const locked = d => { if (viewing()) return true; const w = weekState(monday(d)); return w.checked || !!w.signed; };
 /* Hanterad tid (format 8): register.handled[projektId] = [{ id, from, to, at, by, hours, amount }] – datumintervall,
    sorterade på from och utan överlapp. Projektets tid i ett hanterat intervall är avstämd och fakturerad och låst.
    Förut (format ≤ 7) bara hela månader. hdSet lägger till (bara luckorna fylls – befintliga intervall rörs inte)
@@ -1876,7 +1945,7 @@ const billable = e => { const p = proj(e.projectId); return !!p && !p.internal &
    Cachen (AGG) töms av apply, derive och save, i början av varje händelse från användaren
    (klick, inmatning, tangent …) och när dagen eller personen byts. */
 function agg() {
-  const t = today(), pid = me();
+  const t = today(), pid = who();
   if (AGG && AGG.E === E && AGG.t === t && AGG.pid === pid) return AGG;
   const A = { E, t, pid, live: [], P: new Map(), D: new Map() }, cm = ymOf(t) + '-01', info = new Map();
   // Debiterbar och frånvarotyp per projekt och uppgift – samma svar för alla poster i raden
@@ -1913,13 +1982,13 @@ function perReady(pid, from, to) {
     if (e.deleted || !(e.hours > 0) || e.date < from || e.date > to) continue;
     hours += e.hours;
     const wk = monday(e.date), k = e.person + '|' + wk;
-    if (!WEEKS.get(k)?.checked && !R().signed[k]) open.set(k, { person: e.person, week: wk });
+    if (!wkChecked(e.person, wk) && !R().signed[k]) open.set(k, { person: e.person, week: wk });
   }
   return { ready: hours > 0 && !open.size, hours, open: [...open.values()].sort((a, b) => a.week < b.week ? -1 : 1) };
 }
 const openWeeksTxt = r => { const ws = [...new Set(r.open.map(o => isoWeek(o.week).w))]; return (ws.length > 1 ? 'Vecka ' + ws.slice(0, -1).join(', ') + ' och ' + ws.at(-1) + ' är' : 'Vecka ' + ws[0] + ' är') + ' inte avcheckad' + (ws.length > 1 ? 'e' : ''); };
 const readyHtml = (pid, ym) => { if (ym >= ymOf(today()) || hdMo(pid, ym)?.done) return ''; const r = monthReady(pid, ym); return r.hours ? r.ready ? `<span class="st-ready" title="Alla timmar är avcheckade – månaden kan markeras som hanterad">${ic('check')}redo</span>` : `<span class="st-wait" title="${openWeeksTxt(r)}">${ic('clock')}v ${[...new Set(r.open.map(o => isoWeek(o.week).w))].join(', ')}</span>` : ''; };
-const cell = (rk, d) => { const id = IDX.get(`${me()}|${rk}|${d}`); return id ? E.get(id) : null; };
+const cell = (rk, d) => { const id = IDX.get(`${who()}|${rk}|${d}`); return id ? E.get(id) : null; };
 const splitRow = rk => rk.split('~');
 const splitKey = k => k.split('|');
 
@@ -1954,7 +2023,8 @@ function cState(c) {
 }
 // Löpande projekt: kundprojekt utan budget
 const running = p => !p.internal && p.kind !== 'absence' && !(p.budgetKr > 0);
-function budgetPct(p) { return p.budgetKr > 0 ? used(p.id) / p.budgetKr : null; }
+// Medarbetaren ser bara sin egen tid – budgetens förbrukning visas bara för admin (0.18.0)
+function budgetPct(p) { return p.budgetKr > 0 && !orgMember() ? used(p.id) / p.budgetKr : null; }
 const lvl = x => x == null ? 0 : x >= .9 ? 3 : x >= .75 ? 2 : x >= .5 ? 1 : 0;
 const dayTotal = d => agg().D.get(d)?.t || 0;
 const dayAbs = (d, kind) => { const x = agg().D.get(d); return !x ? 0 : kind ? x.k[kind] || 0 : x.a; };
@@ -2058,7 +2128,7 @@ function removeRowData(rk, wk) {
 }
 function removedInWeek(rk, wk) {
   const [p, t] = splitRow(rk), last = addD(wk, 6);
-  return [...E.values()].filter(e => e.deleted && e.removed === 'row' && e.person === me() && e.projectId === p && e.taskId === t && e.date >= wk && e.date <= last);
+  return [...E.values()].filter(e => e.deleted && e.removed === 'row' && e.person === who() && e.projectId === p && e.taskId === t && e.date >= wk && e.date <= last);
 }
 function restoreRow(rk, wk) {
   const now = new Date().toISOString(); let h = 0, n = 0;
@@ -2073,7 +2143,7 @@ function restoreRow(rk, wk) {
   return { h, n };
 }
 const perTxt = (from, to) => from.slice(8) === '01' && to === ymLast(ymOf(from)) ? ymLabel(ymOf(from)).toLowerCase() : dSpan(from, to);
-function lockMsg(d, rk) { const hx = rk && !locked(d) && handled(splitRow(rk)[0], d); if (hx) { toast(`${proj(splitRow(rk)[0]).name}: ${perTxt(hx.from, hx.to)} är hanterad och låst. Häv markeringen på projektsidan eller under Rapporter.`); return; } toast(weekState(monday(d)).signed ? (person().admin ? 'Veckan är signerad. Lås upp den via veckans status för att ändra.' : 'Veckan är signerad av administratören och kan inte ändras.') : 'Veckan är avcheckad. Öppna den igen för att ändra.'); }
+function lockMsg(d, rk) { const hx = rk && !locked(d) && handled(splitRow(rk)[0], d); if (hx) { toast(`${proj(splitRow(rk)[0]).name}: ${perTxt(hx.from, hx.to)} är hanterad och låst. Häv markeringen på projektsidan eller under Rapporter.`); return; } if (viewing()) { toast(`Det här är ${gen(fName(who()))} tidbok – bara ${fName(who())} skriver sin tid. Du kan öppna, signera eller låsa upp veckan.`); return; } toast(weekState(monday(d)).signed ? (isAdm() ? 'Veckan är signerad. Lås upp den via veckans status för att ändra.' : 'Veckan är signerad av administratören och kan inte ändras.') : 'Veckan är avcheckad. Öppna den igen för att ändra.'); }
 function setCell(rk, date, patch) {
   const r = setCell0(rk, date, patch);
   const T = rowInfo(rk).T;
@@ -2446,12 +2516,15 @@ async function encSaveFile() {
    signering (ECDSA P-256). De offentliga ligger i registret (people[].keys), de privata i personens nyckelring,
    låst med boknyckeln (valvet) och med i varje krypterad fil. En del krypteras med en slumpad nyckel som låses
    till varje läsare med en tillfällig ECDH-nyckel (som age), och signeras av skribenten. */
+/* Personkortets kartor (nyckel 'person|…'): signerade veckor, veckor som admin öppnat (0.18.0) och omräkningar som
+   admin godkänt (0.18.0) – skrivs av admin, läses av personen och admin. */
+const CARD_MAPS = ['signed', 'reopened', 'reprice'];
 const CARD_KEYS = ['employment', 'pct', 'balanceStart', 'balanceIn', 'vacation'], ADM_KEYS = ['invoices', 'invoiceLogos', 'payments'], HD_SUM = ['hours', 'amount'];
 const omitK = (o, ks) => { const r = {}; for (const k in o) if (!ks.includes(k)) r[k] = o[k]; return r; };
 const pickK = (o, ks) => { const r = {}; for (const k of ks) if (o?.[k] !== undefined) r[k] = o[k]; return r; };
 function bookSplit(b) {
   const r = b.register || {}, P = {}, mePid = b.session?.personId;
-  const reg = omitK(r, ['people', 'signed', 'handled', ...ADM_KEYS]), adm = pickK(r, ADM_KEYS);
+  const reg = omitK(r, ['people', 'handled', ...CARD_MAPS, ...ADM_KEYS]), adm = pickK(r, ADM_KEYS);
   reg.people = (r.people || []).map(p => omitK(p, CARD_KEYS));
   reg.handled = {};
   const sums = {};
@@ -2464,7 +2537,11 @@ function bookSplit(b) {
   P.reg = { top: omitK(b, ['register', 'logs', 'session', 'prefs']), register: reg };
   P.adm = adm;
   for (const p of r.people || []) P['card.' + p.id] = { card: pickK(p, CARD_KEYS), signed: {} };
-  for (const k in r.signed || {}) { const pid = k.split('|')[0]; (P['card.' + pid] = P['card.' + pid] || { card: {}, signed: {} }).signed[k] = r.signed[k]; }
+  for (const m of CARD_MAPS) {
+    if (m !== 'signed' && r[m] === undefined) continue;
+    for (const p of r.people || []) if (m !== 'signed') P['card.' + p.id][m] = {};
+    for (const k in r[m] || {}) { const pid = k.split('|')[0], c = P['card.' + pid] = P['card.' + pid] || { card: {}, signed: {} }; (c[m] = c[m] || {})[k] = r[m][k]; }
+  }
   const pids = new Set([...(r.people || []).map(p => p.id), ...Object.keys(b.logs || {})]);
   for (const pid of pids) P['log.' + pid] = { log: b.logs?.[pid] || { events: [] } };
   const mine = P['log.' + mePid] || P['log.' + [...pids][0]];
@@ -2480,7 +2557,7 @@ function bookJoin(P) {
     else r[k] = reg[k];
   }
   r.signed = {};
-  for (const n of Object.keys(P).sort()) if (n.startsWith('card.')) Object.assign(r.signed, P[n].signed || {});
+  for (const n of Object.keys(P).sort()) if (n.startsWith('card.')) for (const m of CARD_MAPS) if (P[n][m]) Object.assign(r[m] = r[m] || {}, P[n][m]);
   for (const k of ADM_KEYS) if (adm[k] !== undefined) r[k] = adm[k];
   b.logs = {};
   for (const n of Object.keys(P).sort()) if (n.startsWith('log.')) {
@@ -2985,7 +3062,14 @@ async function webPull(tries = 0) {
   else if (!same) toast('Boken uppdaterades från webben');
 }
 // Olåst tid följer prislistan också när priset ändrats på en annan enhet eller av organisationens admin (0.17.0)
-function webApply(book) { st.welcome = false; const snap = rateSnap(); S = book; derive(); if (S.logs?.[me()]) repriceSince(snap); lastRaw = null; writeNow(); render(); }
+function webApply(book) {
+  st.welcome = false; const snap = rateSnap(); S = book; derive(); const n0 = S.logs?.[me()] ? repriceSince(snap).length : 0;
+  // Omräkningar som administratören godkänt för den här personens tid (0.18.0), och admin städar bort de som är gjorda
+  const n = n0 + repriceOrders(); if (isAdm()) repricePrune();
+  if (n) setTimeout(() => toast(`${orgMember() ? 'Administratören har ändrat timpriset' : 'Timpriset har ändrats på en annan enhet'} – ${n === 1 ? 'en tidpost' : n + ' tidposter'} fick det nya priset`), 0);
+  if (st.as && !viewing()) st.as = null;
+  lastRaw = null; writeNow(); render();
+}
 function webFail(e) {
   if (e.defer) { st.webS.s = 'pending'; renderSave(); return; }
   if (e.offline) return webState('offline');
@@ -3508,7 +3592,13 @@ function ring(P, size = 28, withText = false) {
   return `<svg class="ring lv${lvl(x)}" data-ring="${P.id}" viewBox="0 0 28 28" width="${size}" height="${size}" role="img" aria-label="${fpct(x)} av budgeten"><circle class="rt" cx="14" cy="14" r="${r}"/><circle class="rv" cx="14" cy="14" r="${r}" stroke-dasharray="${(v * c).toFixed(2)} ${c.toFixed(2)}" transform="rotate(-90 14 14)"/>${withText ? `<text x="14" y="14.5">${Math.round(x * 100)}</text>` : ''}</svg>`;
 }
 
-function render() { $('#app').classList.toggle('compact', !!S.prefs.compact); if (!$('#quickIn')) $('#shDock').innerHTML = shellHtml(); renderRail(); renderBook(); renderMain(); renderPanel(); renderStatus(); renderSave(); layoutPanel(); }
+/* Medarbetarens gränssnitt (0.18.0): det personen inte skriver – projekt, kunder, priser, budget, hantering,
+   bokens inställningar – syns men går inte att ändra. Knapparna för det döljs (body.ro) och spärras här. */
+const ADM_ACTS = new Set(['newProject', 'newProjectFor', 'projEdit', 'pjAddTask', 'pjTaskX', 'projDelete', 'custEdit', 'custArchive', 'custDelete', 'addNote', 'delNote',
+  'handle', 'forceHandle', 'unhandle', 'unhandleForce', 'handlePer', 'handlePerGo', 'handlePerOff', 'invHandle', 'invHandleDo', 'addRole', 'delRole', 'calDay', 'calSet', 'calSave', 'calUndo', 'calReset',
+  'logoRemove', 'modeToggle', 'numbering', 'snoozeMenu', 'snooze', 'notify', 'runSnoozeMenu', 'runSnooze', 'runOff', 'runOn', 'saveAbbr', 'orgCreate', 'orgInvite', 'orgInviteAgain']);
+document.head.insertAdjacentHTML('beforeend', `<style>${[...ADM_ACTS].map(a => `body.ro [data-act="${a}"]`).join(',')},body.ro #modeBtn,body.ro .bbar,body.ro .r-bud,body.ro .f-bud{display:none!important}</style>`);
+function render() { document.body.classList.toggle('ro', orgMember()); $('#app').classList.toggle('compact', !!S.prefs.compact); if (!$('#quickIn')) $('#shDock').innerHTML = shellHtml(); renderRail(); renderBook(); renderMain(); renderPanel(); renderStatus(); renderSave(); layoutPanel(); }
 function renderBook() {
   const b = R().book;
   $('#bookName').innerHTML = `<strong>${esc(b.name)}</strong>${b.example ? ' <span class="badge">Exempel</span>' : ''}`;
@@ -3541,6 +3631,52 @@ function renderMain() {
   if (st.page !== 'tid') renderPanel();
   if (st.page === 'rapporter') { const w = $('.mo-wrap'), c = $('.mo thead th.cur'); if (w && c && w.scrollWidth > w.clientWidth) w.scrollLeft = Math.max(0, c.offsetLeft - w.clientWidth / 2); }
 }
+/* Vems tidbok (0.18.0): knappen och menyn för administratören, raden överst när en annans tidbok visas */
+const gen = n => /[sxz]$/i.test(n) ? n : n + 's';
+const asPeople = () => R().people.filter(p => S.logs?.[p.id] && !p.keys?.gone);
+const asOn = () => isAdm() && asPeople().some(p => p.id !== me());
+// Veckor före den här med tid som personen inte har checkat av (de senaste tolv veckorna)
+function openWeeksOf(pid) {
+  const t = monday(today()), from = addD(t, -84), s = new Set();
+  for (const e of E.values()) if (!e.deleted && e.person === pid && e.hours > 0 && e.date >= from && e.date < t) { const wk = monday(e.date); if (!wkChecked(pid, wk) && !R().signed[pid + '|' + wk]) s.add(wk); }
+  return [...s].sort();
+}
+const asBtn = () => asOn() ? `<button class="btn as-btn${viewing() ? ' on' : ''}" data-act="asMenu" aria-haspopup="menu" title="Vems tidbok">${ic('person')}<span class="as-n">${viewing() ? esc(pName(who())) : 'Din tid'}</span></button>` : '';
+function asMenu(btn) {
+  const m = $('#menu'), t = monday(today());
+  m.innerHTML = `<div class="mh">Vems tidbok</div>` + asPeople().map(p => {
+    const ow = openWeeksOf(p.id), cur = p.id === who();
+    const sub = ow.length ? `<span class="as-w warn">${ow.length > 4 ? `${ow.length} veckor inte avcheckade, senast v ${isoWeek(ow.at(-1)).w}` : `v ${ow.map(w => isoWeek(w).w).join(', ')} inte avcheckad${ow.length > 1 ? 'e' : ''}`}</span>` : `<span class="as-w">${ic('check')}avcheckat</span>`;
+    return `<button role="menuitem" data-act="asPick" data-p="${p.id === me() ? '' : p.id}" aria-current="${cur}" class="as-it${cur ? ' cur' : ''}"><span class="as-i">${esc(p.initials || '?')}</span><span class="as-t"><b>${p.id === me() ? 'Du' : esc(p.name)}</b>${sub}</span></button>`;
+  }).join('') + (viewing() ? `<hr><button role="menuitem" data-act="personDlg">${ic('person')}${esc(gen(fName(who())))} anställning, saldo och semester …</button>` : '') + `<div class="mh small">Veckor före v ${isoWeek(t).w} med tid de senaste tolv veckorna.</div>`;
+  const r = btn.getBoundingClientRect(); placeMenu(m, r.left, r.bottom + 6); ($('button[aria-current=true]', m) || $('button', m))?.focus();
+}
+function asPick(pid) {
+  st.as = pid && pid !== me() ? pid : null; st.sel = null; st.selDay = null; st.mtask = null; AGG = null;
+  closeFloating(); renderMain(); renderPanel(); renderStatus();
+  if (viewing()) toast(`Du ser ${gen(pName(who()))} tidbok – den är skrivskyddad`);
+}
+function asBarHtml(wk, ws) {
+  const n = esc(fName(who())); let txt = '', btn = '';
+  if (ws) {
+    const W = `Vecka ${isoWeek(wk).w}`;
+    if (ws.signed) { txt = ` ${W} är signerad ${sdate(ws.signed.at.slice(0, 10))}.`; btn = `<button class="btn sm" data-act="unsignWeek">${ic('unlock')}Lås upp …</button>`; }
+    else if (ws.checked) { txt = ` ${W} är avcheckad${ws.at ? ' ' + sdate(ymd(new Date(ws.at))) : ''}.`; btn = `<button class="btn sm" data-act="reopenWeek">${ic('unlock')}Öppna åt ${n}</button>` + (signOn() ? `<button class="btn sm" data-act="signWeek">${ic('sign')}Signera</button>` : ''); }
+    else txt = ` ${W} är inte avcheckad${ws.reopened ? ` – du öppnade den ${sdate(ymd(new Date(ws.reopened.at)))}` : ''}.`;
+  }
+  return `<div class="wkstate as-bar${ws?.signed ? ' signed' : ''}">${ic('person')}<div class="txt"><b>${esc(gen(pName(who())))} tidbok</b> – skrivskyddad, bara ${n} skriver sin tid.${txt}</div>${btn}<button class="btn sm ghost" data-act="asPick" data-p="">Till din tid</button></div>`;
+}
+// Veckans statusknapp (vecko- och dagvyn); i en annans tidbok visar den bara läget och öppnar menyn
+const wkBtn = (ws, lk) => viewing()
+  ? `<button class="btn${ws.checked ? ' done' : ''}${ws.signed ? ' sig' : ''}" data-act="weekStateMenu" aria-haspopup="menu">${ic(ws.signed ? 'lock' : ws.checked ? 'check' : 'clock')}<span>${ws.signed ? 'Signerad' : ws.checked ? 'Avcheckad' : 'Inte avcheckad'}</span></button>`
+  : `<button class="btn${lk ? ' done' : ''}${ws.signed ? ' sig' : ''}" data-act="${lk ? 'weekStateMenu' : 'checkWeek'}" ${lk ? 'aria-haspopup="menu"' : ''}>${ic(ws.signed ? 'lock' : 'check')}<span>${ws.signed ? 'Signerad' : ws.checked ? 'Avcheckad' : 'Checka av<span class="opt"> veckan</span>'}</span></button>`;
+// Öppna en avcheckad vecka åt någon annan (0.18.0): en markering i personkortet, nyare än personens avcheckning
+function reopenFor(wk, pid = who()) {
+  const k = pid + '|' + wk, prev = R().reopened?.[k];
+  (R().reopened = R().reopened || {})[k] = { at: new Date().toISOString(), by: me() };
+  save(); closeFloating(); closeDlg(); renderMain(); renderPanel(); renderStatus();
+  toast(`Vecka ${isoWeek(wk).w} är öppen igen för ${fName(pid)}`, { label: 'Ångra', fn: () => { if (prev) R().reopened[k] = prev; else delete R().reopened[k]; save(); renderMain(); renderPanel(); renderStatus(); } });
+}
 const viewSeg = () => `<div class="seg" role="group" aria-label="Visning"><button data-act="view" data-view="month" aria-pressed="${st.view === 'month'}" title="Månad">${ic('month')}<span class="opt">Månad</span></button><button data-act="view" data-view="week" aria-pressed="${st.view === 'week'}" title="Vecka">${ic('week')}<span class="opt">Vecka</span></button><button data-act="view" data-view="day" aria-pressed="${st.view === 'day'}" title="Dag">${ic('day')}<span class="opt">Dag</span></button></div>`;
 
 function weekHtml() {
@@ -3549,12 +3685,12 @@ function weekHtml() {
   const range = d0.getMonth() === d1.getMonth() ? `${d0.getDate()}–${d1.getDate()} ${MONL[d1.getMonth()]} ${d1.getFullYear()}` : `${d0.getDate()} ${MON[d0.getMonth()]} – ${d1.getDate()} ${MON[d1.getMonth()]} ${d1.getFullYear()}`;
   const exp = new Set(S.prefs.expanded);
   const allOpen = rows.length && rows.every(rk => exp.has(rk));
-  const ws = weekState(wk), lk = ws.checked || !!ws.signed;
+  const ws = weekState(wk), lk = ws.checked || !!ws.signed || viewing();
   const selDate = st.sel ? splitKey(st.sel)[1] : st.selDay;
   let h = `<div class="view wkv"><div class="wk-head"><div class="wk-nav"><button class="icon-btn" data-act="week" data-d="-7" aria-label="Föregående vecka">${ic('left')}</button><h1>Vecka ${w}</h1><button class="icon-btn" data-act="week" data-d="7" aria-label="Nästa vecka">${ic('right')}</button></div><span class="range">${range}</span>${monday(t) !== wk ? `<button class="btn ghost" data-act="today">Till i dag</button>` : ''}<span class="spacer"></span>`
-    + `<button class="btn${lk ? ' done' : ''}${ws.signed ? ' sig' : ''}" data-act="${lk ? 'weekStateMenu' : 'checkWeek'}" ${lk ? 'aria-haspopup="menu"' : ''}>${ic(ws.signed ? 'lock' : 'check')}<span>${ws.signed ? 'Signerad' : ws.checked ? 'Avcheckad' : 'Checka av<span class="opt"> veckan</span>'}</span></button>`
-    + `<button class="btn" data-act="weekend" aria-pressed="${!!S.prefs.showWeekend}" title="Visa lördag och söndag">${ic('weekend')}<span class="opt">Helg</span></button><button class="btn" data-act="expandAll" aria-pressed="${!!allOpen}" title="Visa alla dagböcker">${ic('book')}<span class="opt">Dagböcker</span></button><button class="btn ico" data-act="compact" aria-pressed="${!!S.prefs.compact}" title="Kompakt läge – tätare rader" aria-label="Kompakt läge">${ic('compact')}</button>${viewSeg()}</div>`;
-  if (lk) h += wkStateHtml(wk, ws);
+    + `${wkBtn(ws, lk)}`
+    + `<button class="btn" data-act="weekend" aria-pressed="${!!S.prefs.showWeekend}" title="Visa lördag och söndag">${ic('weekend')}<span class="opt">Helg</span></button><button class="btn" data-act="expandAll" aria-pressed="${!!allOpen}" title="Visa alla dagböcker">${ic('book')}<span class="opt">Dagböcker</span></button><button class="btn ico" data-act="compact" aria-pressed="${!!S.prefs.compact}" title="Kompakt läge – tätare rader" aria-label="Kompakt läge">${ic('compact')}</button>${asBtn()}${viewSeg()}</div>`;
+  if (viewing()) h += asBarHtml(wk, ws); else if (lk) h += wkStateHtml(wk, ws);
   h += `<div class="alerts" id="alerts">${alertsHtml()}</div>`;
   h += `<div class="board-scroll" id="boardScroll"><div class="board${lk ? ' locked' : ''}" style="--n:${n}">`;
   h += `<div class="dgrid b-head">${days.map(d => { const x = pd(d); return `<button class="dh${d === t ? ' today' : ''}${dow(d) % 6 === 0 ? ' we' : ''}${d === selDate ? ' sel' : ''}" data-act="pickCol" data-day="${d}" data-dh="${d}" aria-pressed="${d === selDate}"><span class="dn"><span class="dn-l">${cap(DOWL[x.getDay()])}</span><span class="dn-s">${cap(DOW[x.getDay()])}</span></span><span class="dd">${x.getDate()} ${MON[x.getMonth()]}</span>${dayNote(d) ? `<span class="dh-n" title="${esc(dayNote(d))}">${esc(dayNote(d))}</span>` : ''}</button>`; }).join('')}</div>`;
@@ -3602,7 +3738,7 @@ function factsHtml(P) {
   }
   return `<span class="r-facts">`
     + f('f-num', 'Nr', `<button class="lnk mono" data-act="gotoProject" data-p="${P.id}" title="Öppna projektet">${esc(P.number)}</button>`)
-    + (simple() ? (P.internal ? f('f-cust', 'Typ', '<span class="v">intern tid</span>') : f('f-cust', 'Timpris', `<span class="v mono">${fkr(rateFor(P.id, roleFor(P.id), me()))}</span>`)) : P.internal ? f('f-cust', 'Kund', '<span class="v">intern tid</span>') : f('f-cust', 'Kund', c ? `<button class="lnk" data-act="gotoCustomer" data-c="${c.id}" title="Öppna kunden">${esc(c.name)}</button>` : '<span class="v">ingen kund</span>'))
+    + (simple() ? (P.internal ? f('f-cust', 'Typ', '<span class="v">intern tid</span>') : f('f-cust', 'Timpris', `<span class="v mono">${fkr(rateFor(P.id, roleFor(P.id), who()))}</span>`)) : P.internal ? f('f-cust', 'Kund', '<span class="v">intern tid</span>') : f('f-cust', 'Kund', c ? `<button class="lnk" data-act="gotoCustomer" data-c="${c.id}" title="Öppna kunden">${esc(c.name)}</button>` : '<span class="v">ingen kund</span>'))
     + (P.internal ? '' : f('f-bud', running(P) ? 'Löpande' : 'Kvar', `<span class="v mono" data-rkvar="${P.id}">${kvarTxt(P)}</span>`))
     + (P.property ? f('f-prop', 'Fastighet', `<span class="v">${esc(P.property)}</span>`) : '')
     + `</span>`;
@@ -3613,7 +3749,7 @@ function groupRows(rows) {
   return [...m].map(([pid, rks]) => ({ pid, rks }));
 }
 function wkStateHtml(wk, ws) {
-  const adm = person().admin;
+  const adm = isAdm();
   if (ws.signed) return `<div class="wkstate signed">${ic('lock')}<div class="txt"><b>Veckan är signerad</b> av administratören ${sdate(ws.signed.at.slice(0, 10))}. ${adm ? 'Den är låst tills du låser upp den.' : 'Bara administratören kan låsa upp den.'}</div>${adm ? `<button class="btn sm" data-act="unsignWeek">${ic('unlock')}Lås upp …</button>` : ''}</div>`;
   const at = ws.at ? sdate(ymd(new Date(ws.at))) : '';
   return `<div class="wkstate">${ic('check')}<div class="txt"><b>Veckan är avcheckad</b>${at ? ' ' + at : ''}. Rutorna är låsta tills du öppnar veckan igen.</div><button class="btn sm" data-act="reopenWeek">${ic('unlock')}Öppna igen</button>${adm && signOn() ? `<button class="btn sm" data-act="signWeek" title="I version 1 är du både administratör och medarbetare">${ic('sign')}Signera som administratör</button>` : ''}</div>`;
@@ -3677,6 +3813,7 @@ function runAlertHtml(p) {
   return `<div class="alert soft run" role="status">${ic('snooze')}<div class="txt"><b>${esc(p.name)}</b> går fortfarande på löpande räkning – <span class="mono">${fkr(m.a)}</span> upparbetat${m.oa > 0 ? `, varav <span class="mono">${fkr(m.oa)}</span> inte hanterat` : ''}. Dags att skicka en budget eller en uppskattning till ${c ? esc(c.name) : 'kunden'}?</div><button class="btn sm" data-act="projEdit" data-p="${p.id}">${ic('note')}Ange budget</button><button class="btn sm" data-act="runSnoozeMenu" data-p="${p.id}" aria-haspopup="menu">${ic('snooze')}Påminn senare</button><button class="btn sm ghost" data-act="runOff" data-p="${p.id}">Visa inte igen</button></div>`;
 }
 function alertsHtml() {
+  if (orgMember()) return backupAlertHtml();
   return backupAlertHtml() + R().projects.filter(runDue).map(runAlertHtml).join('') + R().projects.filter(alertOn).map(p => {
     const x = budgetPct(p), over = alertLevel(p) === '100';
     return `<div class="alert" role="alert">${ic('alert')}<div class="txt"><b>${esc(p.name)}</b> ${over ? 'har passerat budgeten' : 'har nått ' + fpct(x) + ' av budgeten'}, ${fkr(used(p.id))} av ${fkr(p.budgetKr)}. ${over ? 'Stäm av med kunden om fortsatt arbete.' : 'Underrätta kunden innan budgeten tar slut.'}</div><button class="btn sm" data-act="snoozeMenu" data-p="${p.id}" aria-haspopup="menu">${ic('snooze')}Skjut upp</button><button class="btn sm" data-act="notify" data-p="${p.id}">${ic('bell')}Markera som underrättad</button></div>`;
@@ -3686,14 +3823,14 @@ function alertsHtml() {
 function dayHtml() {
   const d = st.day, wk = monday(d), days = visDays(wk).includes(d) ? visDays(wk) : weekDays(wk), t = today();
   const rows = rowsForWeek(wk), withH = rows.filter(rk => cell(rk, d)), rest = rows.filter(rk => !cell(rk, d));
-  const ws = weekState(wk), lk = ws.checked || !!ws.signed, ro = lk ? 'readonly' : '';
+  const ws = weekState(wk), lk = ws.checked || !!ws.signed || viewing(), ro = lk ? 'readonly' : '';
   // Samma huvud som veckovyn: pilarna byter vecka, dagen väljs i blocken nedanför
   const { w } = isoWeek(wk), d0 = pd(days[0]), d1 = pd(days[days.length - 1]);
   const range = d0.getMonth() === d1.getMonth() ? `${d0.getDate()}–${d1.getDate()} ${MONL[d1.getMonth()]} ${d1.getFullYear()}` : `${d0.getDate()} ${MON[d0.getMonth()]} – ${d1.getDate()} ${MON[d1.getMonth()]} ${d1.getFullYear()}`;
-  let h = `<div class="view"><div class="wk-head"><div class="wk-nav"><button class="icon-btn" data-act="dayStep" data-d="-7" aria-label="Föregående vecka">${ic('left')}</button><h1>Vecka ${w}</h1><button class="icon-btn" data-act="dayStep" data-d="7" aria-label="Nästa vecka">${ic('right')}</button></div><span class="range">${range}</span>${monday(t) !== wk ? `<button class="btn ghost" data-act="today">Till i dag</button>` : ''}<span class="spacer"></span><button class="btn${lk ? ' done' : ''}${ws.signed ? ' sig' : ''}" data-act="${lk ? 'weekStateMenu' : 'checkWeek'}" ${lk ? 'aria-haspopup="menu"' : ''}>${ic(ws.signed ? 'lock' : 'check')}<span>${ws.signed ? 'Signerad' : ws.checked ? 'Avcheckad' : 'Checka av<span class="opt"> veckan</span>'}</span></button><button class="btn" data-act="weekend" aria-pressed="${!!S.prefs.showWeekend}" title="Visa lördag och söndag">${ic('weekend')}<span class="opt">Helg</span></button><button class="btn ico" data-act="compact" aria-pressed="${!!S.prefs.compact}" title="Kompakt läge – tätare rader" aria-label="Kompakt läge">${ic('compact')}</button>${viewSeg()}</div>`;
+  let h = `<div class="view"><div class="wk-head"><div class="wk-nav"><button class="icon-btn" data-act="dayStep" data-d="-7" aria-label="Föregående vecka">${ic('left')}</button><h1>Vecka ${w}</h1><button class="icon-btn" data-act="dayStep" data-d="7" aria-label="Nästa vecka">${ic('right')}</button></div><span class="range">${range}</span>${monday(t) !== wk ? `<button class="btn ghost" data-act="today">Till i dag</button>` : ''}<span class="spacer"></span>${wkBtn(ws, lk)}<button class="btn" data-act="weekend" aria-pressed="${!!S.prefs.showWeekend}" title="Visa lördag och söndag">${ic('weekend')}<span class="opt">Helg</span></button><button class="btn ico" data-act="compact" aria-pressed="${!!S.prefs.compact}" title="Kompakt läge – tätare rader" aria-label="Kompakt läge">${ic('compact')}</button>${asBtn()}${viewSeg()}</div>`;
   h += `<div class="day-strip" id="dayStrip" style="--n:${days.length}">${stripHtml(days)}</div>`;
   h += `<div class="dnote">${dnInput(d, 'dnIn', lk)}</div>`;
-  h += (lk ? wkStateHtml(wk, ws) : '') + `<div class="alerts" id="alerts">${alertsHtml()}</div><div class="dcards${lk ? ' locked' : ''}">`;
+  h += (viewing() ? asBarHtml(wk, ws) : lk ? wkStateHtml(wk, ws) : '') + `<div class="alerts" id="alerts">${alertsHtml()}</div><div class="dcards${lk ? ' locked' : ''}">`;
   // Uppgifter i samma projekt grupperas i ett kort (som i veckovyn); projekt med tid i dag först
   for (const g of groupRows([...withH, ...rest])) {
     const P = proj(g.pid), color = pc(P), multi = g.rks.length > 1, any = g.rks.some(rk => cell(rk, d)), c = cust(P.customerId);
@@ -3758,7 +3895,8 @@ function mviewHtml() {
   const ym = st.month || (st.month = ymOf(today())), t = today(), mp = st.mproj && proj(st.mproj) ? proj(st.mproj) : (st.mproj = null);
   const ws = mWeeks(ym), { w: w0 } = isoWeek(ws[0]), { w: w1 } = isoWeek(ws[ws.length - 1]);
   let h = `<div class="view mov"><div class="wk-head"><div class="wk-nav"><button class="icon-btn" data-act="monthStep" data-d="-1" aria-label="Föregående månad">${ic('left')}</button><h1>${ymLabel(ym)}</h1><button class="icon-btn" data-act="monthStep" data-d="1" aria-label="Nästa månad">${ic('right')}</button></div><span class="range">vecka ${w0}–${w1}</span>${ymOf(t) !== ym ? `<button class="btn ghost" data-act="today">Till i dag</button>` : ''}<span class="spacer"></span>`
-    + `<button class="btn" data-act="weekend" aria-pressed="${!!S.prefs.showWeekend}" title="Visa lördag och söndag">${ic('weekend')}<span class="opt">Helg</span></button>${viewSeg()}</div>`;
+    + `<button class="btn" data-act="weekend" aria-pressed="${!!S.prefs.showWeekend}" title="Visa lördag och söndag">${ic('weekend')}<span class="opt">Helg</span></button>${asBtn()}${viewSeg()}</div>`;
+  if (viewing()) h += asBarHtml();
   if (mp) {
     const hd = hdMo(mp.id, ym);
     const mt = st.mtask && taskOf(mp, st.mtask);
@@ -3846,7 +3984,7 @@ function renderPanel() {
   if (!st.sel && !st.selDay) { el.innerHTML = panelChrome() + `<div class="p-head"><div><h2>Översikt</h2><p>Markera en dag eller en ruta för detaljer.</p></div>${pTools(false)}</div><div class="p-body">${st.view === 'month' ? monthOverviewHtml() : overviewHtml()}</div>`; return; }
   if (!st.sel) { el.innerHTML = panelChrome() + dayPanelHtml(st.selDay); return; }
   const [rk, d] = splitKey(st.sel), { P, T, color } = rowInfo(rk), e = cell(rk, d), key = st.sel, lk = lockedK(rk, d), ro = lk ? 'readonly' : '';
-  const r = role(e?.roleId || roleFor(P.id)), rate = e ? e.rate : rateFor(P.id, r?.id, me(), d, T?.id);
+  const r = role(e?.roleId || roleFor(P.id)), rate = e ? e.rate : rateFor(P.id, r?.id, who(), d, T?.id);
   const bill = !P.internal && T.billable;
   el.innerHTML = panelChrome() + `<div class="p-head" style="--pc:${color}"><span class="dot"></span><button class="p-link" data-act="openProject" data-p="${P.id}" title="Gå till projektsidan"><h2>${esc(P.name)}</h2><p>${T.absence ? esc(T.name) : `${esc(P.number)} · ${esc(T.name)}${bill ? ` · ${simple() ? '' : esc(r?.name || '') + ' '}${fkr(rate)}/h` : ' · ej debiterbar'}`}</p></button>${pTools(true)}</div>
   <div class="p-body" style="--pc:${color}">
@@ -4388,8 +4526,11 @@ function doCheckWeek(wk) {
   toast(`Vecka ${isoWeek(wk).w} är avcheckad`, { label: 'Ångra', fn: () => weekEvent(wk, false) });
 }
 function weekStateMenu(btn) {
-  const wk = curWeek(), ws = weekState(wk), adm = person().admin, m = $('#menu');
-  m.innerHTML = ws.signed
+  const wk = curWeek(), ws = weekState(wk), adm = isAdm(), m = $('#menu'), n = esc(fName(who()));
+  if (viewing()) m.innerHTML = ws.signed ? `<div class="mh">${ic('lock')}Signerad ${sdate(ws.signed.at.slice(0, 10))}</div><hr><button role="menuitem" data-act="unsignWeek">${ic('unlock')}Lås upp veckan …</button>`
+    : ws.checked ? `<div class="mh">${ic('check')}Avcheckad${ws.at ? ' ' + sdate(ymd(new Date(ws.at))) : ''}</div><hr><button role="menuitem" data-act="reopenWeek">${ic('unlock')}Öppna veckan åt ${n}</button>${signOn() ? `<button role="menuitem" data-act="signWeek">${ic('sign')}Signera veckan</button>` : ''}`
+    : `<div class="mh">${ic('clock')}Inte avcheckad</div><hr><div class="mh">${n} checkar av sin vecka själv${signOn() ? ' – därefter kan du signera den' : ''}.</div>`;
+  else m.innerHTML = ws.signed
     ? `<div class="mh">${ic('lock')}Signerad ${sdate(ws.signed.at.slice(0, 10))}</div><hr>${adm ? `<button role="menuitem" data-act="unsignWeek">${ic('unlock')}Lås upp veckan …</button>` : '<div class="mh">Bara administratören kan låsa upp en signerad vecka.</div>'}`
     : `<div class="mh">${ic('check')}Avcheckad${ws.at ? ' ' + sdate(ymd(new Date(ws.at))) : ''}</div><hr><button role="menuitem" data-act="reopenWeek">${ic('unlock')}Öppna veckan igen</button>${adm && signOn() ? `<button role="menuitem" data-act="signWeek">${ic('sign')}Signera som administratör</button>` : ''}`;
   const r = btn.getBoundingClientRect(); placeMenu(m, r.left, r.bottom + 6); $('button', m)?.focus();
@@ -4400,7 +4541,7 @@ function personDlg() {
   const p = person();
   const v = p.vacation || { perYear: 25, yearStart: '04-01' }, vi = vacInfo(), ru = vacRules(), ys = v.yearStart || '04-01', cy = +semStart(today(), ys).slice(0, 4);
   const nIn = Math.max(ru.years, 1), inAt = a => { const x = vi?.saved.find(q => q.age === a); return x ? x.days : 0; };
-  openDlg(`<h2 id="dlgTitle">Anställning, saldo och semester</h2><p>Normtiden kommer från bokens normtid per veckodag. Timanställda har ingen normtid, inget kompsaldo och inget semesterkonto.</p><form class="form" id="psForm" novalidate>
+  openDlg(`<h2 id="dlgTitle">Anställning, saldo och semester${viewing() ? ' · ' + esc(p.name) : ''}</h2><p>Normtiden kommer från bokens normtid per veckodag. Timanställda har ingen normtid, inget kompsaldo och inget semesterkonto.</p><form class="form" id="psForm" novalidate>
    <div class="fld"><label for="psEmp">Anställningsform</label><select id="psEmp"><option value="full" ${p.employment === 'full' ? 'selected' : ''}>Heltid</option><option value="part" ${p.employment === 'part' ? 'selected' : ''}>Deltid</option><option value="hourly" ${p.employment === 'hourly' ? 'selected' : ''}>Timanställd</option></select></div>
    <div class="fld" id="psPctF" ${p.employment === 'part' ? '' : 'hidden'}><label for="psPct">Omfattning, % av heltid</label><input id="psPct" inputmode="numeric" value="${p.pct ?? 100}"></div>
    <div class="fld" data-norm><label for="psStart">Kompsaldot räknas från</label><input id="psStart" type="date" value="${esc(p.balanceStart || today())}"></div>
@@ -4429,6 +4570,8 @@ function personDlg() {
    <div class="err fld full" id="psErr"></div>
    <div class="dlg-foot fld full"><button type="button" class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" type="submit">${ic('check')}Spara</button></div></form>`);
   syncPersonDlg();
+  // Personkortet skrivs av administratören (0.18.0): medarbetaren ser sina uppgifter men ändrar dem inte
+  if (orgMember()) { $$('#psForm input, #psForm select').forEach(x => x.disabled = true); $('#psForm [type=submit]').hidden = true; $('#psForm').insertAdjacentHTML('afterbegin', '<p class="fld full small ro-note">Administratören för in din anställning, ditt saldo och din semester. Säg till om något inte stämmer.</p>'); }
 }
 function syncPersonDlg() { const v = $('#psEmp').value; $('#psPctF').hidden = v !== 'part'; $$('#psForm [data-norm]').forEach(x => x.hidden = v === 'hourly'); }
 function savePerson() {
@@ -4625,7 +4768,7 @@ function createProject() {
   const color = internal ? -1 : cv === 'free' ? $('#pjColorFree').value.toLowerCase() : cv != null ? +cv : nextColor();
   const idle = +$('#npIdle').value, now = new Date().toISOString();
   const P = { id: 'p' + uid(), number: num || '–', name, customerId: c?.id || null, property: $('#npProp').value.trim(), budgetKr: internal ? 0 : budget, internal, color, status: 'active', tasks: tasks.length ? tasks : [{ id: 'u' + uid(), name: defTasks()[0], billable: !internal }], roleRates: {}, personRates: {}, memberRoles: {}, notices: {}, notes: [], created: now, ...(idle !== (R().book.idleDays ?? 90) ? { idleDays: idle } : {}) };
-  if (sRate != null && !internal) P.personRates = { [me()]: { [person().defaultRoleId]: sRate } };
+  if (sRate != null && !internal) P.personRates = { [me()]: { [meP().defaultRoleId]: sRate } };
   R().projects.push(P); closeDlg();
   if (pickMode?.mode === 'move' || pickMode?.mode === 'mark') picked(P.id + '~' + P.tasks[0].id);
   else if (st.page === 'projekt' || st.page === 'kunder') { st.page = 'projekt'; st.pid = P.id; st.cid = null; render(); $('#main').scrollTop = 0; }
@@ -4818,7 +4961,7 @@ function dataDlg() {
   <ul><li><b>Företaget:</b> namn, organisationsnummer, adress, e-post, telefon, webbplats och logga.</li>
   <li><b>Kunder:</b> namn, organisations- eller personnummer, referens, kontaktperson, e-post, telefon, adresser, timpriser och anteckningar.</li>
   <li><b>Projekt:</b> namn, nummer, fastighetsbeteckning, budget, timpriser, uppgifter och anteckningar.</li>
-  <li><b>Tid:</b> datum, timmar, pris och anteckning för varje tidpost, dagsanteckningar, med historik över ändringar, avcheckning och signering. Varje ändring märks med ett slumpat id för enheten den gjordes på (inget om själva enheten).</li>
+  <li><b>Tid:</b> datum, timmar, pris och anteckning för varje tidpost, dagsanteckningar, med historik över ändringar, avcheckning och signering (och vilka veckor och prisändringar administratören har öppnat respektive godkänt åt en medarbetare). Varje ändring märks med ett slumpat id för enheten den gjordes på (inget om själva enheten).</li>
   <li><b>Du:</b> namn, initialer, roll och timpris – och i fullständigt läge anställningsform, normtid, kompsaldo och semester.</li>
   <li><b>Fakturor</b> (bara om du slagit på dem): köparens namn, adress, org.nr och referens, rader och belopp, när de betalades, dina betalningsuppgifter (bankgiro, plusgiro, IBAN, Swish) och momsregistreringsnummer, och när villkoren godkändes. Utfärdade fakturor är räkenskapsinformation som du ska spara i sju år – ladda ner arkivet.</li>
   <li><b>Inställningar</b> för boken, till exempel egna kommandon i smartshell. Det som bara gäller skärmen – tema, panelens bredd, kompakt läge, utfällda rader, helgen och listornas filter – sparas på varje enhet för sig och följer inte med boken.</li></ul>
@@ -5043,14 +5186,19 @@ const A = {
   runOn: el => { const P = proj(el.dataset.p); runSet(P, {}, `${P.name}: tipset om budget visas igen`); },
   checkWeek: () => checkWeekDlg(),
   forceCheck: () => doCheckWeek(curWeek()),
-  reopenWeek: () => { const wk = curWeek(); if (weekState(wk).signed) { lockMsg(wk); return; } weekEvent(wk, false); toast(`Vecka ${isoWeek(wk).w} är öppen igen`); },
+  reopenWeek: () => { const wk = curWeek(); if (viewing()) { if (weekState(wk).checked && !weekState(wk).signed) reopenFor(wk); return; } if (weekState(wk).signed) { lockMsg(wk); return; } weekEvent(wk, false); toast(`Vecka ${isoWeek(wk).w} är öppen igen`); },
   signWeek: () => { const wk = curWeek(); closeFloating(); confirmPlain(`Signera vecka ${isoWeek(wk).w}?`, 'En signerad vecka är låst – ingen tid i den kan ändras eller tas bort. Bara administratören kan låsa upp den igen.', `${ic('sign')}Signera`, 'doSign', SIGN_WORDS); },
   // Lås upp en signerad vecka (0.17.0): signeringen tas bort och veckan öppnas, så att tiden kan rättas. Hanterad tid förblir låst.
   rrCancel: () => { closeDlg(); renderMain(); },
   pgGo: () => pgGo(), pgCancel: () => closeDlg(), pgMode: el => pgMode(el.dataset.v),
-  unsignWeek: () => { const wk = curWeek(); closeFloating(); if (!person().admin) return; confirmPlain(`Lås upp vecka ${isoWeek(wk).w}?`, 'Signeringen tas bort och veckan öppnas igen, så att tiden kan ändras. Tid som är hanterad eller fakturerad förblir låst.', `${ic('unlock')}Lås upp`, 'doUnsign', ['ok', 'lås']); },
-  doUnsign: () => { const wk = curWeek(), k = me() + '|' + wk, prev = R().signed[k]; if (!prev) { closeDlg(); return; } delete R().signed[k]; weekEvent(wk, false); toast(`Vecka ${isoWeek(wk).w} är upplåst och öppen`, { label: 'Ångra', fn: () => { R().signed[k] = prev; weekEvent(wk, true); } }); },
-  doSign: () => { const wk = curWeek(); R().signed[me() + '|' + wk] = { at: new Date().toISOString(), by: me() }; save(); closeDlg(); renderMain(); renderPanel(); renderStatus(); toast(`Vecka ${isoWeek(wk).w} är signerad`, { label: 'Ångra', fn: () => { delete R().signed[me() + '|' + wk]; save(); renderMain(); renderPanel(); renderStatus(); } }); },
+  unsignWeek: () => { const wk = curWeek(); closeFloating(); if (!isAdm()) return; confirmPlain(`Lås upp vecka ${isoWeek(wk).w}?`, 'Signeringen tas bort och veckan öppnas igen, så att tiden kan ändras. Tid som är hanterad eller fakturerad förblir låst.', `${ic('unlock')}Lås upp`, 'doUnsign', ['ok', 'lås']); },
+  doUnsign: () => { const wk = curWeek(), k = who() + '|' + wk, prev = R().signed[k]; if (!prev) { closeDlg(); return; }
+    if (viewing()) { const ro = R().reopened?.[k]; delete R().signed[k]; (R().reopened = R().reopened || {})[k] = { at: new Date().toISOString(), by: me() }; save(); closeDlg(); renderMain(); renderPanel(); renderStatus(); toast(`Vecka ${isoWeek(wk).w} är upplåst och öppen för ${fName(who())}`, { label: 'Ångra', fn: () => { R().signed[k] = prev; if (ro) R().reopened[k] = ro; else delete R().reopened[k]; save(); renderMain(); renderPanel(); renderStatus(); } }); return; }
+    delete R().signed[k]; weekEvent(wk, false); toast(`Vecka ${isoWeek(wk).w} är upplåst och öppen`, { label: 'Ångra', fn: () => { R().signed[k] = prev; weekEvent(wk, true); } }); },
+  doSign: () => { const wk = curWeek(), k = who() + '|' + wk; R().signed[k] = { at: new Date().toISOString(), by: me() }; save(); closeDlg(); renderMain(); renderPanel(); renderStatus(); toast(`Vecka ${isoWeek(wk).w} är signerad${viewing() ? ' för ' + fName(who()) : ''}`, { label: 'Ångra', fn: () => { delete R().signed[k]; save(); renderMain(); renderPanel(); renderStatus(); } }); },
+  asMenu: el => { if (!$('#menu').hidden) { closeFloating(); return; } asMenu(el); },
+  asPick: el => asPick(el.dataset.p),
+  asGo: el => { st.as = el.dataset.p; st.page = 'tid'; st.view = 'week'; st.week = monday(today()); st.sel = null; st.selDay = null; AGG = null; renderRail(); renderMain(); renderPanel(); renderStatus(); },
   weekStateMenu: el => { if (!$('#menu').hidden) { closeFloating(); return; } weekStateMenu(el); },
   gotoMiss: el => {
     const key = el.dataset.key, [rk, d] = splitKey(key); closeDlg();
@@ -5415,8 +5563,8 @@ const A = {
 for (const t of ['click', 'input', 'change', 'keydown', 'submit', 'paste', 'drop']) document.addEventListener(t, () => { AGG = null; }, true);
 document.addEventListener('click', ev => {
   const el = ev.target.closest('[data-act]');
-  if (!ev.target.closest('#menu,#pop,#cpop,#brandBtn,[data-act="addRow"],[data-act="menuFor"],[data-act="snoozeMenu"],[data-act="weekStateMenu"]')) closeFloating();
-  if (el && A[el.dataset.act]) { ev.preventDefault?.(); A[el.dataset.act](el, ev); return; }
+  if (!ev.target.closest('#menu,#pop,#cpop,#brandBtn,[data-act="addRow"],[data-act="menuFor"],[data-act="snoozeMenu"],[data-act="weekStateMenu"],[data-act="asMenu"]')) closeFloating();
+  if (el && A[el.dataset.act]) { ev.preventDefault?.(); if (orgMember() && ADM_ACTS.has(el.dataset.act)) { closeFloating(); toast('Det här ändrar administratören – du skriver din egen tid i boken.'); return; } A[el.dataset.act](el, ev); return; }
   if (ev.target.closest('.quick') && !ev.target.closest('input,label')) { $('#quickIn')?.focus(); return; }
   // Klick i en timruta: smartmenyn öppnas vid pekaren, raden expanderas inte
   const box = ev.target.closest('.board [data-cellbox]');
@@ -5633,7 +5781,7 @@ function setMode(m) {
   toast(m === 'simple' ? 'Enkelt läge – kunder, normtid och frånvaro är dolda' : 'Fullständigt läge', { label: 'Ångra', fn: () => { if (prev) R().book.mode = prev; else delete R().book.mode; st.rep = null; save(); render(); } });
 }
 function settingsHtml() {
-  const b = R().book, p = person(), vi = vacInfo(), cb = compBalance();
+  const b = R().book, p = meP(), vi = st.as && viewing() ? null : vacInfo(), cb = viewing() ? null : compBalance();
   const f = (key, label, val, extra = '', cls = '') => `<div class="fld ${cls}"><label for="s_${key}">${label}</label><input id="s_${key}" data-set="${key}" value="${esc(val ?? '')}" ${extra}></div>`;
   let h = `<div class="view set"><div class="wk-head"><h1>Inställningar</h1><span class="spacer"></span><span class="small muted">Ändringar sparas direkt</span></div>
   <nav class="set-nav" aria-label="Avsnitt">${SET_NAV.filter(([id]) => !(simple() && ['set-time', 'set-cal'].includes(id))).map(([id, l]) => `<button class="chip txt" data-act="setNav" data-to="${id}">${l}</button>`).join('')}</nav>`;
@@ -5660,12 +5808,13 @@ function settingsHtml() {
     ${nf.serial && !nf.err ? `<div class="fld"><label for="setStart">Nästa löpnummer</label><input id="setStart" class="mono" inputmode="numeric" value="${nf.n}"><span class="fld-hint" id="setStartHint">Lägst ${nf.minN}. Höj det om du har projektnummer från tiden före Sisyfos.</span></div>` : ''}
     <div class="fld"><label for="s_tasks">Uppgifter i nya projekt</label><input id="s_tasks" data-set="book.defaultTasks" value="${esc(defTasks().join(', '))}"><span class="fld-hint">Kommaseparerade, till exempel Utredning eller Skiss, Bygglov</span></div><div class="fld"><label for="s_idle">Nya projekt blir inaktiva efter</label>${idleSel('s_idle', b.idleDays ?? 90)}<span class="fld-hint">Kan ändras per projekt</span></div><div class="fld full"><div><button class="btn sm" data-act="quickHelp">${ic('bolt')}Förkortningar i smartshell …</button></div></div></div></section>`;
   h += invSetHtml();
+  if (orgMember()) h = h.replace(/<section class="sset" id="(set-[a-z]+)"/g, (m, id) => `<section class="sset ro-sec" inert id="${id}"`).replace('<nav class="set-nav"', `<p class="ro-note set-ro">Du är medarbetare i <b>${esc(st.web.orgName || R().book.name)}</b>. Bokens inställningar, roller och timpriser ändrar administratören – här ser du dem. Själv väljer du tema och visning och hur boken sparas.</p><nav class="set-nav"`);
   h += `<section class="sset" id="set-book"><h2>Spara boken</h2><p class="muted small">${webOn() ? `Boken sparas i den här webbläsaren och krypterad på webben (${esc(st.web.email)}), så att du når den från dina andra enheter. Kopior som fil är ändå bra att ha.` : 'Boken sparas bara på den här enheten, i den här webbläsaren. Ingenting skickas någonstans. Rensar du webbplatsdata försvinner den – därför: spara kopior eller spara den krypterad på webben.'} <button type="button" class="linkish" data-act="dataInfo">Data och integritet</button></p><div id="safeBox" class="safe-box"><p class="muted small">Läser in …</p></div><h3 class="dsub">Hela boken</h3><div class="btn-row"><button class="btn" data-act="exportBook">${ic('export')}Exportera boken …</button><button class="btn" data-act="importBook">${ic('import')}Importera bok …</button><button class="btn ghost" data-act="askNew">${ic('newbook')}Ny tom bok</button><button class="btn ghost" data-act="askSample">${ic('sample')}Ladda exempelboken</button></div></section>`;
   return h + `</div>`;
 }
 function setSetting(key, raw, el) {
   const v = String(raw).trim(), [obj, k] = key.split('.'), num = x => +String(x).replace(/\s/g, '').replace(',', '.');
-  const tgt = obj === 'book' ? R().book : person();
+  const tgt = obj === 'book' ? R().book : meP();
   if (k === 'name' && !v) { el.value = tgt.name; toast('Namnet kan inte vara tomt'); return; }
   if (k === 'email' && v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { toast('E-postadressen ser inte rätt ut'); el.classList.add('bad'); return; }
   el.classList.remove('bad');
@@ -5862,7 +6011,10 @@ function projPageHtml(P) {
   // Medarbetare
   const ppl = new Map(); for (const e of es) { const o = ppl.get(e.person) || { h: 0, a: 0, roles: new Set(), last: '' }; o.h += e.hours; o.a += amountOf(e); o.roles.add(e.roleId); if (e.date > o.last) o.last = e.date; ppl.set(e.person, o); }
   for (const pid in P.memberRoles || {}) if (!ppl.has(pid)) ppl.set(pid, { h: 0, a: 0, roles: new Set([P.memberRoles[pid]]), last: '' });
-  if (!abs && !simple()) h += `<section class="dsec"><h2>Medarbetare</h2>${ppl.size ? `<ul class="ppl">${[...ppl].map(([pid, o]) => { const pe = R().people.find(x => x.id === pid); return `<li><span class="av">${esc(pe?.initials || '?')}</span><span class="r-text"><span class="r-name">${esc(pe?.name || 'Okänd')}</span><span class="r-sub">${[...o.roles].map(r => esc(role(r)?.name || '')).filter(Boolean).join(', ')}${o.last ? ' · senast ' + sdate(o.last) : ''}</span></span><span class="mono">${fh(o.h)} h</span></li>`; }).join('')}</ul>` : '<p class="muted small">Ingen har lagt tid på projektet än.</p>'}</section>`;
+  // 0.18.0: pris i projektet, öppen tid, veckor som inte är avcheckade och (för admin) en genväg till personens tidbok
+  for (const e of es) { const o = ppl.get(e.person); if (!handled(P.id, e.date)) { o.oh = (o.oh || 0) + e.hours; o.oa = (o.oa || 0) + amountOf(e); } const wk = monday(e.date); if (e.hours > 0 && wk < monday(today()) && !wkChecked(e.person, wk) && !R().signed[e.person + '|' + wk]) (o.ow = o.ow || new Set()).add(wk); }
+  if (!abs && !simple()) h += `<section class="dsec"><h2>Medarbetare</h2>${ppl.size ? `<ul class="ppl">${[...ppl].map(([pid, o]) => { const pe = byId(R().people, pid), rl = roleFor(P.id, pid), pr = P.internal ? null : rateFor(P.id, rl, pid);
+    return `<li><span class="av">${esc(pe?.initials || '?')}</span><span class="r-text"><span class="r-name">${pid === me() ? 'Du' : esc(pe?.name || 'Okänd')}</span><span class="r-sub">${[...o.roles].map(r => esc(role(r)?.name || '')).filter(Boolean).join(', ')}${pr != null ? ' · ' + fkr(pr) + '/h' : ''}${o.last ? ' · senast ' + sdate(o.last) : ''}</span>${o.ow?.size ? `<span class="r-sub ppl-w">${ic('clock')}${o.ow.size > 3 ? `${o.ow.size} veckor inte avcheckade, senast v ${isoWeek([...o.ow].sort().at(-1)).w}` : `v ${[...o.ow].sort().map(w => isoWeek(w).w).join(', ')} inte avcheckad${o.ow.size > 1 ? 'e' : ''}`}</span>` : ''}</span><span class="ppl-n"><span class="mono">${fh(o.h)} h</span>${!P.internal && o.a ? `<span class="mono small muted">${fkr(o.a)}${o.oa > 0.5 && o.oa < o.a - 0.5 ? ` · öppet ${fkr(o.oa)}` : ''}</span>` : ''}</span>${isAdm() && pid !== me() && S.logs?.[pid] ? `<button class="btn sm ghost" data-act="asGo" data-p="${pid}" title="Öppna ${esc(gen(pe?.name || ''))} tidbok">${ic('week')}<span class="opt">Tidbok</span></button>` : ''}</li>`; }).join('')}</ul>` : '<p class="muted small">Ingen har lagt tid på projektet än.</p>'}${orgMember() ? '<p class="small muted" style="margin:8px 0 0">Du ser bara din egen tid i projektet.</p>' : ''}</section>`;
   h += `</div><div class="dp-col">`;
   h += notesHtml('p', P);
   // Senaste dagboksanteckningar
@@ -5956,7 +6108,7 @@ function projDlg(id) {
    <div class="fld"><label for="pjStatus">Status</label><select id="pjStatus">${Object.entries(STATUS1).map(([k, l]) => `<option value="${k}" ${P.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select>${pState(P) === 'idle' ? `<span class="fld-hint">Inaktivt just nu – ingen tid på ${idleLabel(idleOf(P))}</span>` : ''}</div>
    <div class="fld" data-ext><label for="pjIdle">Blir inaktivt efter</label>${idleSel('pjIdle', idleOf(P))}<span class="fld-hint">utan registrerad tid</span></div>
    <div class="fld" data-ext data-full><label for="pjCust">Kund</label>${custAcHtml('pjCust', c?.name || '')}</div>
-   <div class="fld" data-ext data-simple><label for="pjSRate">Timpris, kr exkl. moms</label><input id="pjSRate" class="mono" inputmode="numeric" value="${rNow(P.personRates?.[me()]?.[roleFor(P.id)]) ?? rNow(P.roleRates?.[roleFor(P.id)]) ?? ''}" placeholder="${nfKr.format(rNow(role(roleFor(P.id))?.rate) || 0)}"><span class="fld-hint">Tomt = ditt vanliga pris, ${fkr(rNow(role(roleFor(P.id))?.rate) || 0)}/h${Array.isArray(P.personRates?.[me()]?.[roleFor(P.id)]) ? ' · prislista: ' + esc(rHist(P.personRates[me()][roleFor(P.id)], 'ditt vanliga pris')) : ''}</span></div>
+   <div class="fld" data-ext data-simple><label for="pjSRate">Timpris, kr exkl. moms</label><input id="pjSRate" class="mono" inputmode="numeric" value="${rNow(P.personRates?.[me()]?.[roleFor(P.id, me())]) ?? rNow(P.roleRates?.[roleFor(P.id)]) ?? ''}" placeholder="${nfKr.format(rNow(role(roleFor(P.id))?.rate) || 0)}"><span class="fld-hint">Tomt = ditt vanliga pris, ${fkr(rNow(role(roleFor(P.id))?.rate) || 0)}/h${Array.isArray(P.personRates?.[me()]?.[roleFor(P.id)]) ? ' · prislista: ' + esc(rHist(P.personRates[me()][roleFor(P.id)], 'ditt vanliga pris')) : ''}</span></div>
    <div class="fld"><label for="pjProp">Fastighetsbeteckning</label><input id="pjProp" value="${esc(P.property)}"></div>
    <div class="fld" data-ext><label for="pjBud">Budget, kr exkl. moms</label><input id="pjBud" class="mono" inputmode="numeric" value="${P.budgetKr ? nfKr.format(P.budgetKr) : ''}" placeholder="0 = löpande"><span class="fld-hint">Tomt eller 0 = löpande utan budget</span></div>
    <div class="fld"><label for="pjAbbr">Förkortningar i smartshell</label><input id="pjAbbr" class="mono" value="${esc(P.abbr || '')}" placeholder="t.ex. vs, strand" autocapitalize="off"></div>
@@ -5968,7 +6120,7 @@ function projDlg(id) {
     h += `<h3 class="fld full dsub" data-ext data-full>Timpriser i projektet</h3><div class="fld full" data-ext data-full><div class="rt"><span class="rt-h">Roll</span><span class="rt-h">Centralt</span><span class="rt-h">I projektet</span><span class="rt-h">Ditt pris</span>
      ${R().roles.map(r => { const inh = rNow(c?.roleRates?.[r.id]) ?? rNow(r.rate); return `<span class="rt-n">${esc(r.name)}</span><span class="mono muted" title="${rNow(c?.roleRates?.[r.id]) != null ? 'Kundens pris' : 'Centralt pris'}">${nfKr.format(inh)}${rNow(c?.roleRates?.[r.id]) != null ? '*' : ''}</span><input class="mono" data-rr="${r.id}" inputmode="numeric" value="${rNow(P.roleRates?.[r.id]) ?? ''}" placeholder="${nfKr.format(inh)}" aria-label="Pris för ${esc(r.name)} i projektet"><input class="mono" data-pr="${r.id}" inputmode="numeric" value="${rNow(P.personRates?.[me()]?.[r.id]) ?? ''}" placeholder="–" aria-label="Ditt pris som ${esc(r.name)} i projektet">`; }).join('')}</div>
      ${rHistList([...R().roles.map(r => [r.name + ' i projektet', P.roleRates?.[r.id]]), ...R().roles.map(r => [`Ditt pris som ${r.name}`, P.personRates?.[me()]?.[r.id]])])}${R().roles.some(r => rNow(c?.roleRates?.[r.id]) != null) ? '<p class="small muted" style="margin:4px 0 0">* kundens pris</p>' : ''}</div>
-     <div class="fld" data-ext data-full><label for="pjRole">Din roll i projektet</label><select id="pjRole"><option value="">Standard (${esc(role(person().defaultRoleId)?.name || '')})</option>${R().roles.map(r => `<option value="${r.id}" ${myRole === r.id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select></div>
+     <div class="fld" data-ext data-full><label for="pjRole">Din roll i projektet</label><select id="pjRole"><option value="">Standard (${esc(role(meP().defaultRoleId)?.name || '')})</option>${R().roles.map(r => `<option value="${r.id}" ${myRole === r.id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select></div>
      <p class="small muted fld" data-ext data-full style="margin:0;align-self:end">Mest specifika priset gäller: uppgiften, ditt pris, projektet, kunden, centralt. Tomt fält = nästa nivå.</p>`;
     h += rfHtml('pjRF', 'data-ext');
   }
@@ -5999,7 +6151,7 @@ function saveProj() {
     for (const inp of $$('[data-rr]')) { const v = parseKr(inp.value); if (v != null && !(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', inp); if (rCh(inp, rr[inp.dataset.rr], v, rfrom, dt)) { rSet(rr, inp.dataset.rr, v, rfrom); rch = true; keys.add(`pr|${P.id}|${inp.dataset.rr}`); } }
     for (const inp of $$('[data-pr]')) { const v = parseKr(inp.value); if (v != null && !(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', inp); if (rCh(inp, pr[inp.dataset.pr], v, rfrom, dt)) { rSet(pr, inp.dataset.pr, v, rfrom); rch = true; keys.add(`pp|${P.id}|${inp.dataset.pr}`); } }
     const cn = $('#pjCust').value.trim();
-    if (simple() && !internal) { const v = parseKr($('#pjSRate').value), rl = roleFor(P.id); if (v != null && !(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', $('#pjSRate')); if ((v ?? undefined) !== (rNow(pr[rl]) ?? rNow(rr[rl])) || rCh($('#pjSRate'), pr[rl], v, rfrom, dt)) { if (!rfrom) delete rr[rl]; rSet(pr, rl, v, rfrom); rch = true; keys.add(`pp|${P.id}|${rl}`).add(`pr|${P.id}|${rl}`); } }
+    if (simple() && !internal) { const v = parseKr($('#pjSRate').value), rl = roleFor(P.id, me()); if (v != null && !(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', $('#pjSRate')); if ((v ?? undefined) !== (rNow(pr[rl]) ?? rNow(rr[rl])) || rCh($('#pjSRate'), pr[rl], v, rfrom, dt)) { if (!rfrom) delete rr[rl]; rSet(pr, rl, v, rfrom); rch = true; keys.add(`pp|${P.id}|${rl}`).add(`pr|${P.id}|${rl}`); } }
     const cv = $('input[name=pjColor]:checked')?.value;
     let color = cv === 'free' ? $('#pjColorFree').value.toLowerCase() : +(cv ?? 0); if (internal) color = -1; else if (!cv && !isHex(P.color) && P.color < 0) color = 0;
     const idle = +($('#pjIdle')?.value ?? idleOf(P));
@@ -6655,13 +6807,13 @@ function invNewFromBasis() {
   const d = invoiceData(v.sel, from, to, v.old, false); if (!d.hours) { toast('Ingen öppen tid att fakturera'); return; }
   const c = invCfg(), C = d.C, lines = [];
   for (const x of d.projects) for (const l of x.lines) lines.push({ text: `${invPHead({ all: false }, x.P)}: ${l.task}${!simple() && l.role ? ` (${l.role})` : ''}`, qty: r2(l.hours), unit: 'h', price: r2(l.rate), amount: r2(l.amount) });
-  const x = { id: 'f' + uid(), kind: 'invoice', status: 'draft', created: new Date().toISOString(), by: me(), dev: devId(), issued: today(), terms: Math.max(0, Math.floor(+(C?.terms ?? c.terms))) || 0, buyer: invBuyerOf(C), ourRef: person().name || '', msg: '', period: { from: d.first && d.first < from ? d.first : from, to }, lines, vatMode: zoneMode(C?.zone), vat: (C?.zone || 'se') === 'se' ? d.vat : 0, spans: d.spans.map(s => ({ pid: s.pid, from: s.from, to: s.to })), basis: { h: r2(d.hours), a: r2(d.amount) } };
+  const x = { id: 'f' + uid(), kind: 'invoice', status: 'draft', created: new Date().toISOString(), by: me(), dev: devId(), issued: today(), terms: Math.max(0, Math.floor(+(C?.terms ?? c.terms))) || 0, buyer: invBuyerOf(C), ourRef: meP().name || '', msg: '', period: { from: d.first && d.first < from ? d.first : from, to }, lines, vatMode: zoneMode(C?.zone), vat: (C?.zone || 'se') === 'se' ? d.vat : 0, spans: d.spans.map(s => ({ pid: s.pid, from: s.from, to: s.to })), basis: { h: r2(d.hours), a: r2(d.amount) } };
   if (!C && d.projects.length === 1) x.buyer.customerId = null;
   INVS().push(x); save(); renderMain(); invEdit(x.id);
 }
 function invBlank() {
   if (!invOn()) return;
-  const c = invCfg(), x = { id: 'f' + uid(), kind: 'invoice', status: 'draft', created: new Date().toISOString(), by: me(), dev: devId(), issued: today(), terms: +c.terms || 0, buyer: invBuyerOf(null), ourRef: person().name || '', msg: '', period: null, lines: [{ text: '', qty: 1, unit: 'st', price: 0, amount: 0 }], vatMode: 'se', vat: +R().book.vatRate || 0, spans: [] };
+  const c = invCfg(), x = { id: 'f' + uid(), kind: 'invoice', status: 'draft', created: new Date().toISOString(), by: me(), dev: devId(), issued: today(), terms: +c.terms || 0, buyer: invBuyerOf(null), ourRef: meP().name || '', msg: '', period: null, lines: [{ text: '', qty: 1, unit: 'st', price: 0, amount: 0 }], vatMode: 'se', vat: +R().book.vatRate || 0, spans: [] };
   INVS().push(x); save(); renderMain(); invEdit(x.id);
 }
 const invRowHtml = (l, i) => `<div class="ie-row" data-i="${i}"><input data-l="text" value="${esc(l.text)}" placeholder="Beskrivning" aria-label="Beskrivning"><input data-l="qty" class="mono" inputmode="decimal" value="${esc(fq(l.qty))}" aria-label="Antal"><input data-l="unit" value="${esc(l.unit || '')}" aria-label="Enhet" placeholder="h"><input data-l="price" class="mono" inputmode="decimal" value="${esc(nf2.format(l.price))}" aria-label="À-pris"><span class="mono ie-amt">${fkr2(l.amount)}</span><button type="button" class="icon-btn" data-act="ieRowX" data-i="${i}" aria-label="Ta bort raden">${ic('x')}</button></div>`;
@@ -7232,7 +7384,7 @@ async function personDownload() {
 function personTabHtml() {
   const r = rep(), [from, to] = personPeriod(), d = personData(from, to);
   const label = r.ptype === 'week' ? `Vecka ${isoWeek(from).w}, ${sdate(from)} – ${sdate(to)} ${to.slice(0, 4)}` : ymLabel(r.pym);
-  let h = `<div class="rep-ctl"><div class="fld"><span class="lbl">Period</span><div class="seg" role="group"><button data-act="perType" data-t="week" aria-pressed="${r.ptype === 'week'}">Vecka</button><button data-act="perType" data-t="month" aria-pressed="${r.ptype === 'month'}">Månad</button></div></div>
+  let h = `<div class="rep-ctl">${asOn() ? `<div class="fld"><label for="rpPers">Person</label><select id="rpPers">${asPeople().map(p => `<option value="${p.id === me() ? '' : p.id}" ${p.id === who() ? 'selected' : ''}>${p.id === me() ? 'Du – ' : ''}${esc(p.name)}</option>`).join('')}</select></div>` : ''}<div class="fld"><span class="lbl">Period</span><div class="seg" role="group"><button data-act="perType" data-t="week" aria-pressed="${r.ptype === 'week'}">Vecka</button><button data-act="perType" data-t="month" aria-pressed="${r.ptype === 'month'}">Månad</button></div></div>
    <div class="fld"><span class="lbl">&nbsp;</span><div class="mnav"><button class="icon-btn" data-act="perStep" data-d="-1" aria-label="Föregående">${ic('left')}</button><b class="per-l">${label}</b><button class="icon-btn" data-act="perStep" data-d="1" aria-label="Nästa">${ic('right')}</button></div></div>
    <div class="rep-acts"><button class="btn primary" data-act="dlPerson">${ic('export')}Ladda ner PDF</button></div></div>`;
   h += `<div class="paper">${personPreview(d, label)}</div>`;
@@ -7408,6 +7560,7 @@ document.addEventListener('input', ev => {
 // Listornas sökning och sortering ritar bara om listan, så att sökfältet behåller fokus
 for (const ty of ['input', 'change']) document.addEventListener(ty, ev => { const t = ev.target; if (t.matches?.('[data-rr],[data-pr],[data-cr],#pjSRate,.tk-rate')) t.dataset.t = '1'; const rf = t.closest?.('.rfrom'); if (rf) rf.dataset.t = '1'; });
 document.addEventListener('input', ev => { const t = ev.target; if (t.id === 'lsQ') { (st.lq = st.lq || {})[t.dataset.ls] = t.value; const b = $('#lsBody'); if (b) b.innerHTML = t.dataset.ls === 'p' ? projListBody() : custListBody(); } });
+document.addEventListener('change', ev => { if (ev.target.id === 'rpPers') { st.as = ev.target.value || null; AGG = null; renderMain(); renderStatus(); } });
 document.addEventListener('change', ev => { if (ev.target.id === 'bkDays') { S.prefs.backupDays = +ev.target.value; save(); safetyRender(); } });
 document.addEventListener('change', ev => { const t = ev.target; if (t.id === 'lsSort') { lsPref(t.dataset.k).sort = t.value; save(); const b = $('#lsBody'); if (b) b.innerHTML = t.dataset.k === 'p' ? projListBody() : custListBody(); } if (t.id === 'npInt') $$('#npForm [data-ext]').forEach(x => x.hidden = t.checked); });
 document.addEventListener('toggle', ev => { const d = ev.target; if (d.matches?.('details.lgrp')) (st.lopen = st.lopen || {})[d.dataset.g] = d.open; }, true);
@@ -7606,6 +7759,9 @@ const B = s => `<b>${esc(s)}</b>`;
 const shWeeksOf = per => per.weeks || (per.kind === 'day' ? [monday(per.from)] : null);
 const shRefWeek = () => st.page === 'tid' ? curWeek() : monday(today());
 const fmtWeeks = ws => ws.length === 1 ? `vecka ${isoWeek(ws[0]).w}` : `veckorna ${ws.map(w => isoWeek(w).w).join(', ').replace(/, (\d+)$/, ' och $1')}`;
+const SH_RO = new Set(['hant', 'unhant', 'budget', 'uppg', 'ant', 'status']);
+const roShell = () => ({ bad: true, html: 'Det här ändrar administratören – du skriver din egen tid i boken.' });
+const viewShell = () => ({ bad: true, html: `Du ser ${esc(gen(pName(who())))} tidbok – bara ${esc(fName(who()))} skriver sin tid. Byt till <b>Din tid</b> med knappen ovanför veckan.` });
 function shPlan(raw) {
   const s = raw.trim(); if (!s) return null;
   let toks = shTok(s); if (!toks.length) return null;
@@ -7613,12 +7769,16 @@ function shPlan(raw) {
   if (!toks[0].q && toks[0].lo.length > 1 && toks[0].lo.startsWith('?')) toks.splice(0, 1, { t: '?', lo: '?', q: false }, { t: toks[0].t.slice(1), lo: toks[0].lo.slice(1), q: false });
   const c = !toks[0].q && SHW.get(toks[0].lo);
   if (c && simple() && ['kund', 'pers', 'ov'].includes(c.k)) return { info: true, html: `${esc(c.t)} finns i fullständigt läge. Byt läge under <b>Inställningar → Läge</b> – inget försvinner.` };
-  if (c) { try { return SH[c.k](toks.slice(1), toks[0].lo); } catch (e) { console.error(e); return { bad: true, html: 'Något gick fel när raden tolkades.' }; } }
+  // Medarbetaren i en organisation (0.18.0): det som ändrar registret gör administratören; i en annans tidbok skrivs ingen tid
+  if (c && orgMember() && SH_RO.has(c.k)) return roShell();
+  if (c && c.k === 'dag' && viewing()) return viewShell();
+  if (c) { try { const res = SH[c.k](toks.slice(1), toks[0].lo); return orgMember() && res?.run && /^Enter skapar/.test(res.html || '') ? roShell() : res; } catch (e) { console.error(e); return { bad: true, html: 'Något gick fel när raden tolkades.' }; } }
   const p = shPeriod(toks, 0);
   if (p?.err) return { bad: true, html: esc(p.err) };
   if (p && p.n === toks.length) return shGoto(p);
   // Period följd av ett kommandoord (v43 ch): visa ordningen med verbet först
   if (p && toks[p.n] && SHW.has(toks[p.n].lo) && !matchTarget(toks.slice(p.n).map(x => x.t))) return { bad: true, html: `Börja med kommandot: <b>${esc(shJoin([toks[p.n], ...toks.slice(0, p.n), ...toks.slice(p.n + 1)]))}</b>` };
+  if (viewing()) return viewShell();
   return { time: true };
 }
 function shGoto(p) {
@@ -7637,10 +7797,41 @@ const noP = toks => ({ bad: true, html: `Hittar inget projekt som heter <b>${esc
 const altTxt = r => r.alts ? ` <span class="sh-alt">(${r.alts} till matchar – skriv mer av namnet eller en förkortning)</span>` : '';
 // Projekt + resten av raden (text) för uppg, ant, budget
 function shProjRest(toks) { const r = shFindProj(toks); return r ? { ...r, rest: toks.slice(r.n) } : null; }
+/* Åt andra (0.18.0): sign och öppna med en persons namn sist – sign v43 Anna, öppna v40-42 Anna Berg. I en annans
+   tidbok gäller kommandot den personen även utan namn. Admin skriver personkortet (signerat, öppnat) – aldrig tiden. */
+function shPerson(toks) {
+  if (!toks.length || toks.length > 3) return null;
+  const s = normName(shJoin(toks)), w = p => normName(p.name).split(' ');
+  const L = R().people.filter(p => p.id !== me() && !p.keys?.gone && (normName(p.name) === s || w(p)[0] === s || w(p).at(-1) === s || (p.initials && normName(p.initials) === s)));
+  return L.length === 1 ? L[0] : null;
+}
+function shWho(rest) {
+  if (!rest.length) return { pid: viewing() ? who() : me() };
+  if (!isAdm()) return { bad: true, html: 'Bara administratören öppnar och signerar veckor åt andra.' };
+  const P = shPerson(rest); return P ? { pid: P.id } : { bad: true, html: `Hittar ingen person som heter <b>${esc(shJoin(rest))}</b>.` };
+}
+function shCardSet(m, pid, ws, v) { const prev = ws.map(w => [w, R()[m]?.[pid + '|' + w]]); for (const w of ws) { const k = pid + '|' + w; if (v) (R()[m] = R()[m] || {})[k] = v; else if (R()[m]) delete R()[m][k]; } return () => { for (const [w, x] of prev) { const k = pid + '|' + w; if (x) (R()[m] = R()[m] || {})[k] = x; else if (R()[m]) delete R()[m][k]; } }; }
+function shSignFor(ws, pid) {
+  const n = fName(pid), todo = ws.filter(w => weekState(w, pid).checked && !weekState(w, pid).signed), notc = ws.filter(w => !weekState(w, pid).checked && !weekState(w, pid).signed);
+  if (!todo.length) return { info: true, html: notc.length ? `${cap(fmtWeeks(notc))} är inte avcheckad av ${esc(n)} – ${esc(n)} checkar av själv, sedan kan du signera.` : `${cap(fmtWeeks(ws))} är redan signerad för ${esc(n)}.` };
+  return { ask: true, html: `Enter signerar <b>${fmtWeeks(todo)}</b> för ${B(pName(pid))}${notc.length ? ` · ${fmtWeeks(notc)} är inte avcheckad` : ''} – du får bekräfta, en signerad vecka låses`,
+    run: () => {
+      st.shPending = () => { const und = shCardSet('signed', pid, todo, { at: new Date().toISOString(), by: me() }); save(); closeDlg(); shRefresh(); toast(`${cap(fmtWeeks(todo))} är signerad för ${n}`, { label: 'Ångra', fn: () => { und(); save(); shRefresh(); } }); };
+      confirmPlain(`Signera ${fmtWeeks(todo)} för ${pName(pid)}?`, `En signerad vecka är låst – ${n} kan inte ändra tiden i den förrän du låser upp den.`, `${ic('sign')}Signera`, 'shPending', SIGN_WORDS);
+    } };
+}
+function shOpenFor(ws, pid) {
+  const n = fName(pid), sg = ws.filter(w => weekState(w, pid).signed), todo = ws.filter(w => weekState(w, pid).checked && !weekState(w, pid).signed), all = [...sg, ...todo].sort();
+  if (!all.length) return { info: true, html: `${cap(fmtWeeks(ws))} är inte avcheckad av ${esc(n)} – den är redan öppen.` };
+  const go = () => { const at = new Date().toISOString(), u1 = shCardSet('signed', pid, sg, null), u2 = shCardSet('reopened', pid, all, { at, by: me() }); save(); closeDlg(); shRefresh(); toast(`${cap(fmtWeeks(all))} är öppen igen för ${n}`, { label: 'Ångra', fn: () => { u1(); u2(); save(); shRefresh(); } }); };
+  if (sg.length) return { ask: true, html: `Enter låser upp <b>${fmtWeeks(sg)}</b> (signerad)${todo.length ? ` och öppnar ${fmtWeeks(todo)}` : ''} för ${B(pName(pid))} – du får bekräfta`,
+    run: () => { st.shPending = go; confirmPlain(`Lås upp ${fmtWeeks(sg)} för ${pName(pid)}?`, `Signeringen tas bort och veckan öppnas igen, så att ${n} kan ändra tiden. Tid som är hanterad eller fakturerad förblir låst.`, `${ic('unlock')}Lås upp`, 'shPending', ['ok', 'lås']); } };
+  return { html: `Enter öppnar <b>${fmtWeeks(todo)}</b> igen för ${B(pName(pid))} – ${esc(n)} kan sedan ändra och checka av på nytt`, run: go };
+}
 const SH = {
   ch(a) {
     const r = shPeriodAny(a); if (r.err) return { bad: true, html: esc(r.err) };
-    if (r.rest.length) return { bad: true, html: 'Avcheckning gäller din egen tid. Att checka av åt andra kommer när Sisyfos får flera användare.' };
+    if (r.rest.length || viewing()) return { bad: true, html: `Var och en checkar av sin egen tid.${isAdm() ? ' Du kan öppna och signera veckor åt andra: <b>öppna v43 Anna</b>, <b>sign v43 Anna</b>.' : ''}` };
     const ws = r.per ? shWeeksOf(r.per) : [shRefWeek()]; if (!ws) return { bad: true, html: 'Checka av veckor: <b>ch v43</b> eller <b>ch v40-43</b>.' };
     const todo = ws.filter(w => !weekState(w).checked && !weekState(w).signed), miss = todo.reduce((n, w) => n + missingNotes(w).length, 0), hrs = todo.reduce((s, w) => s + weekDays(w).reduce((x, d) => x + dayTotal(d), 0), 0);
     if (!todo.length) return { info: true, html: `${cap(fmtWeeks(ws))} är redan ${ws.length > 1 ? 'avcheckade' : 'avcheckad'}.` };
@@ -7649,10 +7840,12 @@ const SH = {
   },
   open(a) {
     const r = shPeriodAny(a); if (r.err) return { bad: true, html: esc(r.err) };
-    const ws = r.per ? shWeeksOf(r.per) : [shRefWeek()]; if (!ws || r.rest.length) return { bad: true, html: 'Öppna veckor: <b>öppna v43</b>.' };
+    const pp = shWho(r.rest); if (pp.bad) return pp;
+    const ws = r.per ? shWeeksOf(r.per) : [shRefWeek()]; if (!ws) return { bad: true, html: 'Öppna veckor: <b>öppna v43</b>.' };
+    if (pp.pid !== me()) return shOpenFor(ws, pp.pid);
     const sg = ws.filter(w => weekState(w).signed), todo = ws.filter(w => weekState(w).checked && !weekState(w).signed);
     // Signerade veckor låser administratören upp – efter en bekräftelse (0.17.0)
-    if (sg.length && person().admin) return { ask: true, html: `Enter låser upp <b>${fmtWeeks(sg)}</b> (signerad)${todo.length ? ` och öppnar ${fmtWeeks(todo)}` : ''} – du får bekräfta`,
+    if (sg.length && isAdm()) return { ask: true, html: `Enter låser upp <b>${fmtWeeks(sg)}</b> (signerad)${todo.length ? ` och öppnar ${fmtWeeks(todo)}` : ''} – du får bekräfta`,
       run: () => {
         st.shPending = () => { const prev = sg.map(w => [w, R().signed[me() + '|' + w]]); sg.forEach(w => delete R().signed[me() + '|' + w]); [...sg, ...todo].forEach(w => shWeekEv(w, false)); save(); closeDlg(); shRefresh(); toast(`${cap(fmtWeeks([...sg, ...todo].sort()))} är öppen igen`, { label: 'Ångra', fn: () => { prev.forEach(([w, v]) => { R().signed[me() + '|' + w] = v; }); [...sg, ...todo].forEach(w => shWeekEv(w, true)); save(); shRefresh(); } }); };
         confirmPlain(`Lås upp ${fmtWeeks(sg)}?`, 'Signeringen tas bort och veckan öppnas igen, så att tiden kan ändras. Tid som är hanterad eller fakturerad förblir låst.', `${ic('unlock')}Lås upp`, 'shPending', ['ok', 'lås']);
@@ -7662,10 +7855,11 @@ const SH = {
   },
   sign(a) {
     const r = shPeriodAny(a); if (r.err) return { bad: true, html: esc(r.err) };
-    if (r.rest.length) return { bad: true, html: 'Att signera åt någon annan kommer när Sisyfos får flera användare.' };
-    if (!person().admin) return { bad: true, html: 'Bara administratören kan signera veckor.' };
+    if (!isAdm()) return { bad: true, html: 'Bara administratören kan signera veckor.' };
+    const pp = shWho(r.rest); if (pp.bad) return pp;
     if (!signOn()) return { bad: true, html: 'Signering av veckor är avstängd – avcheckning räcker. Slå på den under Inställningar → Avcheckning och signering.' };
     const ws = r.per ? shWeeksOf(r.per) : [shRefWeek()]; if (!ws) return { bad: true, html: 'Signera veckor: <b>sign v43</b>.' };
+    if (pp.pid !== me()) return shSignFor(ws, pp.pid);
     const todo = ws.filter(w => !weekState(w).signed); if (!todo.length) return { info: true, html: `${cap(fmtWeeks(ws))} är redan signerad.` };
     const unch = todo.filter(w => !weekState(w).checked);
     return { ask: true, html: `Enter signerar <b>${fmtWeeks(todo)}</b>${unch.length ? ` (checkar av ${unch.length === todo.length ? 'den' : fmtWeeks(unch)} först)` : ''} – du får bekräfta, en signerad vecka låses`,
@@ -7748,6 +7942,7 @@ const SH = {
   unhant(a) { return shHandle(a, false); },
   proj(a) {
     if (!a.length) return { html: 'Enter öppnar <b>Projekt</b>', run: () => shPage('projekt') };
+    const pr = shProjPerson(a); if (pr) return pr;
     // Timpriset plockas ut först: med enhet var som helst, annars talet direkt efter budgeten
     let rt = shRate(a); if (rt) a = [...a.slice(0, rt.i), ...a.slice(rt.i + rt.n)];
     let bud = shBudget(a);
@@ -7874,12 +8069,39 @@ function shShowDiary(pid, from, to) {
 }
 function shOpenProj(P) { st.back = null; st.page = 'projekt'; st.pid = P.id; st.cid = null; st.sel = null; st.selDay = null; $('#org').hidden = true; render(); $('#main').scrollTop = 0; }
 function shOpenCust(C) { st.back = null; st.page = 'kunder'; st.cid = C.id; st.pid = null; st.sel = null; st.selDay = null; $('#org').hidden = true; render(); $('#main').scrollTop = 0; }
-function shNewProj(name, num, budget, cname, C, rate = null) {
+// Pris för en person i ett befintligt projekt (0.18.0) – från i dag, via Så påverkas summan när rapporterad tid ändras
+function shPersonRate(P, per, rl, rate) {
+  const snap = rateSnap(), prevReg = JSON.stringify(R()), from = today();
+  P.personRates = P.personRates || {}; P.personRates[per.id] = P.personRates[per.id] || {}; rSet(P.personRates[per.id], rl, rate, from);
+  priceGate({ snap, keys: new Set([`pp|${P.id}|${rl}`]), from, prevReg, finish: ch => { closeDlg(); render(); toast(`${P.name}: ${gen(per.name)} timpris ${fkr(rate)}/h från i dag${rChTxt(ch)}`, { label: 'Ångra', fn: () => { S.register = JSON.parse(prevReg); derive(); repriceUndo(ch); save(); render(); } }); } });
+}
+/* proj … Anna 850 (0.18.0): en befintlig persons namn (eller initialer) sist före ett timpris ger personens pris i
+   projektet – i ett befintligt projekt (från i dag) eller i ett nytt (proj Tennis 100k Anna 850). */
+function shProjPerson(a) {
+  if (!isAdm() || a.length < 3) return null;
+  const m = !a.at(-1).q && /^(\d{2,5})(?:kr)?(?:\/h|\/tim)?$/.exec(a.at(-1).lo); if (!m) return null;
+  let per = null, head = null;
+  for (let k = Math.min(3, a.length - 2); k >= 1 && !per; k--) { per = shPerson(a.slice(-1 - k, -1)); if (per) head = a.slice(0, -1 - k); }
+  if (!per) return null;
+  const rate = +m[1], bud = shBudget(head);
+  if (!bud) {
+    const ex = R().projects.find(p => p.kind !== 'absence' && normName(p.name) === normName(shJoin(head))) || shFindProj(head)?.P;
+    if (ex) { if (ex.internal) return { bad: true, html: `${B(ex.name)} är internt och har inget timpris.` };
+      const rl = roleFor(ex.id, per.id), was = rateFor(ex.id, rl, per.id);
+      return { html: `Enter sätter ${B(gen(per.name))} timpris i ${B(ex.name)} till ${B(fkr(rate))}/h från i dag${was !== rate ? ` (i dag ${fkr(was)}/h)` : ''}`, run: () => shPersonRate(ex, per, rl, rate) }; }
+  }
+  const nameT = bud ? head.slice(0, bud.i) : head, name = cap(shJoin(nameT)); if (!name) return needP('namnet');
+  if (R().projects.some(p => p.kind !== 'absence' && normName(p.name) === normName(name))) return { info: true, html: `${B(name)} finns redan – skriv <b>proj ${esc(name)} ${esc(per.name.split(' ')[0])} ${rate}</b> utan budget för att sätta priset.` };
+  const num = numFmt(R().book.numberFormat || DEF_NUMFMT).next;
+  return { html: `Enter skapar projektet ${B(name)}${num ? ` (nr ${esc(num)})` : ''}, ${bud && bud.v > 0 ? 'budget ' + B(fkr(bud.v)) : 'löpande räkning'}, ${B(gen(per.name))} timpris ${B(fkr(rate))}/h`, run: () => shNewProj(name, num, bud ? bud.v : 0, '', null, rate, per.id) };
+}
+function shNewProj(name, num, budget, cname, C, rate = null, pid = null) {
   let newC = null;
   if (cname && !C) { newC = C = { id: 'k' + uid(), name: cname, archived: false, notes: [], created: new Date().toISOString() }; R().customers.push(C); }
   const P = { id: 'p' + uid(), number: num || '–', name, customerId: C?.id || null, property: '', budgetKr: budget, internal: false, color: nextColor(), status: 'active', tasks: defTasks().map(n => ({ id: 'u' + uid(), name: n, billable: true })), roleRates: {}, personRates: {}, memberRoles: {}, notices: {}, notes: [], created: new Date().toISOString() };
   // Timpris: enkelt läge som i Nytt projekt (ditt pris i projektet), fullständigt läge som pris för din roll i projektet
-  if (rate != null) { const rl = person().defaultRoleId; if (simple()) P.personRates = { [me()]: { [rl]: rate } }; else P.roleRates = { [rl]: rate }; }
+  if (rate != null && pid) { const rl = byId(R().people, pid).defaultRoleId; P.personRates = { [pid]: { [rl]: rate } }; }
+  else if (rate != null) { const rl = meP().defaultRoleId; if (simple()) P.personRates = { [me()]: { [rl]: rate } }; else P.roleRates = { [rl]: rate }; }
   R().projects.push(P); save(); shOpenProj(P);
   toast(`Skapade ${P.name}${newC ? ' och kunden ' + newC.name : ''} – uppgifter och färg ändras under Redigera`, { label: 'Ångra', fn: () => { if (hasTime(P.id)) { toast('Projektet har tid nu och tas inte bort'); return; } R().projects = R().projects.filter(p => p !== P); if (newC && !R().projects.some(p => p.customerId === newC.id)) R().customers = R().customers.filter(c => c !== newC); if (st.pid === P.id) st.pid = null; save(); render(); } });
 }
@@ -8108,7 +8330,8 @@ I.more = '<circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circ
 // Provkrok för testerna (test/delar_test.py): bara med ?test i adressen
 if (/[?&]test\b/.test(location.search)) window.SISYFOS = { get S() { return S; }, set S(v) { S = v; }, st, me, R, byId, canon, migrate, sampleBook, bookSplit, bookJoin, partRule, bookMerge,
   encCreate, encStore, keysEnsure, keysAdopt, keysCreate, keysOpen, keysPublic, encBookText, decBook, decParts, unseal, gz, aesKey, rnd, b64, unb64, kvGet, AAD_DATA, FORMAT_VERSION,
-  rateFor, rv, rPut, rHist, rateSnap, repriceSince, signOn, setCell, weekEvent, weekState, webApply, save, log, uid, devId, apply, select, cell, closeCellPop, render, derive, diaryData, diaryPdf, rep, get E() { return E; } };
+  rateFor, rv, rPut, rHist, rateSnap, repriceSince, signOn, setCell, weekEvent, weekState, webApply, save, log, uid, devId, apply, select, cell, closeCellPop, render, derive, diaryData, diaryPdf, rep,
+  who, viewing, isAdm, asPick, wkChecked, openWeeksOf, repriceOrders, repricePrune, eRate, monday, today, live, mine, priceGate, closeDlg, alertsHtml, budgetPct, get E() { return E; } };
 })();
 </script>
 </body>

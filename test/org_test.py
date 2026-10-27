@@ -211,10 +211,11 @@ def main():
             logN = json.load(open(os.path.join(f, f"p-log.{anna['id']}.json")))
             ok(logN['by'] == anna['id'], 'Annas tidlogg är skriven av Anna')
 
-            # --- En ändring Anna inte får göra tas bort ---
+            # --- En ändring Anna inte får göra: gränssnittet säger ifrån (0.18.0), och ändras registret ändå tas det bort ---
+            ok(N.evaluate("() => document.body.classList.contains('ro')"), 'N: medarbetarens gränssnitt är skrivskyddat för det hon inte skriver')
             shell(N, 'proj Annas eget projekt'); N.wait_for_timeout(200)
             synka(N); N.wait_for_timeout(500)
-            ok('Annas eget projekt' not in projekt(N), 'N: projektet hon skapade togs bort (bara admin ändrar registret)')
+            ok('Annas eget projekt' not in projekt(N), 'N: inget eget projekt (bara admin ändrar registret)')
             synka(A)
             ok('Annas eget projekt' not in projekt(A), 'A: projektet kom aldrig fram')
 
@@ -240,6 +241,29 @@ def main():
             tills(lambda: bok(N2)['bok']['session']['personId'] == anna['id']); vanta(N2, 'Synkad')
             ok(bok(N2)['keys']['fp'] == wn['keys']['fp'] and 'Ritade fasad' in json.dumps(bok(N2)['bok']['logs'], ensure_ascii=False), 'N2: Annas andra enhet har samma nyckel och hennes tid')
             N2.context.close()
+
+            # --- 0.18.0: admin i Annas tidbok – öppna veckan åt henne, och en prisändring som räknas om på hennes enhet ---
+            shell(N, 'ch'); N.wait_for_timeout(200); N.keyboard.press('Enter') if N.locator('#dlg:not([hidden]) [data-act=forceCheck]').count() == 0 else N.click('[data-act=forceCheck]')
+            N.wait_for_timeout(300); synka(N); synka(A)
+            shell(A, 'tid'); A.wait_for_timeout(300)
+            A.click('[data-act=asMenu]'); A.click(f"#menu [data-p={anna['id']}]"); A.wait_for_timeout(300)
+            ok('Anna Bergs tidbok' in A.inner_text('.as-bar') and 'Öppna åt Anna' in A.inner_text('.as-bar'), 'A: Annas tidbok, veckan avcheckad – Öppna åt Anna')
+            A.click('.as-bar [data-act=reopenWeek]'); synka(A); synka(N); shell(N, 'tid'); N.wait_for_timeout(300)
+            reo = bok(N)['bok']['register'].get('reopened', {})
+            ok(any(k.startswith(anna['id'] + '|') for k in reo) and 'Checka av' in N.inner_text('.wk-head'), 'N: admin öppnade veckan – den är öppen för Anna')
+            A.click('.as-bar [data-act=asPick]'); A.wait_for_timeout(200)
+            shell(A, 'proj strand Anna 1300'); A.wait_for_selector('#dlg:not([hidden]) .pg-oth', timeout=10000)
+            ok(True, 'A: Så påverkas summan nämner Annas tid')
+            A.click('#dlg [data-act=pgGo]'); synka(A)
+            rp = bok(A)['bok']['register'].get('reprice', {})
+            ok(any(k.startswith(anna['id'] + '|') for k in rp), 'A: omräkningen ligger i Annas kort')
+            toasts(N); synka(N)
+            t = toasts(N)
+            ev = [e for e in bok(N)['bok']['logs'][anna['id']]['events'] if e['type'] == 'update' and (e.get('data') or {}).get('rate') == 1300]
+            ok(ev, 'N: Annas tid fick det nya priset på hennes enhet')
+            ok('Administratören har ändrat timpriset' in t, f'N: med ett besked ({t})')
+            synka(A); synka(A)
+            ok(not bok(A)['bok']['register'].get('reprice'), 'A: den gjorda omräkningen är borttagen')
 
             # --- Admin tar bort Anna ---
             shell(A, 'webb'); A.wait_for_selector('[data-act=orgRemove]'); A.click('[data-act=orgRemove]'); A.click('[data-act=orgRemoveGo]')

@@ -1,5 +1,19 @@
 # Ändringar i Sisyfos
 
+## 0.18.0
+
+Filformat 11, oförändrat (personkortet har två nya valfria fält). **Arbetet med flera** – steg 3 av etapp 4. Ladda om på alla enheter i organisationen: en enhet med 0.17.x ser inte veckor som admin har öppnat åt någon annan.
+
+- **Vems tidbok.** Administratören väljer med knappen *Din tid* ovanför veckan vems tidbok som visas – veckan, månaden, dagen, saldot och semestern gäller då den personen. Menyn visar för varje person vilka veckor de senaste tolv veckorna som inte är avcheckade. En annans tid är **skrivskyddad**: admin skriver aldrig i någon annans tid (inte heller i smartshell), utan öppnar veckan så att personen rättar själv.
+- **Öppna, signera och låsa upp åt andra.** I en medarbetares tidbok har raden överst *Öppna åt Anna* och *Signera* för en avcheckad vecka och *Lås upp …* för en signerad. Det sparas i personens kort (som admin skriver) – checkar personen av igen gäller det på nytt. I smartshell: `sign v43 Anna`, `öppna v40-42 Anna Berg` (förnamn, efternamn, hela namnet eller initialer).
+- **Anställning, saldo och semester** för en medarbetare ändrar admin i personens tidbok (*Anna Bergs anställning, saldo och semester …* i menyn). Medarbetaren ser sina uppgifter men ändrar dem inte.
+- **Så påverkas summan tar med medarbetarnas tid.** När admin ändrar ett pris visar dialogen också medarbetarnas rapporterade tid. Admin godkänner i dialogen – också om avcheckad tid ska få det nya priset – och godkännandet sparas i personens kort. Medarbetarens app räknar om hennes egen tid nästa gång hon synkar, med ett besked; signerad och hanterad tid rörs aldrig. När omräkningen är gjord tar admins app bort den.
+- **Timpris för en person i smartshell:** `proj Tennishallen 100k Anna 850` skapar projektet med Annas pris, `proj strand Anna 1100` sätter Annas pris i ett befintligt projekt från i dag (via *Så påverkas summan* när rapporterad tid berörs). Namnet tolkas bara som en person om det är en befintlig persons.
+- **Projektsidans Medarbetare** visar varje person med roll, pris i projektet, timmar, belopp, öppet och veckor som inte är avcheckade – och för admin en knapp till personens tidbok.
+- **Personsammanställningen** har ett val av person för admin.
+- **Medarbetarens gränssnitt.** Det medarbetaren inte skriver syns men går inte att ändra: inga knappar för nytt projekt, redigera projekt eller kund, budget, hantering, roller och timpriser; bokens inställningar är skrivskyddade (tema, visning och *Spara boken* går att använda); smartshell säger ifrån för `budget`, `hant`, `uppg`, `ant`, nya projekt och kunder. Budgetens förbrukning visas bara för admin.
+- Test: `test/flera_test.py` (ny, körs i GitHub).
+
 ## 0.17.2
 
 Filformat 11, oförändrat. Synpunkterna från 27 oktober.
