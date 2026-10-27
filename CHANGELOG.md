@@ -1,5 +1,15 @@
 # Ändringar i Sisyfos
 
+## 0.17.2
+
+Filformat 11, oförändrat. Synpunkterna från 27 oktober.
+
+- **Så påverkas summan.** En prisändring som rör rapporterad tid visas i en dialog *innan* den sparas – samma dialog oavsett om priset ändras i projektet, för kunden, på en uppgift eller centralt under Inställningar. Tabellen visar per projekt och uppgift timmarna, beloppet före och efter, skillnaden och budgetens nya procent. Tid i avcheckade veckor väljs i dialogen (*Använd det nya priset* är förvalt, eller *Behåll de gamla priserna*); signerad och hanterad tid behåller sitt pris och nämns under tabellen. *Avbryt* (eller Esc) lämnar både priset och tiden orörda. Rör ändringen ingen rapporterad tid sparas den direkt som förut. Dialogen ersätter frågan *Tid med ett annat timpris* från 0.17.1.
+- **Månadsvyn i tidboken.** Hela projektraden under kalendern är klickbar: projektet markeras i kalendern och smartmenyn öppnas (dagbok, fakturaunderlag, hantering, *Sluta markera i kalendern*). Projektets uppgifter fälls ut under raden och kan markeras för sig. *+ Projekt eller uppgift* markerar ett projekt som inte har tid i månaden. Klicka sedan på en dag så öppnas samma smartmeny som i veckovyn – timmar, snabbval, anteckning och Rensa – med projektets uppgifter som knappar överst (den markerade, annars den senast använda).
+- **Enter till smartshell.** Trycker du Enter när inget fält, ingen knapp, meny eller dialog har fokus hamnar markören i smartshell.
+- **Startruta i stället för exempelboken.** Första gången (ingen egen bok på enheten och inte inloggad) väljer du *Logga in och synka*, *Öppna en bok från fil* eller *Starta en ny bok* – och den som har en inbjudningskod kan skapa ett konto. *Titta på exempelboken* finns som länk under valen och i Sisyfos-menyn.
+- Test: `test/manad_test.py` (ny, körs i GitHub) – månadsvyn, Enter och startrutan; `test/priser_test.py` utökat med dialogen, Avbryt och Esc.
+
 ## 0.17.1
 
 Filformat 11, oförändrat. Rättningar efter test av 0.17.0.

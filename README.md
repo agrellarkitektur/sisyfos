@@ -22,13 +22,15 @@ Tidrapport och projektdagbok för en- och fåmansföretag. Körs i webbläsaren,
 
 ## Prova
 
-Öppna **https://agrellarkitektur.se/sisyfos/**. Sisyfos startar med en exempelbok; skapa din egen bok under menyn *Sisyfos → Ny tom bok*.
+Öppna **https://agrellarkitektur.se/sisyfos/**. Första gången väljer du hur du börjar: *Logga in och synka* (boken finns redan på webben), *Öppna en bok från fil* eller *Starta en ny bok*. Vill du bara se hur det fungerar finns *Titta på exempelboken* under valen – och i menyn *Sisyfos*.
+
+I tidboken finns vyerna Månad, Vecka och Dag. I **månadsvyn** markerar du ett projekt genom att klicka på dess rad under kalendern (raden öppnar också smartmenyn med dagbok och hantering); projektets uppgifter fälls ut och kan markeras för sig, och *+ Projekt eller uppgift* markerar ett projekt utan tid i månaden. Klickar du sedan på en dag öppnas samma smartmeny som i veckan – timmar, snabbval och anteckning, med uppgifterna som knappar.
 
 Sisyfos är en **alfaversion**. Den fungerar, men ändras fortfarande. Spara en kopia av boken som fil regelbundet (menyn *Sisyfos → Spara kopia som fil*).
 
 ## Smartshell
 
-Fältet överst på alla sidor. Raden under fältet säger vad Enter gör innan något händer, och nästan allt kan ångras direkt efteråt. Klicka i fältet (eller skriv `?`) för hela förteckningen.
+Fältet överst på alla sidor – tryck **Enter** när inget annat har fokus så hamnar markören där. Raden under fältet säger vad Enter gör innan något händer, och nästan allt kan ångras direkt efteråt. Klicka i fältet (eller skriv `?`) för hela förteckningen.
 
 | Skriv | Gör |
 |---|---|
@@ -67,7 +69,7 @@ Timpriset kan sättas på fem nivåer. Det mest specifika gäller:
 
 Tomt fält = nästa nivå. **Varje pris gäller från ett datum.** När du ändrar ett pris väljer du *från* ett datum (i dag som standard) eller *från början*. Priset blir då en prislista – tid som skrivs in i efterhand för en tidigare dag får priset som gällde den dagen. Prislistan visas under priserna och på projektsidan.
 
-**Rapporterad tid följer prislistan.** Varje tidpost sparar sitt pris. När ett pris ändras får de egna tidposter som omfattas det nya priset från datumet – också poster som redan hade ett annat pris, om du skriver priset igen eller väljer ett tidigare datum. Finns det tid i avcheckade veckor med ett annat pris frågar Sisyfos om de rapporterade dagarna ska få det nya priset eller ha kvar sina gamla. Signerad tid behåller sitt pris (lås upp veckan först om den ska räknas om), och hanterad och fakturerad tid räknas aldrig om. Beskedet säger hur många tidposter som fick det nya priset, och *Ångra* lägger tillbaka både priset och posterna. Kommer ändringen från en annan enhet eller från organisationens admin räknas den här enhetens olåsta tid om vid synken.
+**Rapporterad tid följer prislistan.** Varje tidpost sparar sitt pris. När ett pris ändras får de egna tidposter som omfattas det nya priset från datumet – också poster som redan hade ett annat pris, om du skriver priset igen eller väljer ett tidigare datum. **Innan ändringen sparas** visar Sisyfos dialogen *Så påverkas summan* – oavsett varifrån priset ändras: rapporterade timmar och belopp före och efter per projekt och uppgift, skillnaden och budgetens nya procent. Finns det tid i avcheckade veckor väljer du där om de ska få det nya priset eller ha kvar sina gamla. *Avbryt* lämnar allt som det var. Signerad tid behåller sitt pris (lås upp veckan först om den ska räknas om), och hanterad och fakturerad tid räknas aldrig om. Beskedet säger hur många tidposter som fick det nya priset, och *Ångra* lägger tillbaka både priset och posterna. Kommer ändringen från en annan enhet eller från organisationens admin räknas den här enhetens olåsta tid om vid synken.
 
 ## Avcheckning och signering
 

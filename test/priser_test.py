@@ -17,6 +17,8 @@ Kontrollerar i en riktig webbläsare att
   – 0.17.1: samma pris "från början" eller med ett tidigare datum räknar om rapporterad tid, avcheckad tid
     frågas om (Använd det nya priset / Behåll de gamla priserna, med Ångra), Rensa i egenskapspanelen,
     panelens rubrik leder till projektsidan och smartmenyn har snabbknappar för tiden.
+  – 0.17.2: en prisändring som rör rapporterad tid visas i dialogen "Så påverkas summan" innan den sparas
+    (före/efter per projekt och uppgift, budgeten, avcheckad tid som val); Avbryt och Esc lägger tillbaka allt.
 
 Kör:  python3 -m http.server 8765 &  python3 test/priser_test.py
 """
@@ -44,6 +46,12 @@ def starta(b, bok, w=1280):
 
 RATES = "(ids) => Object.fromEntries(ids.map(([k, rk, d]) => { const id = [...E.values()].find(e => !e.deleted && e.projectId + '~' + e.taskId === rk && e.date === d)?.id; return [k, id ? E.get(id).rate : null]; }))"
 POSTER = [['a', 'proj3~upg4', '2026-11-02'], ['b', 'proj3~upg4', '2026-11-10'], ['c', 'proj3~upg4', '2026-11-17'], ['d', 'proj1~upg1', '2026-11-17']]
+
+def spara(pg, behall=False):
+    # "Så påverkas summan" (0.17.2): välj för avcheckad tid och spara
+    if not pg.locator('#dlg:not([hidden]) [data-act=pgGo]').count(): return False
+    if behall and pg.locator('#dlg [data-act=pgMode][data-v=keep]').count(): pg.click('#dlg [data-act=pgMode][data-v=keep]'); pg.wait_for_timeout(150)
+    pg.click('#dlg [data-act=pgGo]'); pg.wait_for_timeout(300); return True
 
 def akt(pg, act, **data):
     # klickar en tillfällig knapp med data-act – samma väg som appens egna knappar
@@ -87,6 +95,20 @@ with sync_playwright() as p:
     pg.fill('#pjForm [data-rr=roll2]', '1200')
     pg.fill('#pjRFD', '2026-11-15')
     pg.click('#pjForm button[type=submit]'); pg.wait_for_timeout(300)
+    ok(pg.locator('#dlgTitle:has-text("Så påverkas summan")').count() == 1, 'Så påverkas summan visas före sparandet')
+    d = pg.inner_text('#dlg')
+    ok('Förskolan Lärkan' in d and '+' in d and 'Budget' in d, 'dialogen visar projektet, skillnaden och budgeten')
+    ok(ev(pg, RATES, POSTER)['c'] == 1150, 'inget räknat om medan dialogen är öppen')
+    pg.click('#dlg [data-act=pgCancel]'); pg.wait_for_timeout(300)
+    rr = ev(pg, "() => S.register.projects.find(p => p.id === 'proj3').roleRates")
+    ok(rr == {} and ev(pg, RATES, POSTER)['c'] == 1150, f'Avbryt: priset och posterna orörda ({rr})')
+    akt(pg, 'projEdit', p='proj3'); pg.fill('#pjForm [data-rr=roll2]', '1200'); pg.fill('#pjRFD', '2026-11-15')
+    pg.click('#pjForm button[type=submit]'); pg.wait_for_timeout(300)
+    pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
+    ok(ev(pg, "() => S.register.projects.find(p => p.id === 'proj3').roleRates") == {}, 'Esc i dialogen: inget sparat')
+    akt(pg, 'projEdit', p='proj3'); pg.fill('#pjForm [data-rr=roll2]', '1200'); pg.fill('#pjRFD', '2026-11-15')
+    pg.click('#pjForm button[type=submit]'); pg.wait_for_timeout(300)
+    spara(pg)
     t = pg.inner_text('#toast') if pg.locator('#toast').count() else ''
     r = ev(pg, RATES, POSTER)
     ok(r == {'a': 1150, 'b': 1150, 'c': 1200, 'd': 950}, f'från 15 nov: bara olåst tid från datumet räknas om ({r})')
@@ -109,10 +131,10 @@ with sync_playwright() as p:
     inp.fill('1160'); inp.press('Tab'); pg.wait_for_timeout(300)
     ok(pg.locator('#rrForm').count() == 1, 'nytt centralt pris frågar från när det gäller')
     pg.check('input[name=rrF][value=""]'); pg.click('#rrForm button[type=submit]'); pg.wait_for_timeout(300)
+    ok(pg.locator('#dlg:not([hidden]) [data-act=pgMode]').count() == 2, 'avcheckad tid med annat pris: dialogen frågar')
+    spara(pg, behall=True)
     r = ev(pg, RATES, POSTER)
     ok(r == {'a': 1150, 'b': 1160, 'c': 1160, 'd': 950}, f'centralt pris från början: olåst tid räknas om, avcheckad vecka inte ({r})')
-    ok('annat timpris' in (pg.inner_text('#dlgTitle') if pg.locator('#dlgTitle').count() else ''), 'avcheckad tid med annat pris: dialogen frågar')
-    pg.click('button:has-text("Behåll de gamla priserna")'); pg.wait_for_timeout(300)
     ok(ev(pg, RATES, POSTER)['a'] == 1150, 'Behåll de gamla priserna: den avcheckade posten orörd')
     ok(ev(pg, "() => S.register.roles[1].rate") == 1160, 'centralt pris utan prislista blir ett tal')
 
@@ -122,6 +144,7 @@ with sync_playwright() as p:
     pg.click('[data-act=custEdit]'); pg.wait_for_timeout(300)
     pg.fill('#cuForm [data-cr=roll1]', '1100'); pg.fill('#cuRFD', '2026-11-17')
     pg.click('#cuForm button[type=submit]'); pg.wait_for_timeout(300)
+    ok(spara(pg), 'kundens pris: Så påverkas summan')
     r = ev(pg, RATES, POSTER)
     ok(r['d'] == 1100 and r['c'] == 1160, f'kundens pris gäller kundens projekt ({r})')
 
@@ -129,7 +152,7 @@ with sync_playwright() as p:
     akt(pg, 'projEdit', p='proj1')
     if pg.locator('#pjForm').count():
         pg.fill('#pjForm .tk-row[data-tid=upg1] .tk-rate', '1300'); pg.check('input[name=pjRF][value=""]')
-        pg.click('#pjForm button[type=submit]'); pg.wait_for_timeout(300)
+        pg.click('#pjForm button[type=submit]'); pg.wait_for_timeout(300); spara(pg)
     r = ev(pg, RATES, POSTER)
     ok(r['d'] == 1300, f'uppgiftens pris går före kundens ({r})')
 
@@ -143,24 +166,24 @@ with sync_playwright() as p:
     # 0.17.1: pris satt "från i dag" och sedan rättat till "från början" utan att ändra värdet (inkorgen 2026-10-27)
     akt(pg, 'projEdit', p='proj3')
     pg.fill('#pjForm [data-rr=roll2]', '1300'); pg.click('#pjForm button[type=submit]'); pg.wait_for_timeout(300)
+    ok(not spara(pg), 'från i dag utan rapporterad tid efter i dag: ingen dialog')
     r = ev(pg, RATES, POSTER)
     ok(r['b'] == 1250 and r['c'] == 1250, f'från i dag: tidigare dagar orörda ({r})')
     akt(pg, 'projEdit', p='proj3')
     ok(pg.input_value('#pjForm [data-rr=roll2]') == '1300', 'fältet visar dagens pris')
     pg.check('input[name=pjRF][value=""]'); pg.click('#pjForm button[type=submit]'); pg.wait_for_timeout(300)
-    r = ev(pg, RATES, POSTER)
-    ok(r['b'] == 1300 and r['c'] == 1300, f'samma pris "från början": olåst tid räknas om ({r})')
-    ok(pg.locator('#dlgTitle:has-text("annat timpris")').count() == 1, 'den avcheckade veckan frågas om')
-    pg.click('[data-act=repriceAskGo]'); pg.wait_for_timeout(300)
+    ok(pg.locator('#dlg:not([hidden]) [data-act=pgMode][data-v=new][aria-pressed=true]').count() == 1, 'den avcheckade veckan frågas om (nytt pris förvalt)')
+    spara(pg)
     r = ev(pg, RATES, POSTER); t = pg.inner_text('#toast')
-    ok(r['a'] == 1300 and 'avcheckade' in t, f'Använd det nya priset: avcheckad tid räknas om ({r}, {t!r})')
+    ok(r['b'] == 1300 and r['c'] == 1300, f'samma pris "från början": olåst tid räknas om ({r})')
+    ok(r['a'] == 1300 and 'tidposter fick det nya priset' in t, f'Använd det nya priset: avcheckad tid räknas om ({r}, {t!r})')
     pg.click('#toast button'); pg.wait_for_timeout(300)
     ok(ev(pg, RATES, POSTER)['a'] == 1150, 'Ångra lägger tillbaka det avcheckade priset')
     # Samma pris skrivet om med ett tidigare datum räknar också om tid med ett avvikande sparat pris
     ev(pg, "() => { const e = [...E.values()].find(e => !e.deleted && e.projectId === 'proj3' && e.date === '2026-11-10'); const ev = { id: uid(), entryId: e.id, type: 'update', at: new Date().toISOString(), by: me(), dev: devId(), data: { rate: 999 } }; log().push(ev); apply(ev, me()); save(); }")
     akt(pg, 'projEdit', p='proj3')
-    pg.fill('#pjForm [data-rr=roll2]', '1300'); pg.fill('#pjRFD', '2026-11-05'); pg.click('#pjForm button[type=submit]'); pg.wait_for_timeout(300)
-    if pg.locator('button:has-text("Behåll de gamla priserna")').count(): pg.click('button:has-text("Behåll de gamla priserna")'); pg.wait_for_timeout(200)
+    pg.fill('#pjForm [data-rr=roll2]', '1300'); pg.fill('#pjRFD', '2026-11-10'); pg.click('#pjForm button[type=submit]'); pg.wait_for_timeout(300)
+    spara(pg, behall=True)
     ok(ev(pg, RATES, POSTER)['b'] == 1300, 'ett avvikande sparat pris i den ändrade nivån räknas om från datumet')
 
     # Rensa i egenskapspanelen och snabbknappar i smartmenyn

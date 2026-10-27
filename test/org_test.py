@@ -41,6 +41,9 @@ def bok(page):
 
 
 def shell(page, text):
+    # startrutan (0.17.2) döljer smartshell tills man valt hur man börjar
+    page.wait_for_function("() => document.querySelector('.wel-v') || document.getElementById('quickIn')?.offsetParent")
+    if page.locator('.wel [data-act=welcomeSample]').count(): page.click('.wel [data-act=welcomeSample]'); page.wait_for_timeout(200)
     page.fill('#quickIn', text); page.wait_for_timeout(150); page.press('#quickIn', 'Enter'); page.wait_for_timeout(300)
 
 
