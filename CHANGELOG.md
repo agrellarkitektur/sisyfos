@@ -1,5 +1,19 @@
 # Ändringar i Sisyfos
 
+## 0.17.1
+
+Filformat 11, oförändrat. Rättningar efter test av 0.17.0.
+
+- **Timpriser bakåt i tiden.** Ett pris som först sattes *från i dag* gick inte att rätta till *från början* eller ett tidigare datum utan att ändra beloppet – Sisyfos såg ingen ändring, och tiden som redan var rapporterad behöll det gamla priset tills rutan rensades. Nu räknas det som en ändring när priset skrivs om eller datumet byts, och rapporterad tid från datumet med ett annat sparat pris får det nya priset.
+- **Avcheckad tid frågas om.** Finns det tid i avcheckade veckor med ett annat pris visar Sisyfos en varning och låter dig välja: *Använd det nya priset* eller *Behåll de gamla priserna* (med Ångra). Signerad tid behåller sitt pris (lås upp veckan först), hanterad och fakturerad tid räknas aldrig om.
+- **Rensa i egenskapspanelen** – samma som *Rensa rutan* i smartmenyn.
+- **Snabbknappar för tiden i smartmenyn** (½, 1, 2, 4 och 8 timmar), som i egenskapspanelen.
+- **Panelens rubrik leder till projektsidan** – klicka på projektnamnet, numret, uppgiften eller timpriset överst i egenskapspanelen.
+- **Projekt › Månader:** hela raden öppnar menyn, inte bara månadens namn.
+- **`db strand`** visar projektdagboken för all ohanterad tid i projektet, inte bara innevarande månad. En månad anges som förut (`db okt strand`).
+- **Projektdagboken i ny uppställning:** tiden grupperas per medarbetare (när fler än en har tid i perioden) och per uppgift med à-pris, timmar och belopp, och under varje uppgift datum, anteckning, timmar och belopp. Sist en sammanställning per medarbetare (eller per uppgift för den som är ensam) och totalsumman. Samma på skärmen och i PDF:en.
+- Arbetet med flera personer (välja vems tidbok, signera åt andra med mera) kommer i 0.18.0.
+
 ## 0.17.0
 
 Filformat 11 – **timpriser med datum, på kund och uppgift, och signering efter behov**. Böcker i format 10 och äldre uppgraderas när de öppnas, och inga belopp ändras. Ladda om på alla enheter: en enhet med 0.16.x kan inte öppna boken efteråt och säger att den kommer från en nyare version.

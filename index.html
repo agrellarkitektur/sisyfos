@@ -498,6 +498,9 @@ button.stat:hover{border-color:var(--rule)}
 .dv-h.nonote .nn{display:block;position:absolute;top:6px;right:8px;width:8px;height:8px;border-radius:50%;border:1.8px solid var(--warn)}
 .chips{display:flex;flex-wrap:wrap;gap:5px}
 .chip{height:32px;padding:0 11px;border:1px solid var(--rule);border-radius:999px;background:var(--paper);font:500 12.5px var(--font-data)}
+.chip.danger{color:var(--warn-ink);display:inline-flex;align-items:center;gap:5px}.chip.danger .ic{width:14px;height:14px}
+.cp-chips{margin:6px 0 2px}.cp-chips .chip{height:28px;padding:0 10px}
+.p-link{all:unset;cursor:pointer;display:block;min-width:0;border-radius:6px}.p-link:hover h2{text-decoration:underline;text-underline-offset:3px}.p-link:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .chip:hover{border-color:var(--muted)}
 .chip.txt{font-family:var(--font-ui);font-weight:560}
 .day-sum{display:flex;flex-wrap:wrap;gap:8px 18px;padding:12px 14px;border-radius:12px;background:var(--chrome);border:1px solid var(--rule);font-size:13px;color:var(--muted)}
@@ -852,7 +855,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 .sug .mono{font-size:12px}.sug small{font-size:11px;color:var(--muted)}.sug small.due{color:var(--due-ink)}
 .sug .dot{width:8px;height:8px;border-radius:50%;background:var(--pc);flex:none}
 .sug:hover{border-color:var(--muted)}.sug.on{border-color:var(--accent);background:var(--accent-soft)}
-.mo-row{cursor:pointer}.mo-row:hover th.p,.mo-row:hover td{background:color-mix(in srgb,var(--pc) 6%,transparent)}.mo-row:hover th.p{background:color-mix(in srgb,var(--pc) 6%,var(--chrome))}
+.mo-row{cursor:pointer}.dtab .mo-row:hover td{background:var(--chrome)}.mo-row:hover th.p,.mo-row:hover td{background:color-mix(in srgb,var(--pc) 6%,transparent)}.mo-row:hover th.p{background:color-mix(in srgb,var(--pc) 6%,var(--chrome))}
 .mo-lnk{all:unset;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mo-lnk:hover{text-decoration:underline;color:var(--accent-ink)}.mo-lnk:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-radius:2px}.mo .r-name.mo-lnk{display:block}
 .mo .r-text{min-width:0}
 .mo .r-name{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -891,6 +894,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 .pp-t tr.tot td{font-weight:700;border-top:1.5px solid var(--ink);border-bottom:0}
 .pp-t tr.fut td{color:var(--muted)}
 .pp-t tr.hd td,.pp-t tr.hd td.miss{color:var(--muted);opacity:.7}
+.pp-t.dgrp tr.g1 td{font-weight:700;border-top:1.5px solid var(--ink);padding-top:9px}.pp-t.dgrp tr.g2 td{font-weight:620;background:var(--chrome)}.pp-t .g-rate{font-weight:450;color:var(--muted)}.pp-t.tot-t{margin-top:-4px}
 .pp-hd-note{margin:-4px 0 12px;font-size:11.5px;color:var(--muted)}
 .pp-t.days td{padding:3px 6px}
 .pp-h{margin:16px 0 6px;font-size:13px}
@@ -1231,7 +1235,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 
 /* ───────────── Hjälpfunktioner ───────────── */
 const FORMAT = 'sisyfos', FORMAT_VERSION = 11, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.17.0', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const APP_VERSION = '0.17.1', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 { const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
@@ -1658,22 +1662,63 @@ const rateFor = (pId, roleId, personId, d = today(), tId = null) => {
 };
 const eRate = e => rateFor(e.projectId, e.roleId, e.person, e.date, e.taskId);
 const eOpen = e => !lockedK(e.projectId + '~' + e.taskId, e.date);
-// Prislistans pris för varje egen olåst tidpost – tas före en ändring
-function rateSnap() { const m = new Map(); if (!E || !S) return m; for (const e of live()) if (eOpen(e)) m.set(e.id, eRate(e)); return m; }
+// Prislistans pris för varje egen tidpost som inte är hanterad – tas före en ändring
+function rateSnap() { const m = new Map(); if (!E || !S) return m; for (const e of live()) if (!handled(e.projectId, e.date)) m.set(e.id, eRate(e)); return m; }
+// Vilken nivå i prislistan som bestämmer postens pris (0.17.1) – nyckeln som en dialog markerar när ett fält ändras
+function rateSrc(e) {
+  const p = proj(e.projectId), t = taskOf(p, e.taskId), d = e.date, rl = e.roleId, c = p && !p.internal ? cust(p.customerId) : null;
+  if (rv(t?.rate, d) != null) return `t|${p.id}|${t.id}`;
+  if (rv(p?.personRates?.[e.person]?.[rl], d) != null) return `pp|${p.id}|${rl}`;
+  if (rv(p?.roleRates?.[rl], d) != null) return `pr|${p?.id}|${rl}`;
+  if (c && rv(c.roleRates?.[rl], d) != null) return `c|${c.id}|${rl}`;
+  return `r|${rl}`;
+}
+// Har ett prisfält ändrats? Ett nytt värde – eller samma värde som skrivits om eller fått ett annat datum (0.17.1)
+function rCh(inp, x, v, from, dt) {
+  if ((v ?? undefined) !== rNow(x)) return true;
+  if (inp?.dataset.t) return true; // skrivet om: tid från datumet med ett annat sparat pris räknas om
+  if (!dt) return false;
+  return JSON.stringify(rPut(x, v, from) ?? null) !== JSON.stringify(x ?? null);
+}
+const rfTouched = id => !!$(`input[name=${id}]`)?.closest('.rfrom')?.dataset.t;
 // Efter ändringen: poster vars pris i prislistan ändrades får det nya priset (händelser i den egna loggen)
-function repriceSince(snap) {
-  const ch = [], now = new Date().toISOString();
-  for (const e of live()) { if (!snap.has(e.id) || !eOpen(e)) continue; const q = eRate(e); if (q !== snap.get(e.id) && q !== e.rate) ch.push({ id: e.id, from: e.rate, to: q }); }
+// Räknar om tidposter (0.17.1): de vars pris i prislistan ändrades, och de i en ändrad nivå från datumet (opt.keys, opt.from)
+// som har ett annat sparat pris. Olåst tid räknas om direkt; avcheckad tid samlas i ch.ask (frågas om), signerad i ch.sig.
+function repriceSince(snap, opt = {}) {
+  const ch = [], ask = [], sig = [], now = new Date().toISOString();
+  for (const e of live()) {
+    if (handled(e.projectId, e.date)) continue;
+    const q = eRate(e); if (q === e.rate) continue;
+    const hit = (snap.has(e.id) && q !== snap.get(e.id)) || (opt.keys?.has(rateSrc(e)) && (!opt.from || e.date >= opt.from));
+    if (!hit) continue;
+    const c = { id: e.id, from: e.rate, to: q, date: e.date };
+    if (eOpen(e)) ch.push(c); else if (weekState(monday(e.date)).signed) sig.push(c); else ask.push(c);
+  }
   for (const c of ch) { const ev = { id: uid(), entryId: c.id, type: 'update', at: now, by: me(), dev: devId(), data: { rate: c.to } }; log().push(ev); apply(ev, me()); }
+  ch.ask = ask; ch.sig = sig;
   return ch;
+}
+// Avcheckad tid med ett annat pris: fråga om den ska få det nya priset (0.17.1)
+const wkList = L => [...new Set(L.map(c => isoWeek(c.date).w))].sort((a, b) => a - b).join(', ');
+function repriceAskDlg(ch) {
+  const a = ch.ask || [], s = ch.sig || []; if (!a.length) return;
+  st.rpAsk = a; const ex = a[0];
+  openDlg(`<h2 id="dlgTitle">Tid med ett annat timpris</h2><p>${a.length === 1 ? 'En tidpost' : a.length + ' tidposter'} i avcheckade veckor (v. ${wkList(a)}) har ett annat timpris än det nya – till exempel ${fkr(ex.from)}/h där priset nu är ${fkr(ex.to)}/h.</p><p>Ska de rapporterade dagarna få det nya priset, eller ha kvar sina gamla priser?</p>${s.length ? `<p class="small muted">${s.length === 1 ? 'En tidpost' : s.length + ' tidposter'} i signerade veckor (v. ${wkList(s)}) behåller sitt pris – lås upp veckan och spara priset igen om de också ska räknas om.</p>` : ''}<p class="small muted">Hanterad och fakturerad tid behåller alltid sitt pris.</p><div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Behåll de gamla priserna</button><button class="btn primary" data-act="repriceAskGo">${ic('check')}Använd det nya priset</button></div>`);
+}
+function repriceAskGo() {
+  const a = st.rpAsk || []; st.rpAsk = null; closeDlg(); if (!a.length) return;
+  const now = new Date().toISOString(), done = [];
+  for (const c of a) { const e = E.get(c.id); if (!e || e.deleted || e.rate !== c.from || handled(e.projectId, e.date)) continue; const ev = { id: uid(), entryId: c.id, type: 'update', at: now, by: me(), dev: devId(), data: { rate: c.to } }; log().push(ev); apply(ev, me()); done.push(c); }
+  save(); render();
+  toast(`${done.length === 1 ? 'En tidpost' : done.length + ' tidposter'} i avcheckade veckor fick det nya priset`, { label: 'Ångra', fn: () => { const t = new Date().toISOString(); for (const c of done) { const e = E.get(c.id); if (!e || e.deleted || e.rate !== c.to) continue; const ev = { id: uid(), entryId: c.id, type: 'update', at: t, by: me(), dev: devId(), data: { rate: c.from } }; log().push(ev); apply(ev, me()); } save(); render(); } });
 }
 function repriceUndo(ch) {
   const now = new Date().toISOString();
   for (const c of ch) { const e = E.get(c.id); if (!e || e.deleted || e.rate !== c.to || !eOpen(e)) continue; const ev = { id: uid(), entryId: c.id, type: 'update', at: now, by: me(), dev: devId(), data: { rate: c.from } }; log().push(ev); apply(ev, me()); }
 }
-const rChTxt = ch => ch.length ? ` · ${ch.length === 1 ? 'en tidpost' : ch.length + ' tidposter'} fick det nya priset` : '';
+const rChTxt = ch => (ch.length ? ` · ${ch.length === 1 ? 'en tidpost' : ch.length + ' tidposter'} fick det nya priset` : '') + (!ch.ask?.length && ch.sig?.length ? ` · ${ch.sig.length === 1 ? 'en tidpost' : ch.sig.length + ' tidposter'} i signerade veckor behåller sitt pris` : '');
 // "Ändrade timpriser gäller …": från början eller från ett datum (id = namnet på valet)
-const rfHtml = (id, attr = '') => `<div class="fld full rfrom" ${attr}><span class="lbl">Ändrade timpriser gäller</span><div class="rf-opts"><label class="chk"><input type="radio" name="${id}" value="d" checked> från <input type="date" id="${id}D" value="${today()}" aria-label="Gäller från datum"></label><label class="chk"><input type="radio" name="${id}" value=""> från början</label></div><span class="fld-hint">Tid som inte är avcheckad, signerad eller hanterad räknas om från datumet. Tid som skrivs in senare för en tidigare dag får priset som gällde då.</span></div>`;
+const rfHtml = (id, attr = '') => `<div class="fld full rfrom" ${attr}><span class="lbl">Ändrade timpriser gäller</span><div class="rf-opts"><label class="chk"><input type="radio" name="${id}" value="d" checked> från <input type="date" id="${id}D" value="${today()}" aria-label="Gäller från datum"></label><label class="chk"><input type="radio" name="${id}" value=""> från början</label></div><span class="fld-hint">Rapporterad tid från datumet får det nya priset – för avcheckade veckor frågar Sisyfos först. Signerad och hanterad tid behåller sitt pris. Tid som skrivs in senare för en tidigare dag får priset som gällde då.</span></div>`;
 const rfVal = id => { const v = $(`input[name=${id}]:checked`)?.value; if (!v) return ''; const d = $('#' + id + 'D')?.value; return /^\d{4}-\d{2}-\d{2}$/.test(d || '') ? d : today(); };
 const weekdayNorm = d => +(R().book.norm[dow(d)] ?? 0);
 // Normtid för en dag: årskalenderns avvikelser (röda dagar, ändrade dagar) går före veckodagens normtid
@@ -3722,10 +3767,10 @@ function renderPanel() {
   const [rk, d] = splitKey(st.sel), { P, T, color } = rowInfo(rk), e = cell(rk, d), key = st.sel, lk = lockedK(rk, d), ro = lk ? 'readonly' : '';
   const r = role(e?.roleId || roleFor(P.id)), rate = e ? e.rate : rateFor(P.id, r?.id, me(), d, T?.id);
   const bill = !P.internal && T.billable;
-  el.innerHTML = panelChrome() + `<div class="p-head" style="--pc:${color}"><span class="dot"></span><div><h2>${esc(P.name)}</h2><p>${T.absence ? esc(T.name) : `${esc(P.number)} · ${esc(T.name)}${bill ? ` · ${simple() ? '' : esc(r?.name || '') + ' '}${fkr(rate)}/h` : ' · ej debiterbar'}`}</p></div>${pTools(true)}</div>
+  el.innerHTML = panelChrome() + `<div class="p-head" style="--pc:${color}"><span class="dot"></span><button class="p-link" data-act="openProject" data-p="${P.id}" title="Gå till projektsidan"><h2>${esc(P.name)}</h2><p>${T.absence ? esc(T.name) : `${esc(P.number)} · ${esc(T.name)}${bill ? ` · ${simple() ? '' : esc(r?.name || '') + ' '}${fkr(rate)}/h` : ' · ej debiterbar'}`}</p></button>${pTools(true)}</div>
   <div class="p-body" style="--pc:${color}">
     <section class="psec"><h3>${ldate(d)}${lk ? ' · låst' : ''}</h3><div class="stepper"><button class="sbtn" data-act="step" data-key="${key}" data-d="-0.5" aria-label="Minska en halvtimme" ${lk ? 'disabled' : ''}>${ic('minus')}</button><label class="sr" for="pHours">Timmar</label><input class="h-in p-hours" id="pHours" data-key="${key}" value="${e && e.hours > 0 ? fh(e.hours) : ''}" placeholder="0" inputmode="decimal" autocomplete="off" ${ro}><button class="sbtn" data-act="step" data-key="${key}" data-d="0.5" aria-label="Öka en halvtimme" ${lk ? 'disabled' : ''}>${ic('plus')}</button></div>
-      ${lk ? '' : `<div class="chips">${[0.5, 1, 2, 4].map(v => `<button class="chip" data-act="setH" data-key="${key}" data-h="${v}">${fh(v)}</button>`).join('')}${hasNorm() ? `<button class="chip txt" data-act="fillDay" data-key="${key}">Fyll dagen</button>` : ''}</div>`}
+      ${lk ? '' : `<div class="chips">${[0.5, 1, 2, 4].map(v => `<button class="chip" data-act="setH" data-key="${key}" data-h="${v}">${fh(v)}</button>`).join('')}${hasNorm() ? `<button class="chip txt" data-act="fillDay" data-key="${key}">Fyll dagen</button>` : ''}${e ? `<button class="chip txt danger" data-act="clearCell" data-key="${key}" title="Tar bort tiden och anteckningen i rutan">${ic('trash')}Rensa</button>` : ''}</div>`}
       <div class="small muted" id="pDay">${pDayHtml(d)}</div>${T.absence && hasNorm() ? `<div class="acct" id="pAcct">${acctHtml(T)}</div>` : ''}</section>
     <section class="psec"><h3><label for="pNote">Anteckning</label></h3><textarea class="n-in" id="pNote" data-key="${key}" rows="4" ${ro} placeholder="${lk ? '' : 'Vad gjorde du?'}">${esc(e?.note)}</textarea><div class="sugg" data-sugg="${key}" data-panel="1"></div></section>
     ${P.internal ? '' : `<section class="psec" id="pBudget">${pBudgetHtml(P)}</section>`}
@@ -4091,7 +4136,7 @@ function openCellPop(key, x, anchor) {
   cpKey = key; cp.style.setProperty('--pc', color);
   cp.innerHTML = `<div class="cp-head"><span class="dot"></span><span class="r-text"><span class="r-name">${esc(P.name)}</span><span class="r-sub">${esc(T.name)} · ${sdate(d)}</span></span><button class="icon-btn" data-act="closeCpop" aria-label="Stäng smartmenyn">${ic('x')}</button></div>`
     + (lk ? `<div class="cp-lock">${ic('lock')} ${locked(d) ? (weekState(monday(d)).signed ? 'Signerad vecka' : 'Avcheckad vecka') : 'Hanterad månad'} – ${e ? fh(e.hours) + ' h' : 'ingen tid'}</div>`
-      : `<div class="cp-h"><button class="sbtn" data-act="step" data-key="${key}" data-d="-0.5" aria-label="Minska en halvtimme">${ic('minus')}</button><div class="hbox"><label class="sr" for="cpHours">Timmar</label><input class="h-in" id="cpHours" data-key="${key}" value="${e && e.hours > 0 ? fh(e.hours) : ''}" placeholder="0" inputmode="decimal" autocomplete="off"></div><button class="sbtn" data-act="step" data-key="${key}" data-d="0.5" aria-label="Öka en halvtimme">${ic('plus')}</button><span class="day" id="cpDay">${pDayHtml(d).replace('Dagen hittills: ', '')}</span></div>`)
+      : `<div class="cp-h"><button class="sbtn" data-act="step" data-key="${key}" data-d="-0.5" aria-label="Minska en halvtimme">${ic('minus')}</button><div class="hbox"><label class="sr" for="cpHours">Timmar</label><input class="h-in" id="cpHours" data-key="${key}" value="${e && e.hours > 0 ? fh(e.hours) : ''}" placeholder="0" inputmode="decimal" autocomplete="off"></div><button class="sbtn" data-act="step" data-key="${key}" data-d="0.5" aria-label="Öka en halvtimme">${ic('plus')}</button><span class="day" id="cpDay">${pDayHtml(d).replace('Dagen hittills: ', '')}</span></div><div class="chips cp-chips">${[0.5, 1, 2, 4, 8].map(v => `<button class="chip" data-act="setH" data-key="${key}" data-h="${v}">${fh(v)}</button>`).join('')}</div>`)
     + (T.absence && hasNorm() ? `<div class="acct" id="cpAcct">${acctHtml(T)}</div>` : '')
     + `<label class="sr" for="cpNote">Dagbok</label><textarea class="n-in" id="cpNote" data-key="${key}" rows="3" ${ro} placeholder="${lk ? 'Ingen anteckning' : T.absence ? 'Anteckning (frivillig)' : e && e.hours > 0 ? 'Vad gjorde du? (Tab från rutan)' : 'Dagbok'}">${esc(e?.note)}</textarea><div class="sugg" data-sugg="${key}"></div>`
     + `<div class="cp-acts" role="menu">${smartItems(key).map(it => `<button role="menuitem" data-act="${it.act}" data-key="${key}" class="${it.danger ? 'danger' : ''}" ${it.off ? 'aria-disabled="true"' : ''} title="${esc(it.label)}">${ic(it.icon)}<span>${esc(it.short)}</span></button>`).join('')}</div>`;
@@ -4158,7 +4203,7 @@ function projPanelHtml(P) {
     const miss = pEs(P.id).filter(e => !e.deleted && needsNote(e)).length;
     if (miss) h += `<section class="psec"><h3>Anteckningar</h3><p class="p-note" style="color:var(--warn-ink)">${miss === 1 ? 'En tid saknar' : miss + ' tider saknar'} anteckning – de blir tomma rader i dagboken.</p></section>`;
   } else if (P.internal && !abs) h += `<section class="psec"><h3>Intern tid</h3>${pkv('Timmar i år', fh(intHours(P.id, today().slice(0, 4))) + ' h')}${pkv('Timmar totalt', fh(m.h + intHours(P.id)) + ' h')}</section>`;
-  return h + helpSec(abs ? ['Frånvaro fyller ut dagen mot normtiden och behöver ingen anteckning.', 'Redigera för att ändra frånvarotypernas förkortningar.'] : ['Klicka på en <b>månad</b> för att gå till tidboken, ladda ner dagboken eller markera månaden som hanterad.', '<b>Hanterad</b> betyder avstämd och fakturerad – tiden i perioden låses. Det kan vara en hel månad eller en valfri period (<b>Hantera en period</b> på projektsidan).', '"<b>redo</b>" betyder att alla timmar i månaden ligger i avcheckade veckor.', '<b>Anteckningar</b> om projektet (till höger på sidan) är en enkel logg med datum.']) + `</div>`;
+  return h + helpSec(abs ? ['Frånvaro fyller ut dagen mot normtiden och behöver ingen anteckning.', 'Redigera för att ändra frånvarotypernas förkortningar.'] : ['Klicka på en <b>rad under Månader</b> för att gå till tidboken, ladda ner dagboken eller markera månaden som hanterad.', '<b>Hanterad</b> betyder avstämd och fakturerad – tiden i perioden låses. Det kan vara en hel månad eller en valfri period (<b>Hantera en period</b> på projektsidan).', '"<b>redo</b>" betyder att alla timmar i månaden ligger i avcheckade veckor.', '<b>Anteckningar</b> om projektet (till höger på sidan) är en enkel logg med datum.']) + `</div>`;
 }
 function custListPanelHtml() {
   const cs = R().customers, act = cs.filter(c => cState(c) === 'active'), byC = new Map();
@@ -4892,6 +4937,7 @@ const A = {
   signWeek: () => { const wk = curWeek(); closeFloating(); confirmPlain(`Signera vecka ${isoWeek(wk).w}?`, 'En signerad vecka är låst – ingen tid i den kan ändras eller tas bort. Bara administratören kan låsa upp den igen.', `${ic('sign')}Signera`, 'doSign', SIGN_WORDS); },
   // Lås upp en signerad vecka (0.17.0): signeringen tas bort och veckan öppnas, så att tiden kan rättas. Hanterad tid förblir låst.
   rrCancel: () => { closeDlg(); renderMain(); },
+  repriceAskGo: () => repriceAskGo(),
   unsignWeek: () => { const wk = curWeek(); closeFloating(); if (!person().admin) return; confirmPlain(`Lås upp vecka ${isoWeek(wk).w}?`, 'Signeringen tas bort och veckan öppnas igen, så att tiden kan ändras. Tid som är hanterad eller fakturerad förblir låst.', `${ic('unlock')}Lås upp`, 'doUnsign', ['ok', 'lås']); },
   doUnsign: () => { const wk = curWeek(), k = me() + '|' + wk, prev = R().signed[k]; if (!prev) { closeDlg(); return; } delete R().signed[k]; weekEvent(wk, false); toast(`Vecka ${isoWeek(wk).w} är upplåst och öppen`, { label: 'Ångra', fn: () => { R().signed[k] = prev; weekEvent(wk, true); } }); },
   doSign: () => { const wk = curWeek(); R().signed[me() + '|' + wk] = { at: new Date().toISOString(), by: me() }; save(); closeDlg(); renderMain(); renderPanel(); renderStatus(); toast(`Vecka ${isoWeek(wk).w} är signerad`, { label: 'Ångra', fn: () => { delete R().signed[me() + '|' + wk]; save(); renderMain(); renderPanel(); renderStatus(); } }); },
@@ -5544,7 +5590,7 @@ function saveRoleRate() {
   const { rid, v } = st.rrEdit || {}, r = role(rid); if (!r) return closeDlg();
   const from = rfVal('rrF'), prev = r.rate, snap = rateSnap();
   rSet(r, 'rate', v, from); if (r.rate == null) r.rate = v;
-  save(); const ch = repriceSince(snap); save(); closeDlg(); renderMain();
+  save(); const ch = repriceSince(snap, { keys: new Set([`r|${rid}`]), from }); save(); closeDlg(); renderMain(); repriceAskDlg(ch);
   toast(`${r.name}: ${fkr(v)}/h ${from ? 'från ' + ydate(from) : 'från början'}${rChTxt(ch)}`, { label: 'Ångra', fn: () => { repriceUndo(ch); r.rate = prev; save(); renderMain(); } });
 }
 function custDlg(id) {
@@ -5591,12 +5637,12 @@ function saveCust() {
   for (const inp of $$('[data-cr]')) { const v = parseKr(inp.value); if (v != null && !(v >= 0)) { err.textContent = 'Timpriset ska vara ett tal i kronor.'; inp.focus(); return; } cr[inp.dataset.cr] = v; }
   let c = st.editCust && cust(st.editCust);
   const snap = rateSnap(), prevRates = c?.roleRates ? JSON.parse(JSON.stringify(c.roleRates)) : undefined, from = c ? rfVal('cuRF') : '';
-  const rates = { ...(c?.roleRates || {}) }; let rch = false;
-  for (const k in cr) if ((cr[k] ?? undefined) !== rNow(rates[k])) { rSet(rates, k, cr[k], from); rch = true; }
+  const rates = { ...(c?.roleRates || {}) }, keys = new Set(), dt = c && rfTouched('cuRF'); let rch = false;
+  for (const k in cr) if (rCh($(`[data-cr="${k}"]`), rates[k], cr[k], from, dt)) { rSet(rates, k, cr[k], from); rch = true; if (c) keys.add(`c|${c.id}|${k}`); }
   if (Object.keys(rates).length) data.roleRates = rates; else if (c) delete c.roleRates;
   if (data.zone === 'se') delete data.zone;
   if (c) { Object.assign(c, data); if ($('#cuTerms') && data.terms == null) delete c.terms; if ($('#cuZone') && !data.zone) delete c.zone; } else { c = { id: 'k' + uid(), archived: false, notes: [], created: new Date().toISOString(), ...data }; R().customers.push(c); }
-  save(); const ch = rch ? repriceSince(snap) : []; if (ch.length) save(); closeDlg(); st.focus = c.id; renderMain();
+  save(); const ch = rch ? repriceSince(snap, { keys, from }) : []; if (ch.length) save(); closeDlg(); st.focus = c.id; renderMain(); if (rch) repriceAskDlg(ch);
   if (rch && st.editCust) { const C = c; toast(`${c.name} är sparad${rChTxt(ch)}`, { label: 'Ångra priserna', fn: () => { repriceUndo(ch); if (prevRates) C.roleRates = prevRates; else delete C.roleRates; save(); renderMain(); } }); }
   else toast(`${c.name} är sparad`);
 }
@@ -5693,7 +5739,7 @@ function projPageHtml(P) {
   // Månader: öppna och hanterade
   const months = new Map(); for (const e of es) { const ym = ymOf(e.date), o = months.get(ym) || { h: 0, a: 0, miss: 0 }; o.h += e.hours; o.a += amountOf(e); if (needsNote(e)) o.miss++; months.set(ym, o); }
   const ml = [...months].sort((a, b) => b[0].localeCompare(a[0])), cur = ymOf(today());
-  if (!abs) h += `<section class="dsec"><h2>Månader</h2>${ml.length ? `<table class="dtab"><thead><tr><th>Månad</th><th class="r">Timmar</th>${P.internal ? '' : '<th class="r">Belopp</th>'}<th>Status</th></tr></thead><tbody>${ml.map(([ym, o]) => { const hd = hdMo(P.id, ym); return `<tr><td><button class="lnk" data-act="moCell" data-p="${P.id}" data-ym="${ym}">${ymLabel(ym)}</button></td><td class="r mono">${fh(o.h)}</td>${P.internal ? '' : `<td class="r mono">${o.a ? fkr(o.a) : '–'}</td>`}<td>${hd?.done ? `<span class="st-done">${ic('lock')}Hanterad ${sdate(hd.at.slice(0, 10))}</span>` : (hd ? `<span class="st-done part" title="Hanterad ${hdSpan(hd)}">${ic('lock')}${hdSpan(hd)}</span>` : '') + (ym >= cur ? '<span class="muted">Pågår</span>' : P.internal ? '<span class="muted">–</span>' : `<span class="st-open">Öppen</span>`)}${hd?.done ? '' : readyHtml(P.id, ym)}${o.miss ? ` <i class="mo-w" title="${o.miss} utan anteckning"></i>` : ''}</td></tr>`; }).join('')}</tbody></table><p class="small muted" style="margin:6px 0 0">Klicka på en månad för att gå till tidboken, ladda ner dagboken eller markera den som hanterad.</p>` : '<p class="muted small">Ingen tid registrerad än.</p>'}</section>`;
+  if (!abs) h += `<section class="dsec"><h2>Månader</h2>${ml.length ? `<table class="dtab"><thead><tr><th>Månad</th><th class="r">Timmar</th>${P.internal ? '' : '<th class="r">Belopp</th>'}<th>Status</th></tr></thead><tbody>${ml.map(([ym, o]) => { const hd = hdMo(P.id, ym); return `<tr class="mo-row" data-act="moCell" data-p="${P.id}" data-ym="${ym}" title="Klicka för meny"><td><button class="lnk" data-act="moCell" data-p="${P.id}" data-ym="${ym}">${ymLabel(ym)}</button></td><td class="r mono">${fh(o.h)}</td>${P.internal ? '' : `<td class="r mono">${o.a ? fkr(o.a) : '–'}</td>`}<td>${hd?.done ? `<span class="st-done">${ic('lock')}Hanterad ${sdate(hd.at.slice(0, 10))}</span>` : (hd ? `<span class="st-done part" title="Hanterad ${hdSpan(hd)}">${ic('lock')}${hdSpan(hd)}</span>` : '') + (ym >= cur ? '<span class="muted">Pågår</span>' : P.internal ? '<span class="muted">–</span>' : `<span class="st-open">Öppen</span>`)}${hd?.done ? '' : readyHtml(P.id, ym)}${o.miss ? ` <i class="mo-w" title="${o.miss} utan anteckning"></i>` : ''}</td></tr>`; }).join('')}</tbody></table><p class="small muted" style="margin:6px 0 0">Klicka på en rad för att gå till tidboken, ladda ner dagboken eller markera månaden som hanterad.</p>` : '<p class="muted small">Ingen tid registrerad än.</p>'}</section>`;
   // Hanterade perioder (format 8): de senaste, med upplåsning
   const hl = abs || P.internal ? [] : hdList(P.id);
   if (!abs && !P.internal && (hl.length || es.length)) h += `<section class="dsec"><h2>Hanterad tid</h2>${hl.length ? `<ul class="hd-list">${hl.slice().reverse().slice(0, 6).map(x => hdRec(P.id, x.from, x.to, x, x.id)).map(x => `<li><span class="st-done">${ic('lock')}</span><span class="hd-p">${esc(cap(perTxt(x.from, x.to)))}<small>${fh(x.hours)} h${x.amount ? ' · ' + fkr(x.amount) : ''} · hanterad ${sdate(x.at.slice(0, 10))}</small></span><button class="btn sm ghost" data-act="unhandle" data-p="${P.id}" data-from="${x.from}" data-to="${x.to}" title="Häv och lås upp">${ic('unlock')}Häv</button></li>`).join('')}</ul>${hl.length > 6 ? `<p class="small muted" style="margin:6px 0 0">och ${hl.length - 6} äldre</p>` : ''}` : '<p class="muted small">Inget är hanterat än.</p>'}<div class="p-acts" style="margin-top:8px"><button class="btn sm" data-act="handlePer" data-p="${P.id}">${ic('lock')}Hantera en period …</button></div></section>`;
@@ -5827,7 +5873,7 @@ function saveProj() {
   const P = proj(st.editProj), abs = P.kind === 'absence', err = $('#pjErr'), fail = (m, el) => { err.textContent = m; if (el) { el.focus(); el.scrollIntoView({ block: 'center' }); } else err.scrollIntoView({ block: 'nearest' }); };
   const seen = new Map();
   for (const p of R().projects) if (p.id !== P.id) { toks(p.abbr).forEach(a => seen.set(a, p.name)); p.tasks.forEach(t => toks(t.abbr).forEach(a => seen.set(a, `${p.name}, ${t.name}`))); }
-  const upd = {}, snap = rateSnap(), prevP = JSON.parse(JSON.stringify(P)), rfrom = rfVal('pjRF'); let rch = false;
+  const upd = {}, snap = rateSnap(), prevP = JSON.parse(JSON.stringify(P)), rfrom = rfVal('pjRF'), keys = new Set(), dt = rfTouched('pjRF'); let rch = false;
   if (!abs) {
     const name = $('#pjName').value.trim(); if (!name) return fail('Ge projektet ett namn.', $('#pjName'));
     const num = $('#pjNum').value.trim(), dup = num && R().projects.find(p => p.id !== P.id && String(p.number).toLowerCase() === num.toLowerCase());
@@ -5837,10 +5883,10 @@ function saveProj() {
     for (const a of toks($('#pjAbbr').value)) { const b = abbrCheck(a, seen); if (b) return fail(b, $('#pjAbbr')); seen.set(a, name); }
     // Priserna: bara de fält som ändrats skrivs, med datumet de gäller från (0.17.0)
     const rr = JSON.parse(JSON.stringify(P.roleRates || {})), pr = JSON.parse(JSON.stringify(P.personRates?.[me()] || {}));
-    for (const inp of $$('[data-rr]')) { const v = parseKr(inp.value); if (v != null && !(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', inp); if ((v ?? undefined) !== rNow(rr[inp.dataset.rr])) { rSet(rr, inp.dataset.rr, v, rfrom); rch = true; } }
-    for (const inp of $$('[data-pr]')) { const v = parseKr(inp.value); if (v != null && !(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', inp); if ((v ?? undefined) !== rNow(pr[inp.dataset.pr])) { rSet(pr, inp.dataset.pr, v, rfrom); rch = true; } }
+    for (const inp of $$('[data-rr]')) { const v = parseKr(inp.value); if (v != null && !(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', inp); if (rCh(inp, rr[inp.dataset.rr], v, rfrom, dt)) { rSet(rr, inp.dataset.rr, v, rfrom); rch = true; keys.add(`pr|${P.id}|${inp.dataset.rr}`); } }
+    for (const inp of $$('[data-pr]')) { const v = parseKr(inp.value); if (v != null && !(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', inp); if (rCh(inp, pr[inp.dataset.pr], v, rfrom, dt)) { rSet(pr, inp.dataset.pr, v, rfrom); rch = true; keys.add(`pp|${P.id}|${inp.dataset.pr}`); } }
     const cn = $('#pjCust').value.trim();
-    if (simple() && !internal) { const v = parseKr($('#pjSRate').value), rl = roleFor(P.id); if (v != null && !(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', $('#pjSRate')); if ((v ?? undefined) !== (rNow(pr[rl]) ?? rNow(rr[rl]))) { if (!rfrom) delete rr[rl]; rSet(pr, rl, v, rfrom); rch = true; } }
+    if (simple() && !internal) { const v = parseKr($('#pjSRate').value), rl = roleFor(P.id); if (v != null && !(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', $('#pjSRate')); if ((v ?? undefined) !== (rNow(pr[rl]) ?? rNow(rr[rl])) || rCh($('#pjSRate'), pr[rl], v, rfrom, dt)) { if (!rfrom) delete rr[rl]; rSet(pr, rl, v, rfrom); rch = true; keys.add(`pp|${P.id}|${rl}`).add(`pr|${P.id}|${rl}`); } }
     const cv = $('input[name=pjColor]:checked')?.value;
     let color = cv === 'free' ? $('#pjColorFree').value.toLowerCase() : +(cv ?? 0); if (internal) color = -1; else if (!cv && !isHex(P.color) && P.color < 0) color = 0;
     const idle = +($('#pjIdle')?.value ?? idleOf(P));
@@ -5857,7 +5903,7 @@ function saveProj() {
     if (abs) t.absence = $('.tk-abs', li).value; else t.billable = $('.tk-bill', li).checked;
     if (li.dataset.arch) t.archived = true; else delete t.archived;
     const ri = $('.tk-rate', li);
-    if (ri) { const v = parseKr(ri.value); if (v != null && !(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', ri); if ((v ?? undefined) !== rNow(t.rate)) { rSet(t, 'rate', v, li.dataset.tid ? rfrom : ''); rch = true; } }
+    if (ri) { const v = parseKr(ri.value); if (v != null && !(v >= 0)) return fail('Timpriset ska vara ett tal i kronor.', ri); if (rCh(ri, t.rate, v, li.dataset.tid ? rfrom : '', dt)) { rSet(t, 'rate', v, li.dataset.tid ? rfrom : ''); rch = true; keys.add(`t|${P.id}|${t.id}`); } }
     const ab = toks($('.tk-abbr', li).value);
     for (const a of ab) { const b = abbrCheck(a, seen); if (b) return fail(b, $('.tk-abbr', li)); seen.set(a, `${upd.name || P.name}, ${name}`); }
     if (ab.length) t.abbr = ab.join(', '); else delete t.abbr;
@@ -5873,10 +5919,11 @@ function saveProj() {
     upd.customerId = upd.internal ? null : c?.id || null;
   }
   Object.assign(P, upd, { tasks });
-  save(); const ch = rch ? repriceSince(snap) : []; if (ch.length) save();
+  save(); const ch = rch ? repriceSince(snap, { keys, from: rfrom }) : []; if (ch.length) save();
   closeDlg(); st.focus = P.id; if (st.page === 'projekt' && P.status !== (st.pf || 'active')) st.pf = P.status; render();
   if (rch) toast(`${P.name} är sparad${rChTxt(ch)}`, { label: 'Ångra', fn: () => { repriceUndo(ch); for (const k of Object.keys(P)) delete P[k]; Object.assign(P, prevP); save(); render(); } });
   else toast(`${P.kind === 'absence' ? 'Frånvaron' : P.name} är sparad`);
+  if (rch) repriceAskDlg(ch);
 }
 
 /* ───────────── PDF – egen enkel skrivare (inga tredjepartsbibliotek) ─────────────
@@ -5995,12 +6042,14 @@ function pdfTable(doc, cols, rows, o = {}) {
   const head = () => { pdf.rect(doc.x, doc.y, doc.w, 17, SOFT); cols.forEach((c, i) => pdf.text(c.align === 'right' ? xs[i] + ws[i] - pad : xs[i] + pad, doc.y + 11.5, c.h, { size: 7, bold: true, color: MUTED, align: c.align })); doc.y += 17; };
   const prev = doc.onBreak; doc.onBreak = head; doc.ensure(17 + lh + 2 * pad); head();
   for (const r of rows) {
-    const cells = Array.isArray(r) ? r : r.cells, bold = !Array.isArray(r) && r.bold, mu = !Array.isArray(r) && r.muted;
-    const lines = cells.map((v, i) => cols[i].wrap ? pdf.wrap(v, size, bold, ws[i] - 2 * pad) : [String(v ?? '')]);
+    const cells = Array.isArray(r) ? r : r.cells, bold = !Array.isArray(r) && r.bold, mu = !Array.isArray(r) && r.muted, sp = (!Array.isArray(r) && r.span) || 1;
+    // span: den första cellen täcker sp kolumner, resten följer kolumnerna efter den
+    const ci = i => i ? i + sp - 1 : 0, cw = i => i ? ws[ci(i)] : ws.slice(0, sp).reduce((s, w) => s + w, 0), cwrap = i => sp > 1 && !i ? true : cols[ci(i)].wrap;
+    const lines = cells.map((v, i) => cwrap(i) ? pdf.wrap(v, size, bold, cw(i) - 2 * pad) : [String(v ?? '')]);
     const h = Math.max(...lines.map(l => l.length)) * lh + 2 * pad - 2;
     doc.ensure(h);
     if (!Array.isArray(r) && r.fill) pdf.rect(doc.x, doc.y, doc.w, h, r.fill);
-    lines.forEach((ls, i) => ls.forEach((l, li) => pdf.text(cols[i].align === 'right' ? xs[i] + ws[i] - pad : xs[i] + pad, doc.y + pad + size * 0.95 + li * lh, l, { size, bold, align: cols[i].align, color: (cols[i].muted || mu) && !bold ? MUTED : INK })));
+    lines.forEach((ls, i) => { const c = cols[ci(i)], al = i || sp === 1 ? c.align : undefined; ls.forEach((l, li) => pdf.text(al === 'right' ? xs[ci(i)] + ws[ci(i)] - pad : xs[ci(i)] + pad, doc.y + pad + size * 0.95 + li * lh, l, { size, bold, align: al, color: (c.muted || mu) && !bold ? MUTED : INK })); });
     doc.y += h; pdf.line(doc.x, doc.y, doc.x + doc.w, doc.y, bold ? 0.8 : 0.4, bold ? INK : RULE);
   }
   doc.onBreak = prev; doc.y += 10;
@@ -6090,13 +6139,13 @@ function moRowMenu(el, ev) {
   <button role="menuitem" data-act="showDiary" data-p="${P.id}" data-ym="${y === +today().slice(0, 4) ? ymOf(today()) : y + '-12'}">${ic('report')}Projektdagbok</button>${o && o.all.h ? `<button role="menuitem" data-act="rpOpen" data-p="${P.id}">${ic('report')}Dagbok för all öppen tid</button><button role="menuitem" data-act="showInvoice" data-s="p:${P.id}" data-ym="${ymOf(o.last)}">${ic('report')}Fakturaunderlag …</button>` : ''}`;
   placeMenu(m, ev?.clientX ?? el.getBoundingClientRect().left, (ev?.clientY ?? el.getBoundingClientRect().bottom) + 4); $('button', m)?.focus();
 }
-function moMenu(btn) {
+function moMenu(btn, ev) {
   const P = proj(btn.dataset.p), ym = btn.dataset.ym, hd = hdMo(P.id, ym), d = diaryData(P.id, `${ym}-01`, ymLast(ym), 'ex'), miss = d.miss;
   const m = $('#menu');
   m.innerHTML = `<div class="mh" style="--pc:${pc(P)}"><span class="dot"></span><b style="color:var(--ink)">${esc(P.name)}</b> · ${ymLabel(ym)}</div><div class="mh">${fh(d.hours)} h${d.amount > 0 ? ' · ' + fkr(d.amount) + ' exkl. moms' : ''}${miss ? ` · <span style="color:var(--warn-ink)">${miss} utan anteckning</span>` : ''}</div>${st.page === 'projekt' && st.pid === P.id ? '' : `<button role="menuitem" data-act="openProject" data-p="${P.id}">${ic('folder')}Gå till projektet</button>`}${hd?.done || !d.hours ? '' : (r => r.ready ? `<div class="mh ready">${ic('check')}Alla timmar avcheckade – redo att hanteras</div>` : `<div class="mh wait">${ic('clock')}${openWeeksTxt(r)}</div>`)(monthReady(P.id, ym))}<hr>
   ${st.page === 'tid' && st.view === 'month' && st.month === ym ? '' : `<button role="menuitem" data-act="gotoTidbok" data-p="${P.id}" data-ym="${ym}">${ic('month')}Gå till tidboken – ${MONL[+ym.slice(5, 7) - 1]}</button>`}<button role="menuitem" data-act="dlDiary" data-p="${P.id}" data-ym="${ym}">${ic('export')}Ladda ner projektdagbok (PDF)</button><button role="menuitem" data-act="showDiary" data-p="${P.id}" data-ym="${ym}">${ic('report')}Visa projektdagboken</button>${P.internal ? '' : `<button role="menuitem" data-act="showInvoice" data-s="p:${P.id}" data-ym="${ym}">${ic('report')}Fakturaunderlag …</button>`}<hr>
   ${hd ? `<div class="mh">${ic('lock')}Hanterad${hd.all ? '' : ' ' + hdSpan(hd)} · ${sdate(hd.at.slice(0, 10))} – låst</div>` : ''}${hd?.all ? '' : `<button role="menuitem" data-act="handle" data-p="${P.id}" data-ym="${ym}">${ic('lock')}${hd ? 'Markera resten av månaden som hanterad' : 'Markera som hanterad och lås'}</button>`}${hd ? `<button role="menuitem" data-act="unhandle" data-p="${P.id}" data-ym="${ym}">${ic('unlock')}Häv hanterad${hd.all ? '' : ' i månaden'} och lås upp</button>` : ''}<button role="menuitem" data-act="handlePer" data-p="${P.id}" data-ym="${ym}">${ic('month')}Hantera en annan period …</button>`;
-  const b = btn.getBoundingClientRect(); placeMenu(m, b.left, b.bottom + 4); $('button', m)?.focus();
+  const b = btn.getBoundingClientRect(); if (btn.tagName === 'TR' && ev?.clientX) placeMenu(m, ev.clientX, ev.clientY + 6); else placeMenu(m, b.left, b.bottom + 4); $('button', m)?.focus();
 }
 // Hantera en period i ett projekt: varning om något inte är klart, annars direkt. Bara luckor fylls – det som redan är hanterat rörs inte.
 const hdPer = el => el.dataset.ym ? [el.dataset.ym + '-01', ymLast(el.dataset.ym)] : [el.dataset.from, el.dataset.to];
@@ -6143,7 +6192,17 @@ function diaryData(pid, from, to, amt) {
   const per = new Map(); for (const e of es) { const t = taskOf(P, e.taskId); const o = per.get(e.taskId) || { name: t?.name || '', hours: 0, amount: 0, i: tIdx(e.taskId) }; o.hours += e.hours; o.amount += amountOf(e) * k; per.set(e.taskId, o); }
   let usedTo = 0; for (const e of pEs(pid)) if (!e.deleted && e.date <= to) usedTo += amountOf(e);
   const people = new Set(es.map(e => e.person));
-  return { P, C, from, to, amt, vat, rows, perTask: [...per.values()].sort((a, b) => a.i - b.i), hours: rows.reduce((s, r) => s + r.hours, 0), amount: rows.reduce((s, r) => s + r.amount, 0), hdH: rows.reduce((s, r) => s + (r.hd ? r.hours : 0), 0), hdA: rows.reduce((s, r) => s + (r.hd ? r.amount : 0), 0), multi: people.size > 1, showTask: P.tasks.length > 1, miss: rows.filter(r => r.miss).length,
+  // Hierarki (0.17.1): person (bara när fler än en) → uppgift med à-pris → dagboksrader
+  const pOrd = id => { const i = R().people.findIndex(x => x.id === id); return i < 0 ? 999 : i; }, gm = new Map();
+  for (const e of es) {
+    let g = gm.get(e.person); if (!g) gm.set(e.person, g = { pid: e.person, name: R().people.find(x => x.id === e.person)?.name || initialsOf(e.person) || '–', init: initialsOf(e.person), hours: 0, amount: 0, tm: new Map() });
+    const b = billable(e), rate = b ? e.rate * k : null, tk = e.taskId + '|' + (rate ?? '-');
+    let t = g.tm.get(tk); if (!t) g.tm.set(tk, t = { tid: e.taskId, name: taskOf(P, e.taskId)?.name || '', rate, i: tIdx(e.taskId), hours: 0, amount: 0, rows: [] });
+    const a = amountOf(e) * k; t.hours += e.hours; t.amount += a; g.hours += e.hours; g.amount += a;
+    t.rows.push({ date: e.date, hours: e.hours, note: (e.note || '').trim(), amount: a, miss: needsNote(e), hd: !!handled(pid, e.date) });
+  }
+  const groups = [...gm.values()].sort((a, b) => pOrd(a.pid) - pOrd(b.pid)).map(g => ({ ...g, tasks: [...g.tm.values()].sort((a, b) => (a.i - b.i) || ((a.rate ?? -1) - (b.rate ?? -1))) }));
+  return { P, C, from, to, amt, vat, rows, groups, perTask: [...per.values()].sort((a, b) => a.i - b.i), hours: rows.reduce((s, r) => s + r.hours, 0), amount: rows.reduce((s, r) => s + r.amount, 0), hdH: rows.reduce((s, r) => s + (r.hd ? r.hours : 0), 0), hdA: rows.reduce((s, r) => s + (r.hd ? r.amount : 0), 0), multi: people.size > 1, showTask: P.tasks.length > 1, miss: rows.filter(r => r.miss).length,
     budget: !P.internal && P.budgetKr > 0 ? { budget: P.budgetKr, used: usedTo, pct: usedTo / P.budgetKr, to } : null };
 }
 const dLong = d => `${pd(d).getDate()} ${MON[pd(d).getMonth()]} ${d.slice(0, 4)}`;
@@ -6176,26 +6235,43 @@ function diaryPreview(d) {
   const am = d.amt !== 'none', ftxt = d.amt === 'inc' ? `inkl. moms ${fhs(d.vat)} %` : 'exkl. moms';
   let h = paperHead('Projektdagbok', d.P.name) + `<dl class="pp-facts">${diaryFacts(d).map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`;
   if (!d.rows.length) return h + `<p class="muted">Ingen tid i perioden.</p>`;
-  h += `<table class="pp-t"><thead><tr><th>Datum</th>${d.showTask ? '<th>Uppgift</th>' : ''}${d.multi ? '<th>Sign.</th>' : ''}<th class="w">Anteckning</th><th class="r">Timmar</th>${am ? '<th class="r">Belopp</th>' : ''}</tr></thead><tbody>`;
-  let last = '';
-  for (const r of d.rows) { h += `<tr class="${r.date !== last ? 'nd' : ''}${r.hd ? ' hd' : ''}"><td class="nw">${r.date !== last ? sdate(r.date) : ''}</td>${d.showTask ? `<td>${esc(r.task)}</td>` : ''}${d.multi ? `<td class="mono">${esc(r.init)}</td>` : ''}<td class="w${r.miss ? ' miss' : ''}">${r.miss ? 'Anteckning saknas' : esc(r.note)}</td><td class="r mono">${fh(r.hours)}</td>${am ? `<td class="r mono">${r.amount ? fkr(r.amount) : '–'}</td>` : ''}</tr>`; last = r.date; }
-  h += `</tbody></table>${d.hdH && d.hdH < d.hours ? `<p class="pp-hd-note">Gråa rader ingår i en period som redan är hanterad.</p>` : ''}<h3 class="pp-h">Sammanställning${am ? ` <span class="muted">· belopp ${ftxt}</span>` : ''}</h3><table class="pp-t sum"><tbody>${d.perTask.map(t => `<tr><td class="w">${esc(t.name)}</td><td class="r mono">${fh(t.hours)} h</td>${am ? `<td class="r mono">${fkr(t.amount)}</td>` : ''}</tr>`).join('')}<tr class="tot"><td class="w">Summa</td><td class="r mono">${fh(d.hours)} h</td>${am ? `<td class="r mono">${fkr(d.amount)}</td>` : ''}</tr>${d.hdH ? `<tr><td class="w muted">varav redan hanterat</td><td class="r mono muted">${fh(d.hdH)} h</td>${am ? `<td class="r mono muted">${fkr(d.hdA)}</td>` : ''}</tr>` : ''}${am && d.amt === 'inc' ? `<tr><td class="w muted">varav moms</td><td></td><td class="r mono muted">${fkr(d.amount - d.amount / (1 + d.vat / 100))}</td></tr>` : ''}</tbody></table>`;
+  const span = 2, money = v => v ? fkr(v) : '–';
+  h += `<table class="pp-t dgrp"><thead><tr><th>Datum</th><th class="w">Anteckning</th><th class="r">Timmar</th>${am ? '<th class="r">Belopp</th>' : ''}</tr></thead><tbody>`;
+  for (const g of d.groups) {
+    if (d.multi) h += `<tr class="g1"><td colspan="${span}">${esc(g.name)}</td><td class="r mono">${fh(g.hours)}</td>${am ? `<td class="r mono">${money(g.amount)}</td>` : ''}</tr>`;
+    for (const t of g.tasks) {
+      h += `<tr class="g2"><td colspan="${span}">${esc(t.name)}${am ? ` <span class="g-rate">${t.rate == null ? '· ej debiterbar' : `· à ${fkr(t.rate)}/h`}</span>` : ''}</td><td class="r mono">${fh(t.hours)}</td>${am ? `<td class="r mono">${money(t.amount)}</td>` : ''}</tr>`;
+      let last = '';
+      for (const r of t.rows) { h += `<tr class="${r.hd ? 'hd' : ''}"><td class="nw">${r.date !== last ? sdate(r.date) : ''}</td><td class="w${r.miss ? ' miss' : ''}">${r.miss ? 'Anteckning saknas' : esc(r.note)}</td><td class="r mono">${fh(r.hours)}</td>${am ? `<td class="r mono">${money(r.amount)}</td>` : ''}</tr>`; last = r.date; }
+    }
+  }
+  const sumL = d.multi ? d.groups.map(g => [g.name, g.hours, g.amount]) : d.groups.flatMap(g => g.tasks).map(t => [t.name + (am && t.rate != null && d.groups[0].tasks.filter(x => x.tid === t.tid).length > 1 ? ` (à ${fkr(t.rate)}/h)` : ''), t.hours, t.amount]);
+  h += `</tbody></table>${d.hdH && d.hdH < d.hours ? `<p class="pp-hd-note">Gråa rader ingår i en period som redan är hanterad.</p>` : ''}<h3 class="pp-h">Sammanställning${am ? ` <span class="muted">· belopp ${ftxt}</span>` : ''}</h3><table class="pp-t sum"><thead><tr><th class="w">${d.multi ? 'Medarbetare' : 'Uppgift'}</th><th class="r">Timmar</th>${am ? '<th class="r">Belopp</th>' : ''}</tr></thead><tbody>${sumL.map(([n, hh, a]) => `<tr><td class="w">${esc(n)}</td><td class="r mono">${fh(hh)} h</td>${am ? `<td class="r mono">${fkr(a)}</td>` : ''}</tr>`).join('')}</tbody></table><table class="pp-t sum tot-t"><tbody><tr class="tot"><td class="w">Summa</td><td class="r mono">${fh(d.hours)} h</td>${am ? `<td class="r mono">${fkr(d.amount)}</td>` : ''}</tr>${d.hdH ? `<tr><td class="w muted">varav redan hanterat</td><td class="r mono muted">${fh(d.hdH)} h</td>${am ? `<td class="r mono muted">${fkr(d.hdA)}</td>` : ''}</tr>` : ''}${am && d.amt === 'inc' ? `<tr><td class="w muted">varav moms</td><td></td><td class="r mono muted">${fkr(d.amount - d.amount / (1 + d.vat / 100))}</td></tr>` : ''}</tbody></table>`;
   if (rep().budget && d.budget) { const b = d.budget; h += `<div class="pp-bud"><span>Budget ${fkr(b.budget)} exkl. moms · förbrukat till och med ${sdate(budTo(b.to))} <b>${fkr(b.used)}</b> (${fpct(b.pct)}) · kvar ${fkr(b.budget - b.used)}</span><div class="bbar lv${lvl(b.pct)}"><span class="track"><span class="val" style="width:${Math.min(b.pct, 1) * 100}%"></span></span></div></div>`; }
   return h;
 }
 function diaryPdf(d, showBudget) {
   const am = d.amt !== 'none', doc = makeDoc('Projektdagbok', d.P.name), money = v => v ? fkr(v) : '–';
   pdfFacts(doc, diaryFacts(d));
-  const cols = [{ h: 'Datum', w: 58 }, ...(d.showTask ? [{ h: 'Uppgift', w: 92, wrap: true }] : []), ...(d.multi ? [{ h: 'Sign.', w: 34 }] : []), { h: 'Anteckning', wrap: true }, { h: 'Timmar', w: 46, align: 'right' }, ...(am ? [{ h: 'Belopp', w: 70, align: 'right' }] : [])];
-  let last = '';
-  const rows = d.rows.map(r => { const c = [r.date !== last ? sdate(r.date) : '', ...(d.showTask ? [r.task] : []), ...(d.multi ? [r.init] : []), r.miss ? '(anteckning saknas)' : r.note, fh(r.hours), ...(am ? [money(r.amount)] : [])]; last = r.date; return r.hd ? { cells: c, muted: true } : c; });
+  const cols = [{ h: 'Datum', w: 58 }, { h: 'Anteckning', wrap: true }, { h: 'Timmar', w: 46, align: 'right' }, ...(am ? [{ h: 'Belopp', w: 70, align: 'right' }] : [])];
+  const rows = [];
+  for (const g of d.groups) {
+    if (d.multi) rows.push({ cells: [g.name, fh(g.hours), ...(am ? [money(g.amount)] : [])], span: 2, bold: true });
+    for (const t of g.tasks) {
+      rows.push({ cells: [t.name + (am ? (t.rate == null ? ' · ej debiterbar' : ` · à ${fkr(t.rate)}/h`) : ''), fh(t.hours), ...(am ? [money(t.amount)] : [])], span: 2, fill: SOFT });
+      let last = '';
+      for (const r of t.rows) { const c = [r.date !== last ? sdate(r.date) : '', r.miss ? '(anteckning saknas)' : r.note, fh(r.hours), ...(am ? [money(r.amount)] : [])]; last = r.date; rows.push(r.hd ? { cells: c, muted: true } : c); }
+    }
+  }
   if (rows.length) { pdfTable(doc, cols, rows); if (d.hdH && d.hdH < d.hours) { doc.ensure(16); doc.pdf.text(doc.x, doc.y, 'Gråa rader ingår i en period som redan är hanterad.', { size: 8, color: MUTED }); doc.y += 14; } } else { doc.pdf.text(doc.x, doc.y, 'Ingen tid i perioden.', { size: 9.5, color: MUTED }); doc.y += 20; }
   pdfH2(doc, 'Sammanställning' + (am ? (d.amt === 'inc' ? ` – belopp inkl. moms ${fhs(d.vat)} %` : ' – belopp exkl. moms') : ''));
-  const srows = d.perTask.map(t => [t.name, fh(t.hours) + ' h', ...(am ? [money(t.amount)] : [])]);
-  srows.push({ cells: ['Summa', fh(d.hours) + ' h', ...(am ? [money(d.amount)] : [])], bold: true });
+  const one = d.groups[0]?.tasks || [], sl = d.multi ? d.groups.map(g => [g.name, g.hours, g.amount]) : one.map(t => [t.name + (am && t.rate != null && one.filter(x => x.tid === t.tid).length > 1 ? ` (à ${fkr(t.rate)}/h)` : ''), t.hours, t.amount]);
+  const scol = [{ h: d.multi ? 'Medarbetare' : 'Uppgift', wrap: true }, { h: 'Timmar', w: 70, align: 'right' }, ...(am ? [{ h: 'Belopp', w: 90, align: 'right' }] : [])];
+  pdfTable(doc, scol, sl.map(([n, hh, a]) => [n, fh(hh) + ' h', ...(am ? [money(a)] : [])]));
+  const srows = [{ cells: ['Summa', fh(d.hours) + ' h', ...(am ? [money(d.amount)] : [])], bold: true }];
   if (d.hdH) srows.push({ cells: ['varav redan hanterat', fh(d.hdH) + ' h', ...(am ? [money(d.hdA)] : [])], muted: true });
   if (am && d.amt === 'inc') srows.push(['varav moms', '', fkr(d.amount - d.amount / (1 + d.vat / 100))]);
-  pdfTable(doc, [{ h: 'Uppgift', wrap: true }, { h: 'Timmar', w: 70, align: 'right' }, ...(am ? [{ h: 'Belopp', w: 90, align: 'right' }] : [])], srows);
+  pdfTable(doc, [{ h: 'Totalt', wrap: true }, { h: 'Timmar', w: 70, align: 'right' }, ...(am ? [{ h: 'Belopp', w: 90, align: 'right' }] : [])], srows);
   if (showBudget && d.budget) pdfBudget(doc, d.budget);
   return doc.finish();
 }
@@ -7099,7 +7175,7 @@ Object.assign(A, {
   projDelete: () => { const P = proj(st.editProj); if (hasTime(P.id)) return; R().projects = R().projects.filter(p => p !== P); if (st.pid === P.id) st.pid = null; save(); closeDlg(); renderMain(); toast(`${P.name} är borttaget`); },
   repTab: el => { rep().tab = el.dataset.tab; renderMain(); },
   repYear: el => { rep().year += +el.dataset.d; renderMain(); },
-  moCell: el => moMenu(el),
+  moCell: (el, ev) => { if (el.tagName === 'TR' && !$('#menu').hidden) { closeFloating(); return; } moMenu(el, ev); },
   moRow: (el, ev) => { if (!$('#menu').hidden) { closeFloating(); return; } moRowMenu(el, ev); },
   dlDiary: el => { closeFloating(); const r = rep(); if (el.dataset.p) downloadDiary(el.dataset.p, `${el.dataset.ym}-01`, ymLast(el.dataset.ym), r.amount, r.budget); else { const [f, t] = diaryPeriod(); downloadDiary(r.pid, f, t, r.amount, r.budget); } },
   showDiary: el => { closeFloating(); if (simple()) { const v = invSel(); Object.assign(v, { sel: 'p:' + el.dataset.p, rows: true }); if (el.dataset.ym) { v.custom = false; v.ym = el.dataset.ym; } st.page = 'rapporter'; st.pid = null; st.cid = null; render(); return; } Object.assign(rep(), { tab: 'diary', pid: el.dataset.p, ym: el.dataset.ym, custom: false }); if (st.page !== 'rapporter') { st.page = 'rapporter'; st.pid = null; st.cid = null; render(); $('#main').scrollTop = 0; } else renderMain(); },
@@ -7217,6 +7293,7 @@ document.addEventListener('input', ev => {
   if (t.id === 'w_company') { const nm = $('#w_name'); if (nm) nm.placeholder = t.value || 'Min bok'; }
 });
 // Listornas sökning och sortering ritar bara om listan, så att sökfältet behåller fokus
+for (const ty of ['input', 'change']) document.addEventListener(ty, ev => { const t = ev.target; if (t.matches?.('[data-rr],[data-pr],[data-cr],#pjSRate,.tk-rate')) t.dataset.t = '1'; const rf = t.closest?.('.rfrom'); if (rf) rf.dataset.t = '1'; });
 document.addEventListener('input', ev => { const t = ev.target; if (t.id === 'lsQ') { (st.lq = st.lq || {})[t.dataset.ls] = t.value; const b = $('#lsBody'); if (b) b.innerHTML = t.dataset.ls === 'p' ? projListBody() : custListBody(); } });
 document.addEventListener('change', ev => { if (ev.target.id === 'bkDays') { S.prefs.backupDays = +ev.target.value; save(); safetyRender(); } });
 document.addEventListener('change', ev => { const t = ev.target; if (t.id === 'lsSort') { lsPref(t.dataset.k).sort = t.value; save(); const b = $('#lsBody'); if (b) b.innerHTML = t.dataset.k === 'p' ? projListBody() : custListBody(); } if (t.id === 'npInt') $$('#npForm [data-ext]').forEach(x => x.hidden = t.checked); });
@@ -7238,7 +7315,7 @@ const SHC = [
   { k: 'ch', w: ['ch', 'checka', 'avcheck'], g: 'Vecka', t: 'Checka av veckan', ex: [['ch', 'checkar av veckan du står i'], ['ch v43', 'vecka 43'], ['ch fv', 'förra veckan'], ['ch v40-43', 'flera veckor']] },
   { k: 'open', w: ['öppna'], g: 'Vecka', t: 'Öppna en avcheckad vecka', ex: [['öppna v43', 'öppnar vecka 43 igen']] },
   { k: 'sign', w: ['sign', 'signera'], g: 'Vecka', t: 'Signera – låser veckan', ex: [['sign v43', 'signerar, frågar först']] },
-  { k: 'db', w: ['db', 'dagbok'], g: 'Rapporter', t: 'Projektdagbok', ex: [['db okt strand', 'visar dagboken'], ['db ner okt strand', 'laddar ner som PDF'], ['db ner öppet strand', 'all öppen tid'], ['db ner sept- strand', 'från september och framåt'], ['db ner fm', 'en per projekt med tid förra månaden']] },
+  { k: 'db', w: ['db', 'dagbok'], g: 'Rapporter', t: 'Projektdagbok', ex: [['db strand', 'all ohanterad tid i projektet'], ['db okt strand', 'visar oktober'], ['db ner okt strand', 'laddar ner som PDF'], ['db ner sept- strand', 'från september och framåt'], ['db ner fm', 'en per projekt med tid förra månaden']] },
   { k: 'fakt', w: ['fakt', 'faktura', 'fu', 'fakturaunderlag'], g: 'Rapporter', t: 'Fakturaunderlag', ex: [['fakt strand', 'visar öppen tid i projektet'], ['fakt kund smeden', 'alla kundens projekt'], ['fakt ner fm strand', 'PDF till och med förra månaden'], ['fakt csv öppet strand', 'CSV med all öppen tid']] },
   { k: 'pers', w: ['pers', 'person', 'personsammanställning'], g: 'Rapporter', t: 'Personsammanställning', ex: [['pers okt', 'visar oktober'], ['pers ner fv', 'laddar ner förra veckan']] },
   { k: 'ov', w: ['översikt', 'öv', 'månadsöversikt'], g: 'Rapporter', t: 'Månadsöversikt', ex: [['översikt', 'i år'], ['översikt 2025', 'ett annat år']] },
@@ -7480,7 +7557,8 @@ const SH = {
     const f = shFlags(a), r = shPeriodAny(f.toks); if (r.err) return { bad: true, html: esc(r.err) };
     let P = null, alts = '';
     if (r.rest.length) { const x = shFindProj(r.rest); if (!x || x.n < r.rest.length) return noP(r.rest); P = x.P; alts = altTxt(x); }
-    const per = r.per || shDefMonth(), verb = f.dl ? 'laddar ner' : 'visar';
+    // Bara ett projekt (0.17.1): all ohanterad tid i projektet, inte en kalendermånad
+    const per = r.per || (P ? { kind: 'open', label: 'all öppen tid', n: 1 } : shDefMonth()), verb = f.dl ? 'laddar ner' : 'visar';
     if (per.kind === 'year' && !P) return { bad: true, html: 'Ett helt år: skriv vilket projekt, till exempel <b>db 2026 strand</b>.' };
     const span = pid => { if (per.kind === 'open') { const o = openSplit(pid); return o.first ? [o.first, o.last] : null; } return [per.from || shFirst(pid), per.to]; };
     const lbl = sp => periodLabel(...sp).replace(/^[A-ZÅÄÖ]/, c => c.toLowerCase());
@@ -7909,7 +7987,7 @@ I.more = '<circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circ
 // Provkrok för testerna (test/delar_test.py): bara med ?test i adressen
 if (/[?&]test\b/.test(location.search)) window.SISYFOS = { get S() { return S; }, set S(v) { S = v; }, st, me, R, byId, canon, migrate, sampleBook, bookSplit, bookJoin, partRule, bookMerge,
   encCreate, encStore, keysEnsure, keysAdopt, keysCreate, keysOpen, keysPublic, encBookText, decBook, decParts, unseal, gz, aesKey, rnd, b64, unb64, kvGet, AAD_DATA, FORMAT_VERSION,
-  rateFor, rv, rPut, rHist, rateSnap, repriceSince, signOn, setCell, weekEvent, weekState, webApply, save, log, get E() { return E; } };
+  rateFor, rv, rPut, rHist, rateSnap, repriceSince, signOn, setCell, weekEvent, weekState, webApply, save, log, uid, devId, apply, select, cell, closeCellPop, render, derive, diaryData, diaryPdf, rep, get E() { return E; } };
 })();
 </script>
 </body>

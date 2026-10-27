@@ -14,6 +14,9 @@ Kontrollerar i en riktig webbläsare att
     fungerar, och att en ändring som kommer via synken räknar om den här enhetens olåsta tid,
   – signering är av för en ensam bok (knappen syns inte, sign i smartshell säger det), kan slås på,
     och att en signerad vecka kan låsas upp av administratören och då är öppen.
+  – 0.17.1: samma pris "från början" eller med ett tidigare datum räknar om rapporterad tid, avcheckad tid
+    frågas om (Använd det nya priset / Behåll de gamla priserna, med Ångra), Rensa i egenskapspanelen,
+    panelens rubrik leder till projektsidan och smartmenyn har snabbknappar för tiden.
 
 Kör:  python3 -m http.server 8765 &  python3 test/priser_test.py
 """
@@ -108,6 +111,9 @@ with sync_playwright() as p:
     pg.check('input[name=rrF][value=""]'); pg.click('#rrForm button[type=submit]'); pg.wait_for_timeout(300)
     r = ev(pg, RATES, POSTER)
     ok(r == {'a': 1150, 'b': 1160, 'c': 1160, 'd': 950}, f'centralt pris från början: olåst tid räknas om, avcheckad vecka inte ({r})')
+    ok('annat timpris' in (pg.inner_text('#dlgTitle') if pg.locator('#dlgTitle').count() else ''), 'avcheckad tid med annat pris: dialogen frågar')
+    pg.click('button:has-text("Behåll de gamla priserna")'); pg.wait_for_timeout(300)
+    ok(ev(pg, RATES, POSTER)['a'] == 1150, 'Behåll de gamla priserna: den avcheckade posten orörd')
     ok(ev(pg, "() => S.register.roles[1].rate") == 1160, 'centralt pris utan prislista blir ett tal')
 
     # Kundens pris (Familjen Strand → Villa Strand) från 17 nov
@@ -133,6 +139,46 @@ with sync_playwright() as p:
     pg.wait_for_timeout(300)
     r = ev(pg, RATES, POSTER)
     ok(r == {'a': 1150, 'b': 1250, 'c': 1250, 'd': 1300}, f'ändring via synken räknar om olåst tid ({r})')
+
+    # 0.17.1: pris satt "från i dag" och sedan rättat till "från början" utan att ändra värdet (inkorgen 2026-10-27)
+    akt(pg, 'projEdit', p='proj3')
+    pg.fill('#pjForm [data-rr=roll2]', '1300'); pg.click('#pjForm button[type=submit]'); pg.wait_for_timeout(300)
+    r = ev(pg, RATES, POSTER)
+    ok(r['b'] == 1250 and r['c'] == 1250, f'från i dag: tidigare dagar orörda ({r})')
+    akt(pg, 'projEdit', p='proj3')
+    ok(pg.input_value('#pjForm [data-rr=roll2]') == '1300', 'fältet visar dagens pris')
+    pg.check('input[name=pjRF][value=""]'); pg.click('#pjForm button[type=submit]'); pg.wait_for_timeout(300)
+    r = ev(pg, RATES, POSTER)
+    ok(r['b'] == 1300 and r['c'] == 1300, f'samma pris "från början": olåst tid räknas om ({r})')
+    ok(pg.locator('#dlgTitle:has-text("annat timpris")').count() == 1, 'den avcheckade veckan frågas om')
+    pg.click('[data-act=repriceAskGo]'); pg.wait_for_timeout(300)
+    r = ev(pg, RATES, POSTER); t = pg.inner_text('#toast')
+    ok(r['a'] == 1300 and 'avcheckade' in t, f'Använd det nya priset: avcheckad tid räknas om ({r}, {t!r})')
+    pg.click('#toast button'); pg.wait_for_timeout(300)
+    ok(ev(pg, RATES, POSTER)['a'] == 1150, 'Ångra lägger tillbaka det avcheckade priset')
+    # Samma pris skrivet om med ett tidigare datum räknar också om tid med ett avvikande sparat pris
+    ev(pg, "() => { const e = [...E.values()].find(e => !e.deleted && e.projectId === 'proj3' && e.date === '2026-11-10'); const ev = { id: uid(), entryId: e.id, type: 'update', at: new Date().toISOString(), by: me(), dev: devId(), data: { rate: 999 } }; log().push(ev); apply(ev, me()); save(); }")
+    akt(pg, 'projEdit', p='proj3')
+    pg.fill('#pjForm [data-rr=roll2]', '1300'); pg.fill('#pjRFD', '2026-11-05'); pg.click('#pjForm button[type=submit]'); pg.wait_for_timeout(300)
+    if pg.locator('button:has-text("Behåll de gamla priserna")').count(): pg.click('button:has-text("Behåll de gamla priserna")'); pg.wait_for_timeout(200)
+    ok(ev(pg, RATES, POSTER)['b'] == 1300, 'ett avvikande sparat pris i den ändrade nivån räknas om från datumet')
+
+    # Rensa i egenskapspanelen och snabbknappar i smartmenyn
+    pg.click('.rail [data-page=tid]'); pg.wait_for_timeout(300)
+    ev(pg, "() => { st.view = 'week'; st.week = '2026-11-16'; render(); }"); pg.wait_for_timeout(200)
+    ev(pg, "() => select('proj3~upg4|2026-11-17')"); pg.wait_for_timeout(200)
+    ok(pg.locator('#panel [data-act=clearCell]').count() == 1, 'Rensa finns i egenskapspanelen')
+    ok(pg.locator('#panel .p-link[data-act=openProject]').count() == 1, 'panelens rubrik leder till projektsidan')
+    pg.click('#panel [data-act=clearCell]'); pg.wait_for_timeout(200)
+    ok(ev(pg, RATES, POSTER)['c'] is None or ev(pg, "() => cell('proj3~upg4', '2026-11-17')?.hours || 0") == 0, 'Rensa tömmer rutan')
+    pg.click('#toast button'); pg.wait_for_timeout(200)
+    box = pg.locator('.cell[data-cellbox="proj3~upg4|2026-11-17"]')
+    if box.count():
+        box.click(); pg.wait_for_timeout(300)
+        ok(pg.locator('#cpop .cp-chips .chip').count() == 5, 'smartmenyn har snabbknappar för tiden')
+        pg.click('#cpop .cp-chips .chip:has-text("4")'); pg.wait_for_timeout(200)
+        ok(ev(pg, "() => cell('proj3~upg4', '2026-11-17')?.hours") == 4, 'snabbknappen sätter tiden')
+        ev(pg, "() => closeCellPop()")
 
     # Signering – ensam bok: av
     pg.click('.rail [data-page=tid]'); pg.wait_for_timeout(300)

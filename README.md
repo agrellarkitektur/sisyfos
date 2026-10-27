@@ -35,7 +35,7 @@ Fältet överst på alla sidor. Raden under fältet säger vad Enter gör innan 
 | `3,5 strand ritade fasad` · `tor 8 strand` · `v43 fl` | tid – timmarna först, sedan projekt och anteckning |
 | `v43` · `okt` · `idag` | går dit i tidboken |
 | `ch` · `ch v43` · `öppna v43` · `sign v43` | checkar av, öppnar, signerar (bekräfta med `sign` eller `ok` + Enter, Esc avbryter); `öppna` på en signerad vecka låser upp den (administratören, bekräfta med `ok`) |
-| `db okt strand` · `db ner okt strand` · `db ner öppet strand` | visar eller laddar ner projektdagboken |
+| `db strand` · `db okt strand` · `db ner okt strand` | visar eller laddar ner projektdagboken – med bara projektet all ohanterad tid |
 | `pers fv` · `översikt 2025` | personsammanställning, månadsöversikt |
 | `fakt strand` · `fakt kund smeden` · `fakt ner fm strand` · `fakt csv öppet strand` | visar eller laddar ner fakturaunderlaget (PDF eller CSV) |
 | `hant fm strand` · `hant 1/10-15/10 strand` · `häv okt strand` | markerar en period som hanterad och låser, eller häver |
@@ -67,7 +67,7 @@ Timpriset kan sättas på fem nivåer. Det mest specifika gäller:
 
 Tomt fält = nästa nivå. **Varje pris gäller från ett datum.** När du ändrar ett pris väljer du *från* ett datum (i dag som standard) eller *från början*. Priset blir då en prislista – tid som skrivs in i efterhand för en tidigare dag får priset som gällde den dagen. Prislistan visas under priserna och på projektsidan.
 
-**Olåst tid följer prislistan.** Varje tidpost sparar sitt pris. När ett pris ändras får de egna tidposter vars pris ändrades det nya priset – men bara tid som inte är avcheckad, signerad eller hanterad. Låst tid behåller sitt pris (öppna veckan först om den ska räknas om). Beskedet säger hur många tidposter som fick det nya priset, och *Ångra* lägger tillbaka både priset och posterna. Kommer ändringen från en annan enhet eller från organisationens admin räknas den här enhetens olåsta tid om vid synken.
+**Rapporterad tid följer prislistan.** Varje tidpost sparar sitt pris. När ett pris ändras får de egna tidposter som omfattas det nya priset från datumet – också poster som redan hade ett annat pris, om du skriver priset igen eller väljer ett tidigare datum. Finns det tid i avcheckade veckor med ett annat pris frågar Sisyfos om de rapporterade dagarna ska få det nya priset eller ha kvar sina gamla. Signerad tid behåller sitt pris (lås upp veckan först om den ska räknas om), och hanterad och fakturerad tid räknas aldrig om. Beskedet säger hur många tidposter som fick det nya priset, och *Ångra* lägger tillbaka både priset och posterna. Kommer ändringen från en annan enhet eller från organisationens admin räknas den här enhetens olåsta tid om vid synken.
 
 ## Avcheckning och signering
 
@@ -205,7 +205,7 @@ Vad var och en ser och gör:
 - **Ta bort en medarbetare:** personen når inte boken längre, och admins enhet krypterar om delarna utan henne eller honom. Tiden ligger kvar i boken.
 - **Radera kontot** som medarbetare = gå ur organisationen; som admin tas organisationen bort, också för medarbetarna (som behåller sina konton).
 - Servern sparar inga tidigare versioner av en organisations bok än – ögonblicksbilderna på varje enhet finns kvar.
-- Kvar till nästa steg (0.17.1): välja vems tidbok admin ser, se vem som inte har checkat av, signera och öppna åt andra, smartshell åt andra och *Medarbetare* på projektsidan. Ändra en medarbetares anställning och semester görs också då.
+- Kvar till nästa steg (0.18.0): välja vems tidbok admin ser, se vem som inte har checkat av, signera och öppna åt andra, smartshell åt andra och *Medarbetare* på projektsidan. Ändra en medarbetares anställning och semester görs också då.
 
 **Vad servern ser.** E-postadressen, när kontot skapades, vilka enheter som är inloggade och när de senast användes, och den krypterade boken med storlek och tidpunkter. Lösenordet lämnar aldrig enheten: ur det räknas 512 bitar fram med PBKDF2 – de första 256 låser upp boknyckeln, de sista 256 blir inloggningen, och servern sparar bara ett hashvärde (`password_hash`) av dem. Utan lösenordet eller återställningsnyckeln kan ingen läsa boken, inte heller den som driver servern.
 
