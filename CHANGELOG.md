@@ -1,5 +1,14 @@
 # Ändringar i Sisyfos
 
+## 0.19.0
+
+Filformat 11, oförändrat (ett nytt valfritt fält `book.checkWeeks`). Synpunkterna från 29 oktober: ett enklare flöde för den som är ensam i boken och veckor i rapporterna.
+
+- **Avcheckning per vecka är ett val.** *Inställningar → Avcheckning och signering → Checka av veckorna* – av som standard när du är ensam i boken, på med flera personer. Avstängd finns ingen knapp för veckan och `ch` i smartshell säger ifrån; tiden låses i stället när den markeras som **hanterad** i rapportflödet, och en avslutad månad är redo att hanteras utan avcheckning. Passar den som inte arbetar en fast vecka – slå på den om du vill checka av veckan som helhet. Signering kräver avcheckning. Veckor som checkats av tidigare låser inte medan avcheckningen är av, men gäller igen om den slås på; signerade veckor förblir låsta.
+- **Hanterad tid syns i tidboken.** En grön prick och grön kant på rutan i vecko- och dagvyn, och ett grönt streck under dagen i månadsvyn (ljusare när bara en del av dagens tid är hanterad). Gäller oavsett inställningen.
+- **Per dag och vecka i rapporterna.** Projektdagboken (*Uppställning → Per dag och vecka*) och fakturaunderlagets dagboksrader (*Dagboksrader → Per dag och vecka*): en rad per dag med dagens uppgifter sammanställda, och en summarad per kalendervecka. Med **Visa veckor utan tid** står veckor utan rapporterad tid med som *ingen rapporterad tid*. På skärmen och i PDF:en; summorna och sammanställningen är desamma som förut.
+- Test: `test/enkel_test.py` (ny, körs i GitHub); `test/priser_test.py` slår på avcheckningen i sin ensamma testbok.
+
 ## 0.18.0
 
 Filformat 11, oförändrat (personkortet har två nya valfria fält). **Arbetet med flera** – steg 3 av etapp 4. Ladda om på alla enheter i organisationen: en enhet med 0.17.x ser inte veckor som admin har öppnat åt någon annan.

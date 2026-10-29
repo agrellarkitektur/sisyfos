@@ -75,7 +75,9 @@ Tomt fält = nästa nivå. **Varje pris gäller från ett datum.** När du ändr
 
 När veckans tid är klar **checkar du av veckan** – rutorna låses tills du öppnar den igen. Avcheckade veckor räcker för att hantera och fakturera tiden.
 
-**Signering** är administratörens slutliga markering. Den är **av som standard när du är ensam i boken** och slås på under *Inställningar → Avcheckning och signering* (med flera personer är den på). En signerad vecka är låst; **administratören kan låsa upp den** igen (veckans status → *Lås upp veckan …*, eller `öppna v43` i smartshell) – då är veckan öppen och tiden kan rättas. Tid som är hanterad eller fakturerad förblir låst.
+**Avcheckningen är ett val** (0.19.0, *Inställningar → Avcheckning och signering → Checka av veckorna*). Den är **av som standard när du är ensam i boken** och på med flera personer. Den passar när du arbetar en fast vecka, på heltid eller deltid. Avstängd finns ingen knapp för veckan och `ch` i smartshell säger ifrån – tiden låses i stället när den **markeras som hanterad** i rapportflödet, och en avslutad månad är redo att hanteras utan avcheckning. Hanterad tid syns alltid i tidboken: en grön prick i rutan i vecko- och dagvyn och ett grönt streck under dagen i månadsvyn. Veckor som checkats av tidigare låser inte medan avcheckningen är av, men gäller igen om den slås på.
+
+**Signering** är administratörens slutliga markering och kräver avcheckning. Den är **av som standard när du är ensam i boken** och slås på under *Inställningar → Avcheckning och signering* (med flera personer är den på). En signerad vecka är låst; **administratören kan låsa upp den** igen (veckans status → *Lås upp veckan …*, eller `öppna v43` i smartshell) – då är veckan öppen och tiden kan rättas. Tid som är hanterad eller fakturerad förblir låst.
 
 ### Flera personer (0.18.0)
 
@@ -92,7 +94,12 @@ Sisyfos gör alltid ett **underlag** att föra in i bokföringsprogrammet: *Rapp
 - Underlaget tar med **öppen debiterbar tid** för en kund (alla projekt) eller ett projekt, till och med vald månad eller för en egen period – som standard även äldre öppen tid. Hanterad tid ingår inte.
 - Tiden summeras per projekt, uppgift, roll och timpris, med summa exkl. moms, moms och summa inkl. moms. Kundens fakturaadress, org.nr och referens står med.
 - **PDF** att läsa eller bifoga och **CSV** (semikolon, decimalkomma, UTF-8) att öppna i Excel eller föra in i bokföringsprogrammet. Projektdagboken är specifikationen.
+- **Dagboksrader** (valet *Dagboksrader med datum och anteckning*) kan ställas upp **en rad per tidpost** eller **per dag och vecka** (0.19.0) – se *Per dag och vecka* nedan.
 - **Markera som hanterat** låser tiden i underlaget per projekt – från den äldsta öppna tiden som ingår till periodens slut – så att den inte kommer med nästa gång. Det som redan är hanterat rörs inte.
+
+### Per dag och vecka (0.19.0)
+
+Projektdagboken (*Uppställning*) och fakturaunderlagets dagboksrader kan visas **per dag och vecka** i stället för per uppgift eller tidpost: en rad per dag – flera uppgifter samma dag står på samma rad, med uppgiftens namn före anteckningen – och efter varje kalendervecka en rad med veckans timmar och belopp. Med **Visa veckor utan tid** står också veckor i perioden utan rapporterad tid med, som *Vecka 44 · 26 okt – 1 nov – ingen rapporterad tid*. Sammanställningen och summorna är desamma som i den vanliga uppställningen. Gäller skärmen och PDF:en (CSV:en har en rad per uppgift och pris som förut).
 
 ### Hanterad tid
 
@@ -286,7 +293,7 @@ python3 test/oppna_gamla_bocker.py
 | `manifest.webmanifest`, `icon.svg`, `*.png` | Appikon och installation |
 | `feedback.php` | Tar emot synpunktsformuläret och skickar det som e-post. Sparar ingenting |
 | `api.php` | Servern för lagring på webben och organisationerna – tar bara emot krypterade böcker och delar |
-| `test/` | Gamla böcker och kontrollen att de öppnas (`oppna_gamla_bocker.py`), test av fakturorna (`faktura_test.py` och `faktura2_test.py` – betalningar, kunder utomlands och SIE), test av boken i delar och nycklarna (`delar_test.py`), av arbetet med flera (`flera_test.py` – vems tidbok, åt andra, omräkning för medarbetare, medarbetarens gränssnitt), test av servern (`api_test.py`, också organisationerna), av en organisation med admin på två enheter och en medarbetare (`org_test.py`) och av synken mellan två enheter (`webb_test.py`, körs för hand). För hand vid omskrivningar: `stor_bok.py` bygger en testbok på tio år, `prestanda.py` mäter vanliga åtgärder med den och `jamfor_versioner.py` kontrollerar att skärmarna är lika med en tidigare version |
+| `test/` | Gamla böcker och kontrollen att de öppnas (`oppna_gamla_bocker.py`), test av fakturorna (`faktura_test.py` och `faktura2_test.py` – betalningar, kunder utomlands och SIE), test av boken i delar och nycklarna (`delar_test.py`), av arbetet med flera (`flera_test.py` – vems tidbok, åt andra, omräkning för medarbetare, medarbetarens gränssnitt), av flödet utan avcheckning och veckouppställningen i rapporterna (`enkel_test.py`), test av servern (`api_test.py`, också organisationerna), av en organisation med admin på två enheter och en medarbetare (`org_test.py`) och av synken mellan två enheter (`webb_test.py`, körs för hand). För hand vid omskrivningar: `stor_bok.py` bygger en testbok på tio år, `prestanda.py` mäter vanliga åtgärder med den och `jamfor_versioner.py` kontrollerar att skärmarna är lika med en tidigare version |
 
 ## Publicera på ett webbhotell
 

@@ -378,7 +378,11 @@ kbd{font:500 11px var(--font-data);padding:1px 5px;border:1px solid var(--rule);
 .cell .h-in{width:100%;height:100%;border:0;background:transparent;text-align:center;font:500 15px var(--font-data);font-variant-numeric:tabular-nums;border-radius:10px;outline:none;padding:0 4px;cursor:text}
 .cell .h-in::placeholder{color:transparent}
 .cell:hover .h-in::placeholder,.cell:focus-within .h-in::placeholder{color:var(--muted)}
-.nn{display:none}
+.nn,.hdm{display:none}
+.cell.hd,.dv-h.hd{border:1px solid color-mix(in srgb,var(--ok) 62%,var(--rule))}
+.cell.hd .hdm,.dv-h.hd .hdm{display:block;position:absolute;top:5px;left:5px;width:7px;height:7px;border-radius:50%;background:var(--ok);pointer-events:none}
+.dv-h.hd .hdm{top:6px;left:8px}
+.app.compact .cell.hd .hdm{top:3px;left:3px;width:6px;height:6px}
 .cell.nonote .nn{display:block;position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;border:1.8px solid var(--warn);pointer-events:none}
 .locked .cell{border-style:solid;border-color:var(--faint);cursor:default}
 .locked .cell .h-in{cursor:pointer}
@@ -906,6 +910,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 .pp-t tr.tot td{font-weight:700;border-top:1.5px solid var(--ink);border-bottom:0}
 .pp-t tr.fut td{color:var(--muted)}
 .pp-t tr.hd td,.pp-t tr.hd td.miss{color:var(--muted);opacity:.7}
+.pp-t tr.wk-s td{font-weight:620;background:var(--chrome);border-bottom:1px solid var(--rule)}.pp-t tr.wk-e td{color:var(--muted);font-style:italic}.pp-t .wk-t{font-weight:600}.pp-t .wk-sep{color:var(--muted)}.pp-t .miss-t{color:var(--warn-ink)}
 .pp-t.dgrp tr.g1 td{font-weight:700;border-top:1.5px solid var(--ink);padding-top:9px}.pp-t.dgrp tr.g2 td{font-weight:620;background:var(--chrome)}.pp-t .g-rate{font-weight:450;color:var(--muted)}.pp-t.tot-t{margin-top:-4px}
 .pp-hd-note{margin:-4px 0 12px;font-size:11.5px;color:var(--muted)}
 .pp-t.days td{padding:3px 6px}
@@ -1125,6 +1130,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 .mc.ck.we{background:color-mix(in srgb,var(--ok) 6%,var(--paper))}.mc.sg.we{background:color-mix(in srgb,var(--sig) 6%,var(--paper))}
 .mw.checked{background:color-mix(in srgb,var(--ok) 12%,transparent)}
 .mw.signed{background:color-mix(in srgb,var(--sig) 12%,transparent)}
+.mc.hd{box-shadow:inset 0 -3px 0 color-mix(in srgb,var(--ok) 75%,transparent)}.mc.hd.part{box-shadow:inset 0 -3px 0 color-mix(in srgb,var(--ok) 32%,transparent)}
 .mc.today{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .mc.sel{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
 .mc-top{display:flex;align-items:baseline;gap:6px;min-width:0}
@@ -1265,7 +1271,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 
 /* ───────────── Hjälpfunktioner ───────────── */
 const FORMAT = 'sisyfos', FORMAT_VERSION = 11, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.18.0', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const APP_VERSION = '0.19.0', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 { const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
@@ -1858,11 +1864,16 @@ const hasNorm = () => !simple() && person().employment !== 'hourly';
 // Timanställda har varken kompsaldo eller semesterkonto – de uppgifterna döljs helt för dem
 const taskHidden = (P, T) => !!T?.archived || (P?.kind === 'absence' && simple()) || (P?.kind === 'absence' && !hasNorm() && (T.absence === 'comp' || T.absence === 'vacation'));
 const norm = d => { const p = person(); return p.employment === 'hourly' || simple() ? 0 : p.employment === 'part' ? bookNorm(d) * (+p.pct || 0) / 100 : bookNorm(d); };
-// Signering av veckor (0.17.0): book.signWeeks – saknas = på när boken har fler än en person
-const signOn = () => R().book.signWeeks ?? (R().people.length > 1);
+/* Avcheckning av veckor (0.19.0): book.checkWeeks – saknas = på när boken har fler än en person. Av: ingen avcheckning
+   per vecka – tiden låses först när den markeras som hanterad, och hanterad tid syns grön i tidboken. */
+const checkOn = () => R().book.checkWeeks ?? (R().people.length > 1);
+// Signering av veckor (0.17.0): book.signWeeks – saknas = på när boken har fler än en person. Kräver avcheckning (0.19.0).
+const signOn = () => checkOn() && (R().book.signWeeks ?? (R().people.length > 1));
 /* Avcheckad: personens senaste veckohändelse – om inte administratören öppnat veckan efter den (0.18.0,
    register.reopened['person|vecka'] = {at, by} i personkortet). Checkar personen av igen gäller det på nytt. */
-const wkChecked = (pid, wk) => { const k = pid + '|' + wk, w = WEEKS.get(k), o = R().reopened?.[k]; return !!w?.checked && !(o && o.at > (w.at || '')); };
+const wkChecked = (pid, wk) => { if (!checkOn()) return false; const k = pid + '|' + wk, w = WEEKS.get(k), o = R().reopened?.[k]; return !!w?.checked && !(o && o.at > (w.at || '')); };
+// Väntar veckan på personens avcheckning? Aldrig när avcheckningen är av (0.19.0).
+const wkOpen = (pid, wk) => checkOn() && !wkChecked(pid, wk) && !R().signed[pid + '|' + wk];
 const weekState = (wk, pid = who()) => { const k = pid + '|' + wk, w = WEEKS.get(k), sg = R().signed[k], o = R().reopened?.[k]; return { checked: wkChecked(pid, wk), at: w?.at, signed: sg || null, reopened: o && w?.checked && o.at > (w.at || '') ? o : null }; };
 // Låst: avcheckad eller signerad vecka – och allt i en annans tidbok (bara personen själv skriver sin tid)
 const locked = d => { if (viewing()) return true; const w = weekState(monday(d)); return w.checked || !!w.signed; };
@@ -1982,12 +1993,12 @@ function perReady(pid, from, to) {
     if (e.deleted || !(e.hours > 0) || e.date < from || e.date > to) continue;
     hours += e.hours;
     const wk = monday(e.date), k = e.person + '|' + wk;
-    if (!wkChecked(e.person, wk) && !R().signed[k]) open.set(k, { person: e.person, week: wk });
+    if (wkOpen(e.person, wk)) open.set(k, { person: e.person, week: wk });
   }
   return { ready: hours > 0 && !open.size, hours, open: [...open.values()].sort((a, b) => a.week < b.week ? -1 : 1) };
 }
 const openWeeksTxt = r => { const ws = [...new Set(r.open.map(o => isoWeek(o.week).w))]; return (ws.length > 1 ? 'Vecka ' + ws.slice(0, -1).join(', ') + ' och ' + ws.at(-1) + ' är' : 'Vecka ' + ws[0] + ' är') + ' inte avcheckad' + (ws.length > 1 ? 'e' : ''); };
-const readyHtml = (pid, ym) => { if (ym >= ymOf(today()) || hdMo(pid, ym)?.done) return ''; const r = monthReady(pid, ym); return r.hours ? r.ready ? `<span class="st-ready" title="Alla timmar är avcheckade – månaden kan markeras som hanterad">${ic('check')}redo</span>` : `<span class="st-wait" title="${openWeeksTxt(r)}">${ic('clock')}v ${[...new Set(r.open.map(o => isoWeek(o.week).w))].join(', ')}</span>` : ''; };
+const readyHtml = (pid, ym) => { if (ym >= ymOf(today()) || hdMo(pid, ym)?.done) return ''; const r = monthReady(pid, ym); return r.hours ? r.ready ? `<span class="st-ready" title="${checkOn() ? 'Alla timmar är avcheckade' : 'Månaden är slut'} – den kan markeras som hanterad">${ic('check')}redo</span>` : `<span class="st-wait" title="${openWeeksTxt(r)}">${ic('clock')}v ${[...new Set(r.open.map(o => isoWeek(o.week).w))].join(', ')}</span>` : ''; };
 const cell = (rk, d) => { const id = IDX.get(`${who()}|${rk}|${d}`); return id ? E.get(id) : null; };
 const splitRow = rk => rk.split('~');
 const splitKey = k => k.split('|');
@@ -3638,7 +3649,7 @@ const asOn = () => isAdm() && asPeople().some(p => p.id !== me());
 // Veckor före den här med tid som personen inte har checkat av (de senaste tolv veckorna)
 function openWeeksOf(pid) {
   const t = monday(today()), from = addD(t, -84), s = new Set();
-  for (const e of E.values()) if (!e.deleted && e.person === pid && e.hours > 0 && e.date >= from && e.date < t) { const wk = monday(e.date); if (!wkChecked(pid, wk) && !R().signed[pid + '|' + wk]) s.add(wk); }
+  for (const e of E.values()) if (!e.deleted && e.person === pid && e.hours > 0 && e.date >= from && e.date < t) { const wk = monday(e.date); if (wkOpen(pid, wk)) s.add(wk); }
   return [...s].sort();
 }
 const asBtn = () => asOn() ? `<button class="btn as-btn${viewing() ? ' on' : ''}" data-act="asMenu" aria-haspopup="menu" title="Vems tidbok">${ic('person')}<span class="as-n">${viewing() ? esc(pName(who())) : 'Din tid'}</span></button>` : '';
@@ -3667,7 +3678,7 @@ function asBarHtml(wk, ws) {
   return `<div class="wkstate as-bar${ws?.signed ? ' signed' : ''}">${ic('person')}<div class="txt"><b>${esc(gen(pName(who())))} tidbok</b> – skrivskyddad, bara ${n} skriver sin tid.${txt}</div>${btn}<button class="btn sm ghost" data-act="asPick" data-p="">Till din tid</button></div>`;
 }
 // Veckans statusknapp (vecko- och dagvyn); i en annans tidbok visar den bara läget och öppnar menyn
-const wkBtn = (ws, lk) => viewing()
+const wkBtn = (ws, lk) => !checkOn() && !ws.signed ? '' : viewing()
   ? `<button class="btn${ws.checked ? ' done' : ''}${ws.signed ? ' sig' : ''}" data-act="weekStateMenu" aria-haspopup="menu">${ic(ws.signed ? 'lock' : ws.checked ? 'check' : 'clock')}<span>${ws.signed ? 'Signerad' : ws.checked ? 'Avcheckad' : 'Inte avcheckad'}</span></button>`
   : `<button class="btn${lk ? ' done' : ''}${ws.signed ? ' sig' : ''}" data-act="${lk ? 'weekStateMenu' : 'checkWeek'}" ${lk ? 'aria-haspopup="menu"' : ''}>${ic(ws.signed ? 'lock' : 'check')}<span>${ws.signed ? 'Signerad' : ws.checked ? 'Avcheckad' : 'Checka av<span class="opt"> veckan</span>'}</span></button>`;
 // Öppna en avcheckad vecka åt någon annan (0.18.0): en markering i personkortet, nyare än personens avcheckning
@@ -3755,11 +3766,11 @@ function wkStateHtml(wk, ws) {
   return `<div class="wkstate">${ic('check')}<div class="txt"><b>Veckan är avcheckad</b>${at ? ' ' + at : ''}. Rutorna är låsta tills du öppnar veckan igen.</div><button class="btn sm" data-act="reopenWeek">${ic('unlock')}Öppna igen</button>${adm && signOn() ? `<button class="btn sm" data-act="signWeek" title="I version 1 är du både administratör och medarbetare">${ic('sign')}Signera som administratör</button>` : ''}</div>`;
 }
 function cellHtml(rk, d, ri, ci, P, selDate, lk) {
-  lk = lk || !!handled(P.id, d);
+  const hdd = !!handled(P.id, d); lk = lk || hdd;
   const e = cell(rk, d), h = e ? e.hours : 0, nn = needsNote(e);
   const f = Math.min(h / Math.max(norm(d) || 8, 1), 1);
-  const lab = `${P.name}, ${sdate(d)}${h ? ', ' + fh(h) + ' timmar' : ''}${nn ? ', anteckning saknas' : ''}`;
-  return `<div class="cell${lk ? ' ro' : ''}${h > 0 ? ' has' : ''}${nn ? ' nonote' : ''}${d === today() ? ' today' : ''}${d === selDate ? ' colsel' : ''}${st.sel === rk + '|' + d ? ' sel' : ''}" data-cellbox="${rk}|${d}" data-r="${ri}" data-c="${ci}" style="--f:${f.toFixed(3)}"><input class="h-in" id="h_${rk}_${d}" data-key="${rk}|${d}" value="${h > 0 ? fh(h) : ''}" placeholder="–" inputmode="decimal" autocomplete="off" spellcheck="false" ${lk ? 'readonly' : ''} aria-label="${esc(lab)}"><span class="nn" title="Anteckning saknas"></span></div>`;
+  const lab = `${P.name}, ${sdate(d)}${h ? ', ' + fh(h) + ' timmar' : ''}${nn ? ', anteckning saknas' : ''}${hdd && h ? ', hanterad' : ''}`;
+  return `<div class="cell${lk ? ' ro' : ''}${hdd && h > 0 ? ' hd' : ''}${h > 0 ? ' has' : ''}${nn ? ' nonote' : ''}${d === today() ? ' today' : ''}${d === selDate ? ' colsel' : ''}${st.sel === rk + '|' + d ? ' sel' : ''}" data-cellbox="${rk}|${d}" data-r="${ri}" data-c="${ci}" style="--f:${f.toFixed(3)}"><input class="h-in" id="h_${rk}_${d}" data-key="${rk}|${d}" value="${h > 0 ? fh(h) : ''}" placeholder="–" inputmode="decimal" autocomplete="off" spellcheck="false" ${lk ? 'readonly' : ''} aria-label="${esc(lab)}"><span class="nn" title="Anteckning saknas"></span><span class="hdm" title="Hanterad – låst"></span></div>`;
 }
 const rowSum = (rk, days) => days.reduce((s, d) => s + (cell(rk, d)?.hours || 0), 0);
 function budgetBar(P) {
@@ -3839,7 +3850,7 @@ function dayHtml() {
     for (const rk of g.rks) {
       const { T, sub } = rowInfo(rk), e = cell(rk, d), hh = e?.hours || 0, nn = needsNote(e), key = `${rk}|${d}`, lbl = multi ? `${P.name}, ${T.name}` : P.name, ro = lockedK(rk, d) ? 'readonly' : '';
       if (multi) h += `<div class="dt-head"><span class="t-name">${esc(sub)}</span><button class="icon-btn" data-act="menuFor" data-key="${key}" aria-label="Smartmeny för ${esc(lbl)}">${ic('more')}</button></div>`;
-      h += `<div class="stepper"><button class="sbtn" data-act="step" data-key="${key}" data-d="-0.5" aria-label="Minska en halvtimme">${ic('minus')}</button><div class="dv-h${nn ? ' nonote' : ''}" data-cellbox="${key}" style="--f:${Math.min(hh / Math.max(norm(d) || 8, 1), 1).toFixed(3)}"><input class="h-in" id="h_${rk}_${d}" data-key="${key}" value="${hh > 0 ? fh(hh) : ''}" placeholder="0" inputmode="decimal" autocomplete="off" ${ro} aria-label="Timmar ${esc(lbl)}"><span class="nn" title="Anteckning saknas"></span></div><button class="sbtn" data-act="step" data-key="${key}" data-d="0.5" aria-label="Öka en halvtimme">${ic('plus')}</button></div>`;
+      h += `<div class="stepper"><button class="sbtn" data-act="step" data-key="${key}" data-d="-0.5" aria-label="Minska en halvtimme">${ic('minus')}</button><div class="dv-h${nn ? ' nonote' : ''}${hh > 0 && handled(P.id, d) ? ' hd' : ''}" data-cellbox="${key}" style="--f:${Math.min(hh / Math.max(norm(d) || 8, 1), 1).toFixed(3)}"><input class="h-in" id="h_${rk}_${d}" data-key="${key}" value="${hh > 0 ? fh(hh) : ''}" placeholder="0" inputmode="decimal" autocomplete="off" ${ro} aria-label="Timmar ${esc(lbl)}"><span class="nn" title="Anteckning saknas"></span><span class="hdm" title="Hanterad – låst"></span></div><button class="sbtn" data-act="step" data-key="${key}" data-d="0.5" aria-label="Öka en halvtimme">${ic('plus')}</button></div>`;
       h += `<label class="sr" for="n_${rk}_${d}">Anteckning ${esc(lbl)}</label><textarea class="n-in" id="n_${rk}_${d}" data-key="${key}" rows="${multi ? 2 : 3}" ${ro} placeholder="${lk ? '' : T.absence ? 'Anteckning (frivillig)' : 'Vad gjorde du?'}">${esc(e?.note)}</textarea><div class="sugg" data-sugg="${key}"></div>`;
     }
     h += `</article>`;
@@ -3914,17 +3925,20 @@ function monthBodyHtml() {
   for (const wk of ws) {
     const days = weekDays(wk).slice(0, n), ws2 = weekState(wk), { w } = isoWeek(wk);
     const wt = weekDays(wk).reduce((s, d) => s + (by.get(d) || []).reduce((x, e) => x + e.hours, 0), 0), wn = weekDays(wk).reduce((s, d) => s + norm(d), 0);
-    const past = addD(wk, 6) < t, stc = ws2.signed ? 'signed' : ws2.checked ? 'checked' : past && wt > 0 ? 'open' : '';
+    const past = addD(wk, 6) < t && checkOn(), stc = ws2.signed ? 'signed' : ws2.checked ? 'checked' : past && wt > 0 ? 'open' : '';
     h += `<div class="mrow" role="row"><button class="mw ${stc}" data-act="gotoWeek" data-wk="${wk}" title="Vecka ${w}${ws2.signed ? ' · signerad' : ws2.checked ? ' · avcheckad' : past ? ' · inte avcheckad' : ''} – öppna veckan"><b>${w}</b>${ws2.signed ? ic('lock') : ws2.checked ? ic('check') : past && wt > 0 ? '<i class="mw-dot"></i>' : ''}<span class="mono">${wt ? fh(wt) : '–'}</span>${nh && wn ? `<span class="mw-n mono">/${fh(wn)}</span>` : ''}</button>`;
     for (const d of days) {
       const es = (by.get(d) || []).slice().sort((a, b) => (pRank(proj(a.projectId)) - pRank(proj(b.projectId))) || (a.projectId < b.projectId ? -1 : 1));
       const tot = es.reduce((s, e) => s + e.hours, 0), nm = norm(d), out = ymOf(d) !== ym, hol = holidays(+d.slice(0, 4))[d];
       const miss = es.some(needsNote), mine = mp ? es.filter(hitE).reduce((s, e) => s + e.hours, 0) : 0, lk = locked(d);
+      // Hanterad tid (0.19.0): hd = all tid dagen (i markerat projekt) är hanterad, part = en del av den
+      const hes = (mp ? es.filter(hitE) : es).filter(e => e.hours > 0 && !absKind(e) && !proj(e.projectId)?.internal), nhd = hes.filter(e => handled(e.projectId, e.date)).length;
+      const hdc = !nhd ? '' : nhd === hes.length ? ' hd' : ' hd part';
       const scale = Math.max(nm || 8, tot, 1);
       const segs = es.map(e => { const P = proj(e.projectId), on = !mp || hitE(e); return `<i class="${on ? '' : 'dim'}" style="width:${(e.hours / scale * 100).toFixed(2)}%;--pc:${pc(P)}" title="${esc(P.name)} ${fh(e.hours)} h"></i>`; }).join('');
       const bal = nh && !out ? dayBal(d, tot) : 0, showBal = nh && !out && d <= t && (nm > 0 || tot > 0) && !(d === t && bal === 0);
       const lab = `${ldate(d)}${hol ? ', ' + hol.name : ''}${dayNote(d) ? ', ' + dayNote(d) : ''}: ${fh(tot)} timmar${nh ? ' av ' + fh(nm) : ''}${miss ? ', anteckning saknas' : ''}`;
-      h += `<button class="mc${out ? ' out' : ''}${d === t ? ' today' : ''}${d === sel ? ' sel' : ''}${hol && !hol.eve ? ' red' : ''}${dow(d) % 6 === 0 ? ' we' : ''}${tot > 0 ? ' has' : ''}${lk ? (weekState(monday(d)).signed ? ' sg' : ' ck') : ''}${mp && mine > 0 ? ' mine' : ''}" data-act="mPick" data-day="${d}" aria-pressed="${d === sel}" aria-label="${esc(lab)}" role="gridcell">`
+      h += `<button class="mc${out ? ' out' : ''}${d === t ? ' today' : ''}${d === sel ? ' sel' : ''}${hol && !hol.eve ? ' red' : ''}${dow(d) % 6 === 0 ? ' we' : ''}${tot > 0 ? ' has' : ''}${lk ? (weekState(monday(d)).signed ? ' sg' : ' ck') : ''}${mp && mine > 0 ? ' mine' : ''}${hdc}" data-act="mPick" data-day="${d}" aria-pressed="${d === sel}" aria-label="${esc(lab)}${hdc ? (nhd === hes.length ? ', hanterad' : ', delvis hanterad') : ''}" role="gridcell">`
         + `<span class="mc-top"><span class="mc-d">${pd(d).getDate()}${out ? ` <small>${MON[pd(d).getMonth()]}</small>` : ''}</span>${hol ? `<span class="mc-hol">${esc(hol.name)}</span>` : ''}${miss ? '<i class="mc-nn" title="Anteckning saknas"></i>' : ''}</span>${dayNote(d) ? `<span class="mc-dn">${esc(dayNote(d))}</span>` : ''}`
         + `<span class="mc-h mono">${mp ? (mine ? fh(mine) + (tot > mine ? `<small> / ${fh(tot)}</small>` : '') : tot ? `<small>${fh(tot)}</small>` : '') : tot ? fh(tot) : ''}</span>`
         + `<span class="mc-bar">${segs}${nh && nm > 0 && tot > 0 ? `<b class="mc-norm" style="left:${Math.min(nm / scale * 100, 100).toFixed(2)}%"></b>` : ''}</span>`
@@ -3961,14 +3975,14 @@ function monthSumHtml(ym) {
   } else h += `<p class="muted small" style="margin:8px 2px 0">Ingen tid registrerad i ${MONL[+ym.slice(5, 7) - 1]}.</p>`;
   h += `<button class="add-row m-add" data-act="mAdd">${ic('plus')}Projekt eller uppgift <small>markera och klicka på en dag</small></button>`;
   // Veckor som inte är avcheckade (i månaden, som är slut)
-  const open = mWeeks(ym).filter(wk => addD(wk, 6) < t && !weekState(wk).checked && !weekState(wk).signed && weekDays(wk).some(d => dayTotal(d) > 0));
+  const open = !checkOn() ? [] : mWeeks(ym).filter(wk => addD(wk, 6) < t && !weekState(wk).checked && !weekState(wk).signed && weekDays(wk).some(d => dayTotal(d) > 0));
   if (open.length) h += `<p class="small m-open-w">${ic('alert')}Inte avcheckade: ${open.map(wk => `<button class="lnk" data-act="gotoWeek" data-wk="${wk}">vecka ${isoWeek(wk).w}</button>`).join(', ')}</p>`;
   return h + `</div>`;
 }
 function monthOverviewHtml() {
   const ym = st.month, f = `${ym}-01`, l = ymLast(ym), ps = [...new Set(live().filter(e => e.date >= f && e.date <= l && e.hours > 0).map(e => e.projectId))].map(proj).filter(p => p && !p.internal && p.kind !== 'absence');
   return `<section class="psec"><h3>Projekt i ${MONL[+ym.slice(5, 7) - 1]}</h3>${ps.length ? `<ul class="plist">${ps.map(p => `<li style="--pc:${pc(p)}"><span class="dot"></span><span class="r-text"><span class="r-name">${esc(p.name)}</span><span class="r-sub mono">${fkr(used(p.id))}${running(p) ? ' · löpande' : ' av ' + fkr(p.budgetKr)}</span></span>${ring(p, 34, true)}</li>`).join('')}</ul>` : '<p class="small muted" style="margin:0">Inga kundprojekt den här månaden.</p>'}</section>
-  <section class="psec"><h3>Månadsvyn</h3><ul class="tips"><li>Klicka på en <b>dag</b> för att se dess poster här.</li><li>Klicka på <b>veckonumret</b> för att öppna veckan. Grön med bock betyder avcheckad, blå med lås signerad och en orange prick att veckan inte är avcheckad.</li><li>Klicka på ett <b>projekt</b> i tabellen för att markera det i kalendern och öppna dess meny – uppgifterna fälls ut under raden. Klicka sedan på en <b>dag</b> för att skriva tid och anteckning.</li><li><b>+ Projekt eller uppgift</b> markerar ett projekt som inte har tid i månaden.</li><li>Smartshell lägger tiden på markerad dag.</li></ul></section>`;
+  <section class="psec"><h3>Månadsvyn</h3><ul class="tips"><li>Klicka på en <b>dag</b> för att se dess poster här.</li><li>Klicka på <b>veckonumret</b> för att öppna veckan.${checkOn() ? ' Grön med bock betyder avcheckad, blå med lås signerad och en orange prick att veckan inte är avcheckad.' : ''}</li><li>Ett <b>grönt streck</b> under en dag betyder att tiden är hanterad och låst${checkOn() ? '' : ' – så låses tiden när avcheckningen per vecka är av'}.</li><li>Klicka på ett <b>projekt</b> i tabellen för att markera det i kalendern och öppna dess meny – uppgifterna fälls ut under raden. Klicka sedan på en <b>dag</b> för att skriva tid och anteckning.</li><li><b>+ Projekt eller uppgift</b> markerar ett projekt som inte har tid i månaden.</li><li>Smartshell lägger tiden på markerad dag.</li></ul></section>`;
 }
 
 /* ───────────── Egenskapspanel ─────────────
@@ -4047,7 +4061,7 @@ function overviewHtml() {
   const wk = st.view === 'day' ? monday(st.day) : st.week;
   const ps = [...new Set(rowsForWeek(wk).map(rk => splitRow(rk)[0]))].map(proj).filter(p => p && !p.internal);
   return `<section class="psec"><h3>Projekt i veckan</h3>${ps.length ? `<ul class="plist">${ps.map(p => `<li style="--pc:${pc(p)}"><span class="dot"></span><span class="r-text"><span class="r-name">${esc(p.name)}</span><span class="r-sub mono">${fkr(used(p.id))}${running(p) ? ' · löpande' : ' av ' + fkr(p.budgetKr)}</span></span>${ring(p, 34, true)}</li>`).join('')}</ul>` : '<p class="small muted" style="margin:0">Inga kundprojekt den här veckan.</p>'}</section>
-  <section class="psec"><h3>Så skriver du tid</h3><ul class="tips"><li>Klicka i en ruta och <b>skriv timmar</b> direkt, till exempel 3,5 eller 3:30. Smartmenyn öppnas vid pekaren – <b>Tab</b> tar dig till anteckningen.</li><li><b>Piltangenter</b> och Enter flyttar mellan rutorna.</li><li>Klicka på en <b>projektrad</b> för att öppna dagböckerna.</li><li>Klicka på en <b>veckodag</b> för att markera den.</li><li>Smartshell: <b>3,5 strand ritade fasad</b> lägger tiden på markerad dag. Börja med <b>tor</b>, <b>mån-fre</b> eller <b>v43</b> för att välja dagar${simple() ? '' : ' – <b>v43 fl</b> fyller veckan med föräldraledighet'}.</li><li>En orange ring betyder att anteckning saknas.</li><li><b>Checka av veckan</b> när den är klar.</li></ul></section>`;
+  <section class="psec"><h3>Så skriver du tid</h3><ul class="tips"><li>Klicka i en ruta och <b>skriv timmar</b> direkt, till exempel 3,5 eller 3:30. Smartmenyn öppnas vid pekaren – <b>Tab</b> tar dig till anteckningen.</li><li><b>Piltangenter</b> och Enter flyttar mellan rutorna.</li><li>Klicka på en <b>projektrad</b> för att öppna dagböckerna.</li><li>Klicka på en <b>veckodag</b> för att markera den.</li><li>Smartshell: <b>3,5 strand ritade fasad</b> lägger tiden på markerad dag. Börja med <b>tor</b>, <b>mån-fre</b> eller <b>v43</b> för att välja dagar${simple() ? '' : ' – <b>v43 fl</b> fyller veckan med föräldraledighet'}.</li><li>En orange ring betyder att anteckning saknas, en grön prick att tiden är hanterad och låst.</li>${checkOn() ? '<li><b>Checka av veckan</b> när den är klar.</li>' : ''}</ul></section>`;
 }
 
 function renderStatus() {
@@ -5801,8 +5815,10 @@ function settingsHtml() {
     <div class="fld"><label for="s_prole">Standardroll</label><select id="s_prole" data-set="person.defaultRoleId">${R().roles.map(r => `<option value="${r.id}" ${p.defaultRoleId === r.id ? 'selected' : ''}>${esc(r.name)} · ${fkr(rNow(r.rate))}/h</option>`).join('')}</select></div>
     ${simple() ? '' : `<div class="fld"><span class="lbl">Anställning</span><div class="vacnow">${p.employment === 'hourly' ? 'Timanställd' : p.employment === 'part' ? `Deltid ${p.pct} %` : 'Heltid'}${cb != null ? ` · komp ${sgn(cb)} h` : ''}${vi ? ` · semester ${fdays(vi.left)} d kvar` : ''}</div></div>
     <div class="fld full"><div><button class="btn sm" data-act="personDlg">${ic('person')}Anställning, saldo och semester …</button></div></div>`}</div></section>`;
-  h += `<section class="sset" id="set-week"><h2>Avcheckning och signering</h2><p class="muted small">När veckans tid är klar checkar du av veckan – rutorna låses tills du öppnar den igen. Avcheckade veckor räcker för att hantera och fakturera tiden.</p>
-    <label class="chk"><input type="checkbox" id="setSign" ${signOn() ? 'checked' : ''}> Administratören signerar veckorna</label><p class="small muted" style="margin:6px 0 0">En signerad vecka är låst – bara administratören kan låsa upp den igen.${R().people.length > 1 ? '' : ' Behövs sällan när du är ensam i boken, därför är det av som standard.'}</p></section>`;
+  const solo = R().people.length < 2;
+  h += `<section class="sset" id="set-week"><h2>Avcheckning och signering</h2>
+    <label class="chk"><input type="checkbox" id="setCheck" ${checkOn() ? 'checked' : ''}> Checka av veckorna</label><p class="small muted" style="margin:6px 0 0">När veckans tid är klar checkar du av veckan – rutorna låses tills du öppnar den igen. Passar när du arbetar en fast vecka, på heltid eller deltid. Avstängt låses tiden först när den markeras som hanterad i rapporterna${solo ? ' – därför är det av som standard när du är ensam i boken' : ''}. Hanterad tid syns med en grön prick i tidboken.</p>
+    <label class="chk" style="margin-top:12px"><input type="checkbox" id="setSign" ${signOn() ? 'checked' : ''} ${checkOn() ? '' : 'disabled'}> Administratören signerar veckorna</label><p class="small muted" style="margin:6px 0 0">En signerad vecka är låst – bara administratören kan låsa upp den igen. Kräver avcheckning.${solo ? ' Behövs sällan när du är ensam i boken, därför är det av som standard.' : ''}</p></section>`;
   const nf = numFmt(b.numberFormat || DEF_NUMFMT);
   h += `<section class="sset" id="set-num"><h2>Nya projekt, nummer och förkortningar</h2><div class="form">${fmtEditorHtml('setFmt', b.numberFormat || DEF_NUMFMT)}
     ${nf.serial && !nf.err ? `<div class="fld"><label for="setStart">Nästa löpnummer</label><input id="setStart" class="mono" inputmode="numeric" value="${nf.n}"><span class="fld-hint" id="setStartHint">Lägst ${nf.minN}. Höj det om du har projektnummer från tiden före Sisyfos.</span></div>` : ''}
@@ -6012,7 +6028,7 @@ function projPageHtml(P) {
   const ppl = new Map(); for (const e of es) { const o = ppl.get(e.person) || { h: 0, a: 0, roles: new Set(), last: '' }; o.h += e.hours; o.a += amountOf(e); o.roles.add(e.roleId); if (e.date > o.last) o.last = e.date; ppl.set(e.person, o); }
   for (const pid in P.memberRoles || {}) if (!ppl.has(pid)) ppl.set(pid, { h: 0, a: 0, roles: new Set([P.memberRoles[pid]]), last: '' });
   // 0.18.0: pris i projektet, öppen tid, veckor som inte är avcheckade och (för admin) en genväg till personens tidbok
-  for (const e of es) { const o = ppl.get(e.person); if (!handled(P.id, e.date)) { o.oh = (o.oh || 0) + e.hours; o.oa = (o.oa || 0) + amountOf(e); } const wk = monday(e.date); if (e.hours > 0 && wk < monday(today()) && !wkChecked(e.person, wk) && !R().signed[e.person + '|' + wk]) (o.ow = o.ow || new Set()).add(wk); }
+  for (const e of es) { const o = ppl.get(e.person); if (!handled(P.id, e.date)) { o.oh = (o.oh || 0) + e.hours; o.oa = (o.oa || 0) + amountOf(e); } const wk = monday(e.date); if (e.hours > 0 && wk < monday(today()) && wkOpen(e.person, wk)) (o.ow = o.ow || new Set()).add(wk); }
   if (!abs && !simple()) h += `<section class="dsec"><h2>Medarbetare</h2>${ppl.size ? `<ul class="ppl">${[...ppl].map(([pid, o]) => { const pe = byId(R().people, pid), rl = roleFor(P.id, pid), pr = P.internal ? null : rateFor(P.id, rl, pid);
     return `<li><span class="av">${esc(pe?.initials || '?')}</span><span class="r-text"><span class="r-name">${pid === me() ? 'Du' : esc(pe?.name || 'Okänd')}</span><span class="r-sub">${[...o.roles].map(r => esc(role(r)?.name || '')).filter(Boolean).join(', ')}${pr != null ? ' · ' + fkr(pr) + '/h' : ''}${o.last ? ' · senast ' + sdate(o.last) : ''}</span>${o.ow?.size ? `<span class="r-sub ppl-w">${ic('clock')}${o.ow.size > 3 ? `${o.ow.size} veckor inte avcheckade, senast v ${isoWeek([...o.ow].sort().at(-1)).w}` : `v ${[...o.ow].sort().map(w => isoWeek(w).w).join(', ')} inte avcheckad${o.ow.size > 1 ? 'e' : ''}`}</span>` : ''}</span><span class="ppl-n"><span class="mono">${fh(o.h)} h</span>${!P.internal && o.a ? `<span class="mono small muted">${fkr(o.a)}${o.oa > 0.5 && o.oa < o.a - 0.5 ? ` · öppet ${fkr(o.oa)}` : ''}</span>` : ''}</span>${isAdm() && pid !== me() && S.logs?.[pid] ? `<button class="btn sm ghost" data-act="asGo" data-p="${pid}" title="Öppna ${esc(gen(pe?.name || ''))} tidbok">${ic('week')}<span class="opt">Tidbok</span></button>` : ''}</li>`; }).join('')}</ul>` : '<p class="muted small">Ingen har lagt tid på projektet än.</p>'}${orgMember() ? '<p class="small muted" style="margin:8px 0 0">Du ser bara din egen tid i projektet.</p>' : ''}</section>`;
   h += `</div><div class="dp-col">`;
@@ -6348,7 +6364,7 @@ function rep() {
   if (!st.rep) {
     const t = today(), ym = +t.slice(8, 10) <= 10 ? ymAdd(ymOf(t), -1) : ymOf(t);
     const rec = recentRows().map(rk => proj(splitRow(rk)[0])).find(p => p && !p.internal);
-    st.rep = { tab: 'month', year: +t.slice(0, 4), pid: rec?.id || R().projects.find(p => p.kind !== 'absence')?.id, ym, custom: false, from: `${ym}-01`, to: ymLast(ym), amount: 'ex', budget: true, ptype: 'month', pym: ymOf(t), pwk: monday(t) };
+    st.rep = { tab: 'month', year: +t.slice(0, 4), pid: rec?.id || R().projects.find(p => p.kind !== 'absence')?.id, ym, custom: false, from: `${ym}-01`, to: ymLast(ym), amount: 'ex', budget: true, lay: 'task', empty: false, ptype: 'month', pym: ymOf(t), pwk: monday(t) };
   }
   if (!proj(st.rep.pid)) st.rep.pid = R().projects.find(p => p.kind !== 'absence')?.id;
   return st.rep;
@@ -6448,8 +6464,46 @@ function handlePerDlg(pid, from, to) {
 function hpRead() { const f = $('#hpFrom').value, t = $('#hpTo').value; if (!f || !t) { $('#hpErr').textContent = 'Ange båda datumen.'; return null; } if (t < f) { $('#hpErr').textContent = 'Slutdatumet ligger före startdatumet.'; return null; } return [f, t]; }
 function handlePerGo(off) { const p = hpRead(); if (!p) return; closeDlg(); if (off) doUnhandle(st.hpPid, ...p); else handleAsk(st.hpPid, ...p); }
 
+/* Per dag och vecka (0.19.0): dagboksrader per dag – flera uppgifter samma dag på en rad – och en summarad per
+   kalendervecka; med empty också veckor i perioden utan rapporterad tid. rows = [{date, task, note, hours, amount, miss, hd}].
+   Ger [{k:'d', date, parts:[{task, note, miss}], hours, amount, hd} | {k:'w', wk, from, to, hours, amount} | {k:'e', wk, from, to}] */
+function weekItems(rows, from, to, o = {}) {
+  const byD = new Map(); for (const r of rows) { const l = byD.get(r.date) || []; l.push(r); byD.set(r.date, l); }
+  const days = [...byD.keys()].sort(), out = [], wks = [];
+  if (o.empty) for (let w = monday(from); w <= to; w = addD(w, 7)) wks.push(w); else for (const d of days) if (wks.at(-1) !== monday(d)) wks.push(monday(d));
+  for (const wk of wks) {
+    const lo = wk < from ? from : wk, hi = addD(wk, 6) > to ? to : addD(wk, 6), ds = days.filter(d => d >= wk && d <= addD(wk, 6));
+    if (!ds.length) { out.push({ k: 'e', wk, from: lo, to: hi }); continue; }
+    let wh = 0, wa = 0;
+    for (const d of ds) {
+      const l = byD.get(d), tag = o.task || new Set(l.map(r => r.task)).size > 1, h = l.reduce((s, r) => s + r.hours, 0), a = l.reduce((s, r) => s + r.amount, 0);
+      out.push({ k: 'd', date: d, parts: l.map(r => ({ task: tag ? r.task : '', note: r.note, miss: r.miss })).filter(p => p.task || p.note || p.miss), hours: h, amount: a, hd: l.every(r => r.hd) });
+      wh += h; wa += a;
+    }
+    out.push({ k: 'w', wk, from: lo, to: hi, hours: wh, amount: wa });
+  }
+  return out;
+}
+const wkLabel = x => `Vecka ${isoWeek(x.wk).w} · ${dSpan(x.from, x.to)}`;
+const partsHtml = ps => ps.map(p => `${p.task ? `<b class="wk-t">${esc(p.task)}:</b> ` : ''}${p.miss ? '<span class="miss-t">Anteckning saknas</span>' : esc(p.note)}`).join('<span class="wk-sep"> · </span>');
+const partsTxt = ps => ps.map(p => (p.task ? p.task + ': ' : '') + (p.miss ? '(anteckning saknas)' : p.note)).join(' · ');
+const WK_EMPTY = 'ingen rapporterad tid';
+// Raderna i HTML-tabellen: dag, veckans summa och tomma veckor (kolumner: datum, anteckning, timmar, ev. belopp)
+function weekRowsHtml(items, am, money) {
+  return items.map(x => x.k === 'd' ? `<tr class="${x.hd ? 'hd' : ''}"><td class="nw">${sdate(x.date)}</td><td class="w">${partsHtml(x.parts)}</td><td class="r mono">${fh(x.hours)}</td>${am ? `<td class="r mono">${money(x.amount)}</td>` : ''}</tr>`
+    : x.k === 'w' ? `<tr class="wk-s"><td colspan="2">${esc(wkLabel(x))}</td><td class="r mono">${fh(x.hours)}</td>${am ? `<td class="r mono">${money(x.amount)}</td>` : ''}</tr>`
+    : `<tr class="wk-e"><td colspan="2">${esc(wkLabel(x))} – ${WK_EMPTY}</td><td class="r mono">–</td>${am ? '<td class="r mono">–</td>' : ''}</tr>`).join('');
+}
+// Samma rader till pdfTable (kolumnerna datum, anteckning, timmar, ev. belopp)
+function weekRowsPdf(items, am, money) {
+  return items.map(x => x.k === 'd' ? (c => x.hd ? { cells: c, muted: true } : c)([sdate(x.date), partsTxt(x.parts), fh(x.hours), ...(am ? [money(x.amount)] : [])])
+    : x.k === 'w' ? { cells: [wkLabel(x), fh(x.hours), ...(am ? [money(x.amount)] : [])], span: 2, bold: true, fill: SOFT }
+    : { cells: [`${wkLabel(x)} – ${WK_EMPTY}`, '–', ...(am ? ['–'] : [])], span: 2, muted: true });
+}
+
 // Projektdagbok
-function diaryData(pid, from, to, amt) {
+function diaryData(pid, from, to, amt, o) {
+  o = o || { lay: st.rep?.lay, empty: st.rep?.empty };
   const P = proj(pid), C = cust(P.customerId), vat = +R().book.vatRate || 0, k = amt === 'inc' ? 1 + vat / 100 : 1, tIdx = id => P.tasks.findIndex(t => t.id === id);
   const es = pEs(pid).filter(e => !e.deleted && e.date >= from && e.date <= to && (e.hours > 0 || (e.note || '').trim()))
     .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (tIdx(a.taskId) - tIdx(b.taskId)) || (a.person < b.person ? -1 : 1));
@@ -6460,14 +6514,15 @@ function diaryData(pid, from, to, amt) {
   // Hierarki (0.17.1): person (bara när fler än en) → uppgift med à-pris → dagboksrader
   const pOrd = id => { const i = R().people.findIndex(x => x.id === id); return i < 0 ? 999 : i; }, gm = new Map();
   for (const e of es) {
-    let g = gm.get(e.person); if (!g) gm.set(e.person, g = { pid: e.person, name: R().people.find(x => x.id === e.person)?.name || initialsOf(e.person) || '–', init: initialsOf(e.person), hours: 0, amount: 0, tm: new Map() });
+    let g = gm.get(e.person); if (!g) gm.set(e.person, g = { pid: e.person, name: R().people.find(x => x.id === e.person)?.name || initialsOf(e.person) || '–', init: initialsOf(e.person), hours: 0, amount: 0, tm: new Map(), rows: [] });
     const b = billable(e), rate = b ? e.rate * k : null, tk = e.taskId + '|' + (rate ?? '-');
     let t = g.tm.get(tk); if (!t) g.tm.set(tk, t = { tid: e.taskId, name: taskOf(P, e.taskId)?.name || '', rate, i: tIdx(e.taskId), hours: 0, amount: 0, rows: [] });
     const a = amountOf(e) * k; t.hours += e.hours; t.amount += a; g.hours += e.hours; g.amount += a;
     t.rows.push({ date: e.date, hours: e.hours, note: (e.note || '').trim(), amount: a, miss: needsNote(e), hd: !!handled(pid, e.date) });
+    g.rows.push({ date: e.date, task: t.name, hours: e.hours, note: (e.note || '').trim(), amount: a, miss: needsNote(e), hd: !!handled(pid, e.date) });
   }
   const groups = [...gm.values()].sort((a, b) => pOrd(a.pid) - pOrd(b.pid)).map(g => ({ ...g, tasks: [...g.tm.values()].sort((a, b) => (a.i - b.i) || ((a.rate ?? -1) - (b.rate ?? -1))) }));
-  return { P, C, from, to, amt, vat, rows, groups, perTask: [...per.values()].sort((a, b) => a.i - b.i), hours: rows.reduce((s, r) => s + r.hours, 0), amount: rows.reduce((s, r) => s + r.amount, 0), hdH: rows.reduce((s, r) => s + (r.hd ? r.hours : 0), 0), hdA: rows.reduce((s, r) => s + (r.hd ? r.amount : 0), 0), multi: people.size > 1, showTask: P.tasks.length > 1, miss: rows.filter(r => r.miss).length,
+  return { P, C, from, to, amt, vat, rows, groups, perTask: [...per.values()].sort((a, b) => a.i - b.i), hours: rows.reduce((s, r) => s + r.hours, 0), amount: rows.reduce((s, r) => s + r.amount, 0), hdH: rows.reduce((s, r) => s + (r.hd ? r.hours : 0), 0), hdA: rows.reduce((s, r) => s + (r.hd ? r.amount : 0), 0), multi: people.size > 1, showTask: P.tasks.length > 1, miss: rows.filter(r => r.miss).length, lay: o.lay === 'week' ? 'week' : 'task', empty: o.lay === 'week' && !!o.empty,
     budget: !P.internal && P.budgetKr > 0 ? { budget: P.budgetKr, used: usedTo, pct: usedTo / P.budgetKr, to } : null };
 }
 const dLong = d => `${pd(d).getDate()} ${MON[pd(d).getMonth()]} ${d.slice(0, 4)}`;
@@ -6482,6 +6537,7 @@ function diaryTabHtml() {
   let h = `<div class="rep-ctl"><div class="fld"><label for="rpP">Projekt</label><select id="rpP">${og('active')}${og('paused')}${og('closed')}</select></div>
    <div class="fld"><label for="rpM">Månad</label>${r.custom ? `<div class="two"><input type="date" id="rpFrom" value="${r.from}" aria-label="Från"><input type="date" id="rpTo" value="${r.to}" aria-label="Till"></div>` : `<div class="mnav"><button class="icon-btn" data-act="rpMonth" data-d="-1" aria-label="Föregående månad">${ic('left')}</button><input type="month" id="rpM" value="${r.ym}"><button class="icon-btn" data-act="rpMonth" data-d="1" aria-label="Nästa månad">${ic('right')}</button></div>`}<label class="chk small"><input type="checkbox" id="rpCustom" ${r.custom ? 'checked' : ''}> Egen period</label></div>
    <div class="fld"><label for="rpAmt">Belopp</label><select id="rpAmt"><option value="none" ${r.amount === 'none' ? 'selected' : ''}>Visa inte belopp</option><option value="ex" ${r.amount === 'ex' ? 'selected' : ''}>Exkl. moms</option><option value="inc" ${r.amount === 'inc' ? 'selected' : ''}>Inkl. moms ${fhs(+R().book.vatRate || 0)} %</option></select><label class="chk small"><input type="checkbox" id="rpBud" ${r.budget ? 'checked' : ''}> Visa budgetläge</label></div>
+   <div class="fld"><label for="rpLay">Uppställning</label><select id="rpLay"><option value="task" ${r.lay !== 'week' ? 'selected' : ''}>Per uppgift</option><option value="week" ${r.lay === 'week' ? 'selected' : ''}>Per dag och vecka</option></select><label class="chk small"><input type="checkbox" id="rpEmpty" ${r.empty && r.lay === 'week' ? 'checked' : ''} ${r.lay === 'week' ? '' : 'disabled'}> Visa veckor utan tid</label></div>
    <div class="rep-acts"><button class="btn primary" data-act="dlDiary" ${d.rows.length ? '' : 'disabled'}>${ic('export')}Ladda ner PDF</button>
    ${hd?.all ? `<button class="btn done" data-act="unhandle" ${pa} title="Häv hanterad och lås upp">${ic('lock')}Hanterad ${sdate(hd.at.slice(0, 10))}</button>` : d.rows.length ? `<button class="btn" data-act="handle" ${pa}>${ic('lock')}${hd ? 'Markera resten som hanterad' : 'Markera som hanterad'}</button>${hd ? `<button class="btn ghost" data-act="unhandle" ${pa} title="Häv det som är hanterat i perioden (${hdSpan(hd)}) och lås upp">${ic('unlock')}Häv ${hdSpan(hd)}</button>` : ''}` : ''}</div></div>` + sug;
   if (d.miss) h += `<div class="alert soft">${ic('alert')}<div class="txt">${d.miss === 1 ? 'En tid saknar' : d.miss + ' tider saknar'} anteckning i perioden. Den står med som tom rad i dagboken.</div></div>`;
@@ -6504,6 +6560,7 @@ function diaryPreview(d) {
   h += `<table class="pp-t dgrp"><thead><tr><th>Datum</th><th class="w">Anteckning</th><th class="r">Timmar</th>${am ? '<th class="r">Belopp</th>' : ''}</tr></thead><tbody>`;
   for (const g of d.groups) {
     if (d.multi) h += `<tr class="g1"><td colspan="${span}">${esc(g.name)}</td><td class="r mono">${fh(g.hours)}</td>${am ? `<td class="r mono">${money(g.amount)}</td>` : ''}</tr>`;
+    if (d.lay === 'week') { h += weekRowsHtml(weekItems(g.rows, d.from, d.to, { empty: d.empty, task: d.showTask }), am, money); continue; }
     for (const t of g.tasks) {
       h += `<tr class="g2"><td colspan="${span}">${esc(t.name)}${am ? ` <span class="g-rate">${t.rate == null ? '· ej debiterbar' : `· à ${fkr(t.rate)}/h`}</span>` : ''}</td><td class="r mono">${fh(t.hours)}</td>${am ? `<td class="r mono">${money(t.amount)}</td>` : ''}</tr>`;
       let last = '';
@@ -6522,6 +6579,7 @@ function diaryPdf(d, showBudget) {
   const rows = [];
   for (const g of d.groups) {
     if (d.multi) rows.push({ cells: [g.name, fh(g.hours), ...(am ? [money(g.amount)] : [])], span: 2, bold: true });
+    if (d.lay === 'week') { rows.push(...weekRowsPdf(weekItems(g.rows, d.from, d.to, { empty: d.empty, task: d.showTask }), am, money)); continue; }
     for (const t of g.tasks) {
       rows.push({ cells: [t.name + (am ? (t.rate == null ? ' · ej debiterbar' : ` · à ${fkr(t.rate)}/h`) : ''), fh(t.hours), ...(am ? [money(t.amount)] : [])], span: 2, fill: SOFT });
       let last = '';
@@ -6556,7 +6614,7 @@ function invSel() {
   const r = rep();
   if (!r.inv) {
     const l = openProjects(), first = l.find(x => x.p.customerId) || l[0], t = today(), ym = ymAdd(ymOf(t), -1);
-    r.inv = { sel: simple() ? 'all' : first ? (first.p.customerId ? 'c:' + first.p.customerId : 'p:' + first.p.id) : 'all', ym, custom: false, from: `${ym}-01`, to: ymLast(ym), old: true, rows: simple() };
+    r.inv = { sel: simple() ? 'all' : first ? (first.p.customerId ? 'c:' + first.p.customerId : 'p:' + first.p.id) : 'all', ym, custom: false, from: `${ym}-01`, to: ymLast(ym), old: true, rows: simple(), lay: 'rows', empty: false };
   }
   const v = r.inv, ok = v.sel === 'all' || (v.sel.startsWith('c:') && simple()) ? v.sel === 'all' : v.sel.startsWith('c:') ? !!cust(v.sel.slice(2)) : !!proj(v.sel.slice(2));
   if (!ok) v.sel = 'all';
@@ -6587,15 +6645,18 @@ function invoiceData(sel, from, to, old, withRows) {
       if (!out.first || e.date < out.first) out.first = e.date; if (!out.last || e.date > out.last) out.last = e.date;
       if (!pf || e.date < pf) pf = e.date;
     }
+    const pFrom = old && pf && pf < from ? pf : from;
     // Perioden som låses när underlaget markeras som hanterat: från projektets äldsta öppna tid (eller periodens början) till periodens slut
     if (lines.size) out.spans.push({ pid: P.id, from: pf < from ? pf : from, to });
-    if (lines.size) out.projects.push({ P, lines: [...lines.values()].sort((a, b) => (a.i - b.i) || (b.rate - a.rate)), rows: rows.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.i - b.i), hours: ph, amount: pa });
+    if (lines.size) out.projects.push({ P, lines: [...lines.values()].sort((a, b) => (a.i - b.i) || (b.rate - a.rate)), rows: rows.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.i - b.i), from: pFrom, hours: ph, amount: pa });
     out.hours += ph; out.amount += pa;
   }
   out.projects.sort((a, b) => String(a.P.number).localeCompare(String(b.P.number), 'sv'));
   out.vatA = out.amount * vat / 100;
   for (const s of out.spans) s.ready = perReady(s.pid, s.from, s.to);
   out.all = sel === 'all'; out.withRows = !!withRows;
+  // Per dag och vecka (0.19.0) – bara med dagboksrader
+  const v = st.rep?.inv; out.lay = withRows && v?.lay === 'week' ? 'week' : 'rows'; out.empty = out.lay === 'week' && !!v?.empty;
   out.label = periodLabel(out.first && out.first < from ? out.first : from, to);
   return out;
 }
@@ -6636,6 +6697,7 @@ function invoiceTabHtml() {
   let h = `<div class="rep-ctl"><div class="fld"><label for="ivS">${simple() ? 'Projekt' : 'Underlag för'}</label><select id="ivS"><option value="all" ${v.sel === 'all' ? 'selected' : ''}>Alla projekt</option>${cs.length && !simple() ? `<optgroup label="Kund – alla projekt">${cs.map(c => `<option value="c:${c.id}" ${v.sel === 'c:' + c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</optgroup>` : ''}<optgroup label="${simple() ? 'Projekt' : 'Ett projekt'}">${ps.map(p => `<option value="p:${p.id}" ${v.sel === 'p:' + p.id ? 'selected' : ''}>${esc(p.number)} ${esc(p.name)}</option>`).join('')}</optgroup></select></div>
    <div class="fld"><label for="ivM">${v.custom ? 'Period' : 'Till och med månad'}</label>${v.custom ? `<div class="two"><input type="date" id="ivFrom" value="${v.from}" aria-label="Från"><input type="date" id="ivTo" value="${v.to}" aria-label="Till"></div>` : `<div class="mnav"><button class="icon-btn" data-act="ivMonth" data-d="-1" aria-label="Föregående månad">${ic('left')}</button><input type="month" id="ivM" value="${v.ym}"><button class="icon-btn" data-act="ivMonth" data-d="1" aria-label="Nästa månad">${ic('right')}</button></div>`}<label class="chk small"><input type="checkbox" id="ivCustom" ${v.custom ? 'checked' : ''}> Egen period</label></div>
    <div class="fld"><span class="lbl">Innehåll</span><label class="chk small" style="margin-top:6px"><input type="checkbox" id="ivOld" ${v.old ? 'checked' : ''}> All öppen tid före perioden</label><label class="chk small"><input type="checkbox" id="ivRows" ${v.rows ? 'checked' : ''}> Dagboksrader med datum och anteckning</label></div>
+   <div class="fld"><label for="ivLay">Dagboksrader</label><select id="ivLay" ${v.rows ? '' : 'disabled'}><option value="rows" ${v.lay !== 'week' ? 'selected' : ''}>En rad per tidpost</option><option value="week" ${v.lay === 'week' ? 'selected' : ''}>Per dag och vecka</option></select><label class="chk small"><input type="checkbox" id="ivEmpty" ${v.empty && v.lay === 'week' ? 'checked' : ''} ${v.rows && v.lay === 'week' ? '' : 'disabled'}> Visa veckor utan tid</label></div>
    <div class="rep-acts"><button class="btn${invOn() ? '' : ' primary'}" data-act="dlInvPdf" ${d.hours ? '' : 'disabled'}>${ic('export')}PDF</button><button class="btn" data-act="dlInvCsv" ${d.hours ? '' : 'disabled'}>${ic('export')}CSV</button>${invOn() ? `<button class="btn primary" data-act="invNew" ${d.hours && v.sel !== 'all' ? '' : `disabled title="${d.hours ? 'Välj en kund eller ett projekt' : 'Ingen öppen tid'}"`}>${ic('report')}Skapa faktura</button>` : ''}${d.spans.length ? `<button class="btn" data-act="invHandle">${ic('lock')}Markera som hanterat</button>` : ''}</div></div>` + repSuggestHtml('invoice');
   if (d.miss) h += `<div class="alert soft">${ic('alert')}<div class="txt">${d.miss === 1 ? 'En tid saknar' : d.miss + ' tider saknar'} anteckning. Fyll i dem i tidboken innan du skickar ${v.rows ? 'underlaget' : 'projektdagboken som bilaga'}.</div></div>`;
   h += `<div class="paper">${invPreview(d, v.sel)}</div>`;
@@ -6647,7 +6709,7 @@ function invPreview(d, sel) {
   let h = paperHead(invTitle(sel, d.withRows), sel === 'all' ? '' : invName(sel)) + `<dl class="pp-facts">${invFacts(d).map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v).replace(/\n/g, '<br>')}</dd></div>`).join('')}</dl>`;
   if (!d.hours) return h + `<p class="muted">Ingen öppen debiterbar tid${d.done.h ? ` – ${fh(d.done.h)} h i perioden är redan hanterade` : ''}.</p>`;
   for (const x of d.projects) {
-    h += `<h3 class="pp-h">${esc(invPHead(d, x.P))}${x.P.property ? ` <span class="muted">· ${esc(x.P.property)}</span>` : ''}</h3>${x.rows.length ? `<table class="pp-t"><thead><tr><th>Datum</th>${x.P.tasks.length > 1 ? '<th>Uppgift</th>' : ''}<th class="w">Anteckning</th><th class="r">Timmar</th><th class="r">Belopp</th></tr></thead><tbody>${x.rows.map(rw => `<tr><td class="nw">${sdate(rw.date)}</td>${x.P.tasks.length > 1 ? `<td>${esc(rw.task)}</td>` : ''}<td class="w${rw.miss ? ' miss' : ''}">${rw.miss ? 'Anteckning saknas' : esc(rw.note)}</td><td class="r mono">${fh(rw.hours)}</td><td class="r mono">${fkr(rw.amount)}</td></tr>`).join('')}</tbody></table>` : ''}<table class="pp-t"><thead><tr><th class="w">Uppgift</th><th>Roll</th><th class="r">Timmar</th><th class="r">À-pris</th><th class="r">Belopp</th></tr></thead><tbody>${x.lines.map(l => `<tr><td class="w">${esc(l.task)}</td><td>${esc(l.role)}</td><td class="r mono">${fh(l.hours)}</td><td class="r mono">${fkr(l.rate)}</td><td class="r mono">${fkr(l.amount)}</td></tr>`).join('')}<tr class="tot"><td class="w">Summa projektet</td><td></td><td class="r mono">${fh(x.hours)}</td><td></td><td class="r mono">${fkr(x.amount)}</td></tr></tbody></table>`;
+    h += `<h3 class="pp-h">${esc(invPHead(d, x.P))}${x.P.property ? ` <span class="muted">· ${esc(x.P.property)}</span>` : ''}</h3>${x.rows.length && d.lay === 'week' ? `<table class="pp-t dgrp"><thead><tr><th>Datum</th><th class="w">Anteckning</th><th class="r">Timmar</th><th class="r">Belopp</th></tr></thead><tbody>${weekRowsHtml(weekItems(x.rows, x.from, d.to, { empty: d.empty, task: x.P.tasks.length > 1 }), true, fkr)}</tbody></table>` : x.rows.length ? `<table class="pp-t"><thead><tr><th>Datum</th>${x.P.tasks.length > 1 ? '<th>Uppgift</th>' : ''}<th class="w">Anteckning</th><th class="r">Timmar</th><th class="r">Belopp</th></tr></thead><tbody>${x.rows.map(rw => `<tr><td class="nw">${sdate(rw.date)}</td>${x.P.tasks.length > 1 ? `<td>${esc(rw.task)}</td>` : ''}<td class="w${rw.miss ? ' miss' : ''}">${rw.miss ? 'Anteckning saknas' : esc(rw.note)}</td><td class="r mono">${fh(rw.hours)}</td><td class="r mono">${fkr(rw.amount)}</td></tr>`).join('')}</tbody></table>` : ''}<table class="pp-t"><thead><tr><th class="w">Uppgift</th><th>Roll</th><th class="r">Timmar</th><th class="r">À-pris</th><th class="r">Belopp</th></tr></thead><tbody>${x.lines.map(l => `<tr><td class="w">${esc(l.task)}</td><td>${esc(l.role)}</td><td class="r mono">${fh(l.hours)}</td><td class="r mono">${fkr(l.rate)}</td><td class="r mono">${fkr(l.amount)}</td></tr>`).join('')}<tr class="tot"><td class="w">Summa projektet</td><td></td><td class="r mono">${fh(x.hours)}</td><td></td><td class="r mono">${fkr(x.amount)}</td></tr></tbody></table>`;
   }
   h += `<h3 class="pp-h">Att fakturera</h3><table class="pp-t sum"><tbody><tr><td class="w">Summa exkl. moms</td><td class="r mono">${fh(d.hours)} h</td><td class="r mono">${fkr(d.amount)}</td></tr><tr><td class="w">Moms ${fhs(d.vat)} %</td><td></td><td class="r mono">${fkr(d.vatA)}</td></tr><tr class="tot"><td class="w">Summa inkl. moms</td><td></td><td class="r mono">${fkr(d.amount + d.vatA)}</td></tr></tbody></table>`;
   h += `<p class="pp-hd-note">${INV_NOTE}${d.done.h ? ` ${fh(d.done.h)} h i perioden är redan hanterade och ingår inte.` : ''}</p>`;
@@ -6658,7 +6720,8 @@ function invoicePdf(d, sel) {
   pdfFacts(doc, invFacts(d));
   for (const x of d.projects) {
     pdfH2(doc, `${invPHead(d, x.P)}${x.P.property ? ' · ' + x.P.property : ''}`);
-    if (x.rows.length) { const mt = x.P.tasks.length > 1; pdfTable(doc, [{ h: 'Datum', w: 58 }, ...(mt ? [{ h: 'Uppgift', w: 92, wrap: true }] : []), { h: 'Anteckning', wrap: true }, { h: 'Timmar', w: 46, align: 'right' }, { h: 'Belopp', w: 70, align: 'right' }], x.rows.map(rw => [sdate(rw.date), ...(mt ? [rw.task] : []), rw.miss ? '(anteckning saknas)' : rw.note, fh(rw.hours), fkr(rw.amount)])); }
+    if (x.rows.length && d.lay === 'week') pdfTable(doc, [{ h: 'Datum', w: 58 }, { h: 'Anteckning', wrap: true }, { h: 'Timmar', w: 46, align: 'right' }, { h: 'Belopp', w: 70, align: 'right' }], weekRowsPdf(weekItems(x.rows, x.from, d.to, { empty: d.empty, task: x.P.tasks.length > 1 }), true, fkr));
+    else if (x.rows.length) { const mt = x.P.tasks.length > 1; pdfTable(doc, [{ h: 'Datum', w: 58 }, ...(mt ? [{ h: 'Uppgift', w: 92, wrap: true }] : []), { h: 'Anteckning', wrap: true }, { h: 'Timmar', w: 46, align: 'right' }, { h: 'Belopp', w: 70, align: 'right' }], x.rows.map(rw => [sdate(rw.date), ...(mt ? [rw.task] : []), rw.miss ? '(anteckning saknas)' : rw.note, fh(rw.hours), fkr(rw.amount)])); }
     pdfTable(doc, [{ h: 'Uppgift', wrap: true }, { h: 'Roll', w: 110, wrap: true }, { h: 'Timmar', w: 50, align: 'right' }, { h: 'À-pris', w: 64, align: 'right' }, { h: 'Belopp', w: 80, align: 'right' }],
       [...x.lines.map(l => [l.task, l.role, fh(l.hours), fkr(l.rate), fkr(l.amount)]), { cells: ['Summa projektet', '', fh(x.hours), '', fkr(x.amount)], bold: true }]);
   }
@@ -7481,14 +7544,17 @@ document.addEventListener('change', ev => {
   if (t.id === 'setFmt') { const v = t.value.trim() || DEF_NUMFMT, f = numFmt(v); if (f.err) { toast(f.err); return; } R().book.numberFormat = v; save(); flashSaved(t); const ss = $('#setStart'); if (ss) { ss.value = f.n; $('#setStartHint').textContent = `Lägst ${f.minN}. Höj det om du har projektnummer från tiden före Sisyfos.`; } return; }
   if (t.id === 'setStart') { const f = numFmt(R().book.numberFormat || DEF_NUMFMT), v = Math.floor(+t.value.replace(/\s/g, '')); if (!(v >= f.minN)) { t.value = f.n; toast(`Nästa löpnummer kan inte vara lägre än ${f.minN} – det numret finns redan`); return; } R().book.serialStart = { re: f.re, n: v }; save(); flashSaved(t); const inf = $('#setFmtInfo'); if (inf) inf.innerHTML = numFmtInfo(numFmt(R().book.numberFormat)); return; }
   if (t.id === 'setSign') { R().book.signWeeks = t.checked; save(); flashSaved(t); return; }
+  if (t.id === 'setCheck') { R().book.checkWeeks = t.checked; AGG = null; save(); flashSaved(t); const sg = $('#setSign'); if (sg) { sg.disabled = !t.checked; sg.checked = signOn(); } return; }
   if (t.id === 's_idle') { R().book.idleDays = +t.value; save(); flashSaved(t); return; }
   if (t.id === 'setLogo') { processLogo(t.files[0]); return; }
   if (t.id === 'wzLogo') { const f = t.files[0]; if (!f) return; wizCollect(); logoFrom(f).then(lg => { st.wiz.d.logo = lg; wizRender(); }, () => toast('Bilden gick inte att läsa – prova en PNG eller JPEG')); return; }
   if (t.matches('#wzForm [data-w]')) { wizCollect(); if (t.dataset.w === 'emp' || t.dataset.w === 'team' || t.dataset.w === 'savedVac' || t.dataset.w === 'vacStart' || t.dataset.w === 'inv') { if (t.dataset.w === 'team' || t.dataset.w === 'vacStart') { wizRender(); return; } wizSync(); } return; }
   if (t.id === 'cuInvTog') { $('#cuInvF').hidden = !t.checked; if (t.checked) $('#cuInv').focus(); return; }
   if (t.id === 'pjInt') { syncProjDlg(); return; }
-  if (st.rep?.inv && ['ivS', 'ivM', 'ivCustom', 'ivFrom', 'ivTo', 'ivOld', 'ivRows'].includes(t.id)) {
+  if (st.rep?.inv && ['ivS', 'ivM', 'ivCustom', 'ivFrom', 'ivTo', 'ivOld', 'ivRows', 'ivLay', 'ivEmpty'].includes(t.id)) {
     const v = st.rep.inv;
+    if (t.id === 'ivLay') v.lay = t.value;
+    if (t.id === 'ivEmpty') v.empty = t.checked;
     if (t.id === 'ivS') v.sel = t.value;
     if (t.id === 'ivM' && t.value) v.ym = t.value;
     if (t.id === 'ivOld') v.old = t.checked;
@@ -7500,7 +7566,9 @@ document.addEventListener('change', ev => {
     renderMain(); return;
   }
   const r = st.rep;
-  if (r && ['rpP', 'rpM', 'rpAmt', 'rpBud', 'rpCustom', 'rpFrom', 'rpTo'].includes(t.id)) {
+  if (r && ['rpP', 'rpM', 'rpAmt', 'rpBud', 'rpCustom', 'rpFrom', 'rpTo', 'rpLay', 'rpEmpty'].includes(t.id)) {
+    if (t.id === 'rpLay') r.lay = t.value;
+    if (t.id === 'rpEmpty') r.empty = t.checked;
     if (t.id === 'rpP') r.pid = t.value;
     if (t.id === 'rpM' && t.value) r.ym = t.value;
     if (t.id === 'rpAmt') r.amount = t.value;
@@ -7830,6 +7898,7 @@ function shOpenFor(ws, pid) {
 }
 const SH = {
   ch(a) {
+    if (!checkOn()) return { bad: true, html: 'Avcheckning per vecka är avstängd – tiden låses när du markerar den som hanterad. Slå på den under Inställningar → Avcheckning och signering.' };
     const r = shPeriodAny(a); if (r.err) return { bad: true, html: esc(r.err) };
     if (r.rest.length || viewing()) return { bad: true, html: `Var och en checkar av sin egen tid.${isAdm() ? ' Du kan öppna och signera veckor åt andra: <b>öppna v43 Anna</b>, <b>sign v43 Anna</b>.' : ''}` };
     const ws = r.per ? shWeeksOf(r.per) : [shRefWeek()]; if (!ws) return { bad: true, html: 'Checka av veckor: <b>ch v43</b> eller <b>ch v40-43</b>.' };
@@ -7857,7 +7926,7 @@ const SH = {
     const r = shPeriodAny(a); if (r.err) return { bad: true, html: esc(r.err) };
     if (!isAdm()) return { bad: true, html: 'Bara administratören kan signera veckor.' };
     const pp = shWho(r.rest); if (pp.bad) return pp;
-    if (!signOn()) return { bad: true, html: 'Signering av veckor är avstängd – avcheckning räcker. Slå på den under Inställningar → Avcheckning och signering.' };
+    if (!signOn()) return { bad: true, html: `Signering av veckor är avstängd${checkOn() ? ' – avcheckning räcker' : ''}. Slå på den under Inställningar → Avcheckning och signering.` };
     const ws = r.per ? shWeeksOf(r.per) : [shRefWeek()]; if (!ws) return { bad: true, html: 'Signera veckor: <b>sign v43</b>.' };
     if (pp.pid !== me()) return shSignFor(ws, pp.pid);
     const todo = ws.filter(w => !weekState(w).signed); if (!todo.length) return { info: true, html: `${cap(fmtWeeks(ws))} är redan signerad.` };
@@ -8155,7 +8224,7 @@ function shAnsSaldo() {
 }
 function shAnsWeek(wk) {
   const days = weekDays(wk), tot = days.reduce((s, d) => s + dayTotal(d), 0), nrm = days.reduce((s, d) => s + norm(d), 0), miss = missingNotes(wk), ws = weekState(wk);
-  return { t: `Vecka ${isoWeek(wk).w}`, sub: `${sdate(wk)} – ${sdate(addD(wk, 6))}`, body: `<section class="psec">${pkv('Status', ws.signed ? 'signerad' : ws.checked ? 'avcheckad' : 'inte avcheckad')}${pkv('Tid', fh(tot) + ' h', 'tot big')}${hasNorm() ? pkv('Normtid', fh(nrm) + ' h') + pkv('Skillnad', sgn(tot - nrm) + ' h') : ''}</section>${miss.length ? `<section class="psec"><h3>Saknar anteckning</h3><ul class="plist">${miss.map(e => { const P = proj(e.projectId); return `<li class="pl-li"><button class="pl" data-act="shGotoMiss" data-key="${e.projectId}~${e.taskId}|${e.date}" style="--pc:${pc(P)}"><span class="dot"></span><span class="r-text"><span class="r-name">${esc(P.name)}</span><span class="r-sub">${sdate(e.date)} · ${fh(e.hours)} h</span></span></button></li>`; }).join('')}</ul></section>` : ''}<section class="psec"><div class="p-acts"><button class="btn sm" data-act="gotoWeek" data-wk="${wk}">${ic('week')}Öppna veckan</button></div></section>` };
+  return { t: `Vecka ${isoWeek(wk).w}`, sub: `${sdate(wk)} – ${sdate(addD(wk, 6))}`, body: `<section class="psec">${checkOn() || ws.signed ? pkv('Status', ws.signed ? 'signerad' : ws.checked ? 'avcheckad' : 'inte avcheckad') : ''}${pkv('Tid', fh(tot) + ' h', 'tot big')}${hasNorm() ? pkv('Normtid', fh(nrm) + ' h') + pkv('Skillnad', sgn(tot - nrm) + ' h') : ''}</section>${miss.length ? `<section class="psec"><h3>Saknar anteckning</h3><ul class="plist">${miss.map(e => { const P = proj(e.projectId); return `<li class="pl-li"><button class="pl" data-act="shGotoMiss" data-key="${e.projectId}~${e.taskId}|${e.date}" style="--pc:${pc(P)}"><span class="dot"></span><span class="r-text"><span class="r-name">${esc(P.name)}</span><span class="r-sub">${sdate(e.date)} · ${fh(e.hours)} h</span></span></button></li>`; }).join('')}</ul></section>` : ''}<section class="psec"><div class="p-acts"><button class="btn sm" data-act="gotoWeek" data-wk="${wk}">${ic('week')}Öppna veckan</button></div></section>` };
 }
 function shAnsMonth(ym) {
   const from = `${ym}-01`, to = ymLast(ym), es = live().filter(e => e.date >= from && e.date <= to && e.hours > 0), per = new Map();
@@ -8330,7 +8399,7 @@ I.more = '<circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circ
 // Provkrok för testerna (test/delar_test.py): bara med ?test i adressen
 if (/[?&]test\b/.test(location.search)) window.SISYFOS = { get S() { return S; }, set S(v) { S = v; }, st, me, R, byId, canon, migrate, sampleBook, bookSplit, bookJoin, partRule, bookMerge,
   encCreate, encStore, keysEnsure, keysAdopt, keysCreate, keysOpen, keysPublic, encBookText, decBook, decParts, unseal, gz, aesKey, rnd, b64, unb64, kvGet, AAD_DATA, FORMAT_VERSION,
-  rateFor, rv, rPut, rHist, rateSnap, repriceSince, signOn, setCell, weekEvent, weekState, webApply, save, log, uid, devId, apply, select, cell, closeCellPop, render, derive, diaryData, diaryPdf, rep,
+  rateFor, rv, rPut, rHist, rateSnap, repriceSince, signOn, checkOn, wkOpen, perReady, weekItems, invoiceData, invoicePdf, locked, handled, setCell, weekEvent, weekState, webApply, save, log, uid, devId, apply, select, cell, closeCellPop, render, derive, diaryData, diaryPdf, rep,
   who, viewing, isAdm, asPick, wkChecked, openWeeksOf, repriceOrders, repricePrune, eRate, monday, today, live, mine, priceGate, closeDlg, alertsHtml, budgetPct, get E() { return E; } };
 })();
 </script>

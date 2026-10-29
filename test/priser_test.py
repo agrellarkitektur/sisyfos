@@ -28,6 +28,8 @@ from playwright.sync_api import sync_playwright
 ROT = pathlib.Path(__file__).resolve().parent.parent
 URL = (sys.argv[1] if len(sys.argv) > 1 else 'http://localhost:8765/index.html') + '?test'
 BOK = json.loads((ROT / 'test' / 'bocker' / 'format-10.json').read_text(encoding='utf-8'))
+# 0.19.0: avcheckningen per vecka är av för en ensam bok – testet provar låst (avcheckad) tid och slår på den
+BOK['register']['book']['checkWeeks'] = True
 fel = 0
 def ev(page, fn, arg=None):
     return page.evaluate("([f, a]) => { with (window.SISYFOS) { return eval('(' + f + ')')(a); } }", [fn, arg])
