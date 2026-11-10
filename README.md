@@ -26,6 +26,8 @@ Tidrapport och projektdagbok för en- och fåmansföretag. Körs i webbläsaren,
 
 I tidboken finns vyerna Månad, Vecka och Dag. I **månadsvyn** markerar du ett projekt genom att klicka på dess rad under kalendern (raden öppnar också smartmenyn med dagbok och hantering); projektets uppgifter fälls ut och kan markeras för sig, och *+ Projekt eller uppgift* markerar ett projekt utan tid i månaden. Klickar du sedan på en dag öppnas samma smartmeny som i veckan – timmar, snabbval och anteckning, med uppgifterna som knappar.
 
+I **veckovyn** kan en ruta med tid **dras till en annan dag** i samma rad (på telefon: långt tryck, sedan dra). Finns det redan tid i samma projekt och uppgift den dagen läggs timmarna ihop och anteckningarna efter varandra. Håll kvar nära veckans början eller slut så byter veckan, så att tiden kan flyttas till en annan vecka. Låsta dagar (avcheckade, signerade eller hanterade) tar inte emot tid; *Ångra* i beskedet flyttar tillbaka.
+
 Sisyfos är en **alfaversion**. Den fungerar, men ändras fortfarande. Spara en kopia av boken som fil regelbundet (menyn *Sisyfos → Spara kopia som fil*).
 
 ## Smartshell
@@ -99,7 +101,12 @@ Sisyfos gör alltid ett **underlag** att föra in i bokföringsprogrammet: *Rapp
 
 ### Per dag och vecka (0.19.0)
 
-Projektdagboken (*Uppställning*) och fakturaunderlagets dagboksrader kan visas **per dag och vecka** i stället för per uppgift eller tidpost: en rad per dag – flera uppgifter samma dag står på samma rad, med uppgiftens namn före anteckningen – och efter varje kalendervecka en rad med veckans timmar och belopp. Med **Visa veckor utan tid** står också veckor i perioden utan rapporterad tid med, som *Vecka 44 · 26 okt – 1 nov – ingen rapporterad tid*. Sammanställningen och summorna är desamma som i den vanliga uppställningen. Gäller skärmen och PDF:en (CSV:en har en rad per uppgift och pris som förut).
+Projektdagboken (*Uppställning*) och fakturaunderlagets dagboksrader kan visas **per dag och vecka** i stället för per uppgift eller tidpost: en rad per dag – flera uppgifter samma dag står på samma rad, med uppgiftens namn före anteckningen – och efter varje kalendervecka en rad med veckans timmar och belopp. Med **Visa veckor utan tid** står också veckor i perioden utan rapporterad tid med, som *Vecka 44 · 26 okt – 1 nov – ingen rapporterad tid*. Sammanställningen och summorna är desamma som i den vanliga uppställningen. Gäller skärmen och PDF:en (CSV:en har en rad per uppgift och pris som förut). Veckans summarad har ett streck ovanför och en tom rad efter (0.19.1).
+
+### Utan belopp och egna rader (0.19.1)
+
+- **Belopp** under *Innehåll* i fakturaunderlaget (i enkelt läge *Öppen tid*): av ger ett underlag med bara timmar – inga belopp, à-priser eller moms, och rubriken *Öppen tid*. Projektdagboken har samma val under *Belopp → Visa inte belopp*. CSV:en har alltid beloppen.
+- **Egna rader** – t.ex. *Underkonsult, se separat dagbok* – läggs till med *Egen rad* ovanför förhandsvisningen: beskrivning, timmar och timpris (självkostnad) eller ett belopp direkt, och påslag i procent (0 % går bra). Totalt = belopp × (1 + påslag). Raderna står i en egen tabell och ingår i summan (och momsen) i projektdagboken och fakturaunderlaget, på skärmen, i PDF:en och i CSV:en. De gäller projektet (projektdagboken) eller urvalet (fakturaunderlaget), **sparas inte i boken** och påverkar inte budget, hanterad tid eller fakturor – de finns kvar tills appen laddas om.
 
 ### Hanterad tid
 
@@ -293,7 +300,7 @@ python3 test/oppna_gamla_bocker.py
 | `manifest.webmanifest`, `icon.svg`, `*.png` | Appikon och installation |
 | `feedback.php` | Tar emot synpunktsformuläret och skickar det som e-post. Sparar ingenting |
 | `api.php` | Servern för lagring på webben och organisationerna – tar bara emot krypterade böcker och delar |
-| `test/` | Gamla böcker och kontrollen att de öppnas (`oppna_gamla_bocker.py`), test av fakturorna (`faktura_test.py` och `faktura2_test.py` – betalningar, kunder utomlands och SIE), test av boken i delar och nycklarna (`delar_test.py`), av arbetet med flera (`flera_test.py` – vems tidbok, åt andra, omräkning för medarbetare, medarbetarens gränssnitt), av flödet utan avcheckning och veckouppställningen i rapporterna (`enkel_test.py`), test av servern (`api_test.py`, också organisationerna), av en organisation med admin på två enheter och en medarbetare (`org_test.py`) och av synken mellan två enheter (`webb_test.py`, körs för hand). För hand vid omskrivningar: `stor_bok.py` bygger en testbok på tio år, `prestanda.py` mäter vanliga åtgärder med den och `jamfor_versioner.py` kontrollerar att skärmarna är lika med en tidigare version |
+| `test/` | Gamla böcker och kontrollen att de öppnas (`oppna_gamla_bocker.py`), test av fakturorna (`faktura_test.py` och `faktura2_test.py` – betalningar, kunder utomlands och SIE), test av boken i delar och nycklarna (`delar_test.py`), av arbetet med flera (`flera_test.py` – vems tidbok, åt andra, omräkning för medarbetare, medarbetarens gränssnitt), av flödet utan avcheckning och veckouppställningen i rapporterna (`enkel_test.py`), av rapporterna utan belopp, egna rader och att dra tid till en annan dag (`rapport2_test.py`), test av servern (`api_test.py`, också organisationerna), av en organisation med admin på två enheter och en medarbetare (`org_test.py`) och av synken mellan två enheter (`webb_test.py`, körs för hand). För hand vid omskrivningar: `stor_bok.py` bygger en testbok på tio år, `prestanda.py` mäter vanliga åtgärder med den och `jamfor_versioner.py` kontrollerar att skärmarna är lika med en tidigare version |
 
 ## Publicera på ett webbhotell
 

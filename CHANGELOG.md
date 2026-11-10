@@ -1,5 +1,16 @@
 # Ändringar i Sisyfos
 
+## 0.19.1
+
+Filformat 11, oförändrat. Synpunkterna från 9 november, efter test av rapporterna.
+
+- **Dra tid till en annan dag.** I veckovyn dras en ruta med tid till en annan dag i samma rad (på telefon: långt tryck, sedan dra). Finns det redan tid i samma projekt och uppgift den dagen slås de ihop – timmarna läggs ihop och anteckningarna efter varandra. Nära veckans början eller slut byter veckan, så att tiden kan flyttas till föregående eller nästa vecka. Låsta dagar tar inte emot tid; *Ångra* i beskedet flyttar tillbaka. Priset följer den nya dagen.
+- **Veckosumman tydligare.** I *Per dag och vecka* har veckans summarad ett svart streck ovanför och en tom rad efter – på skärmen och i PDF:en.
+- **Luft mellan kolumnerna.** Timmar och Belopp (och à-pris i sammanställningen per uppgift och roll) står längre ifrån varandra, på skärmen och i PDF:en.
+- **Fakturaunderlag utan belopp.** Valet *Belopp* under *Innehåll* (i enkelt läge *Öppen tid*): av ger ett underlag med bara timmar och rubriken *Öppen tid*.
+- **Egna rader på rapporten.** *Egen rad* i projektdagboken och fakturaunderlaget lägger till t.ex. *Underkonsult, se separat dagbok* med självkostnad (timmar × timpris, eller ett belopp), påslag (0 % går bra) och totalt = belopp × (1 + påslag). Raderna ingår i summan och momsen, står i PDF:en och CSV:en, men sparas inte i boken och påverkar inte budget, hanterad tid eller fakturor.
+- Test: `test/rapport2_test.py` (ny, körs i GitHub).
+
 ## 0.19.0
 
 Filformat 11, oförändrat (ett nytt valfritt fält `book.checkWeeks`). Synpunkterna från 29 oktober: ett enklare flöde för den som är ensam i boken och veckor i rapporterna.
