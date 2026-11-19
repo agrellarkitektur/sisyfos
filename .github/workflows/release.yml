@@ -1,10 +1,14 @@
-# Lägger en färdig zip för webbhotellet på en release.
-# Skapa releasen på GitHub (Releases → Draft a new release → tagg v0.13.2 …) – zippen läggs till av sig själv.
-# Taggen måste ligga på en commit där APP_VERSION i index.html är samma version. GitHub föreslår main som
-# Target – har main hunnit få en nyare version, välj den rätta commiten under Target → Recent commits.
-# Kan också köras för hand för en befintlig tagg, med en annan commit (ref) om taggen ligger fel.
+# Skapar releasen av sig själv och lägger en färdig zip för webbhotellet på den.
+# Vid varje push till main som rör index.html: finns ingen tagg för APP_VERSION (t.ex. v0.20.1) skapas taggen och
+# releasen på den commiten, med versionens avsnitt ur CHANGELOG.md som text och zippen bifogad. Finns taggen redan
+# händer ingenting – en version släpps en gång, på den första commit som har den.
+# Går också som förut: skapa releasen för hand på GitHub (zippen läggs till av sig själv), eller kör för hand för en
+# befintlig tagg, med en annan commit (ref) om taggen ligger fel.
 name: Release-zip
 on:
+  push:
+    branches: [main]
+    paths: ['index.html', '.github/workflows/release.yml']
   release:
     types: [published]
   workflow_dispatch:
@@ -17,20 +21,40 @@ on:
         required: false
 permissions:
   contents: write
+concurrency: release
 jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      TAG: ${{ github.event.release.tag_name || inputs.tag }}
-      REF: ${{ inputs.ref || github.event.release.tag_name || inputs.tag }}
+      IN_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      IN_REF: ${{ inputs.ref || github.event.release.tag_name || inputs.tag }}
     steps:
       # Hela historiken, så att taggar och förkortade commit-id (t.ex. dcdbb20) går att välja i nästa steg
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      - name: Bestäm taggen
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            APP=$(grep -oP "APP_VERSION = '\K[^']+" index.html)
+            if ! printf '%s' "$APP" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then echo "::error::Hittar ingen APP_VERSION i tre led i index.html ($APP)."; exit 1; fi
+            TAG="v$APP"; REF="$GITHUB_SHA"
+            if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+              echo "::notice::Releasen $TAG finns redan – inget att göra."
+              echo "SKIP=1" >> "$GITHUB_ENV"
+            else
+              echo "::notice::Ny version – skapar releasen $TAG på $(git rev-parse --short HEAD)."
+            fi
+            echo "AUTO=1" >> "$GITHUB_ENV"
+          else
+            TAG="$IN_TAG"; REF="$IN_REF"
+          fi
+          echo "TAG=$TAG" >> "$GITHUB_ENV"; echo "REF=$REF" >> "$GITHUB_ENV"
       - name: Välj taggen eller commiten
+        if: env.SKIP != '1'
         run: git checkout -q --detach "$REF" && git log -1 --format='%h %s' | cut -c1-100
       - name: Kontrollera versionen
+        if: env.SKIP != '1'
         run: |
           APP=$(grep -oP "APP_VERSION = '\K[^']+" index.html)
           V=${TAG#v}
@@ -47,11 +71,30 @@ jobs:
           fi
           if [ -f sw.js ]; then SW=$(grep -oP "const VERSION = '\K[^']+" sw.js); [ "$SW" = "$V" ] || echo "::warning::sw.js har VERSION $SW – uppdatera den så att cachen byts"; fi
       - name: Bygg zip
+        if: env.SKIP != '1'
         run: |
           mkdir -p sisyfos
           for f in index.html feedback.php api.php sw.js manifest.webmanifest icon.svg favicon-32.png icon-192.png icon-512.png icon-maskable-512.png apple-touch-icon.png README.md CHANGELOG.md LICENSE; do [ -f "$f" ] && cp "$f" sisyfos/; done
           zip -r "sisyfos-$TAG.zip" sisyfos
-      - uses: softprops/action-gh-release@v3
+      # Releasens text: versionens avsnitt ur CHANGELOG.md (från rubriken "## 0.20.1" till nästa "## ")
+      - name: Text ur CHANGELOG
+        if: env.SKIP != '1' && env.AUTO == '1'
+        run: |
+          V=${TAG#v}
+          awk -v v="$V" '$0 == "## " v { on = 1; next } on && /^## / { exit } on' CHANGELOG.md | sed -e '/./,$!d' > notes.md
+          if [ ! -s notes.md ]; then echo "::warning::CHANGELOG.md saknar avsnittet ## $V"; echo "Se CHANGELOG.md." > notes.md; fi
+          wc -l notes.md
+      - name: Skapa releasen (ny version)
+        if: env.SKIP != '1' && env.AUTO == '1'
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ env.TAG }}
+          target_commitish: ${{ github.sha }}
+          body_path: notes.md
+          files: sisyfos-${{ env.TAG }}.zip
+      - name: Lägg zippen på releasen (för hand)
+        if: env.SKIP != '1' && env.AUTO != '1'
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.TAG }}
           files: sisyfos-${{ env.TAG }}.zip
