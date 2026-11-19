@@ -65,7 +65,7 @@ with sync_playwright() as p:
     b = p.chromium.launch()
     ctx, pg, js = starta(b, BOK)
     r = ev(pg, "() => ({ v: S.version, fmt: FORMAT_VERSION, rates: S.register.roles.map(r => r.rate), p2: S.register.projects[1].roleRates })")
-    ok(r['v'] == r['fmt'] == 11 and r['rates'] == [950, 1150] and r['p2'] == {'roll1': 1000}, f"format 10 → {r['v']}, priserna oförändrade ({r['rates']}, {r['p2']})")
+    ok(r['v'] == r['fmt'] >= 11 and r['rates'] == [950, 1150] and r['p2'] == {'roll1': 1000}, f"format 10 → {r['v']}, priserna oförändrade ({r['rates']}, {r['p2']})")
 
     # Prislistan
     r = ev(pg, """() => { const L = rPut(900, 1000, '2027-01-01');

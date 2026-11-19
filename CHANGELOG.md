@@ -1,5 +1,15 @@
 # Ändringar i Sisyfos
 
+## 0.20.0
+
+**Filformat 12.** Ladda om på alla enheter – en äldre app öppnar inte boken (i stället för att tappa kostnaderna när den sparar). Gamla böcker öppnas som förut.
+
+- **Kostnader på dagboken.** Annat än timmar – kartunderlag, plottning, en underkonsult – läggs på en dag i ett projekt: *Lägg till kostnad …* i rutans smartmeny, eller `kost strand kartunderlag 1500` i smartshell. Beloppet skrivs direkt eller räknas fram ur antal × à-pris med en fri enhet (`kost strand tor plottning 6 st à 85`), och ett påslag i procent kan läggas på (förval 0 %, `kost strand underkonsult 12000 10 %`). Rutan i veckan får ett litet *kr*, och kostnaden står i smartmenyn och dagvyn, där den ändras eller tas bort (med *Ångra*).
+- **Med i rapporterna.** Fakturaunderlaget har en tabell *Kostnader* per projekt och raden *Kostnader* i *Att fakturera* (skärm, PDF och CSV; utan belopp: antalet kostnader). Fakturautkastet får en rad per kostnad. Projektdagboken har kostnaderna i en egen tabell och i summan. Ett underlag kan bestå av bara kostnader.
+- Kostnaderna låses som tiden (avcheckad eller signerad vecka, hanterad period), och *Markera som hanterat* omfattar dem. De räknas **inte mot budgeten** och påverkar inte timmar eller saldo.
+- Exempelboken har två kostnader i Villa Strand.
+- Test: `test/kostnad_test.py` (ny, körs i GitHub), exempelbok `test/bocker/format-12.json`; `delar_test.py` och `priser_test.py` läser formatnumret ur appen.
+
 ## 0.19.1
 
 Filformat 11, oförändrat. Synpunkterna från 9 november, efter test av rapporterna.

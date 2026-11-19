@@ -383,6 +383,14 @@ kbd{font:500 11px var(--font-data);padding:1px 5px;border:1px solid var(--rule);
 .cell.hd .hdm,.dv-h.hd .hdm{display:block;position:absolute;top:5px;left:5px;width:7px;height:7px;border-radius:50%;background:var(--ok);pointer-events:none}
 .dv-h.hd .hdm{top:6px;left:8px}
 .app.compact .cell.hd .hdm{top:3px;left:3px;width:6px;height:6px}
+.cell .kom{position:absolute;left:5px;bottom:3px;font-size:9px;font-weight:700;letter-spacing:.03em;line-height:1;color:var(--muted);pointer-events:none}
+.app.compact .cell .kom{left:3px;bottom:1px;font-size:8px}
+.ko-l{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:4px}
+.ko-i{display:flex;align-items:center;gap:7px;width:100%;padding:6px 9px;border:1px solid var(--rule);border-radius:9px;background:var(--chrome);color:var(--ink);font-size:13px;text-align:left;cursor:pointer}
+.ko-i:hover{border-color:var(--pc,var(--rule))}
+.ko-i .ic{width:15px;height:15px;flex:none;color:var(--muted)}
+.ko-i .ko-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#koForm .dlg-foot .spacer{display:block;flex:1}
 .cell.nonote .nn{display:block;position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;border:1.8px solid var(--warn);pointer-events:none}
 .locked .cell{border-style:solid;border-color:var(--faint);cursor:default}
 .locked .cell .h-in{cursor:pointer}
@@ -1280,8 +1288,8 @@ body.dragging,body.dragging *{cursor:grabbing!important;user-select:none!importa
 'use strict';
 
 /* ───────────── Hjälpfunktioner ───────────── */
-const FORMAT = 'sisyfos', FORMAT_VERSION = 11, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.19.1', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const FORMAT = 'sisyfos', FORMAT_VERSION = 12, KEY = 'sisyfos.bok';
+const APP_VERSION = '0.20.0', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 { const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
@@ -1316,6 +1324,7 @@ const I = {
   clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
   folder: '<path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>',
   users: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><path d="M15.5 5.6a3 3 0 0 1 0 5.8M17.5 14.3c1.7.6 2.8 2.2 3 4.7"/>',
+  cost: '<path d="M6.5 3.5h11v17l-2-1.3-1.8 1.3-1.7-1.3-1.7 1.3-1.8-1.3-2 1.3z"/><path d="M9.5 8.5h5M9.5 12h5M9.5 15.5h3"/>',
   report: '<path d="M6.5 3.5h8l3.5 3.5v13.5h-11.5z"/><path d="M14.5 3.5V7h3.5M9.5 12h5M9.5 15.5h5"/>',
   settings: '<path d="M5 7h9M18 7h1M5 17h3M12 17h7"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
   fill: '<rect x="6.5" y="3.5" width="11" height="17" rx="2.5"/><path d="M6.5 12.5h11M9.5 15.5h5"/><path d="M12 6.5v3M10.5 8l1.5-1.5L13.5 8"/>',
@@ -1451,6 +1460,10 @@ function sampleBook() {
   const merged = new Map();
   for (const r of [...out, ...curEv]) { const k = r[0] + r[1] + r[2]; if (merged.has(k)) { const m = merged.get(k); m[3] += r[3]; if (r[4] && !m[4].includes(r[4])) m[4] = m[4] ? m[4] + '. ' + r[4] : r[4]; } else merged.set(k, [...r]); }
   [...merged.values()].sort((a, b) => a[0] < b[0] ? -1 : 1).forEach(r => add(...r));
+  // Kostnader (0.20.0): nybyggnadskarta och plottning i Villa Strand
+  const kost = (date, text, x) => { const at = pd(date); at.setHours(17, 10); evs.push({ id: uid(), entryId: 'k' + uid(), type: 'cost', at: at.toISOString(), by: pid, data: { date, projectId: 'proj1', taskId: 'upg1', text, markup: 0, ...x } }); };
+  kost(addD(mon, -10), 'Nybyggnadskarta från kommunen', { amount: 4500 });
+  kost(addD(mon, -4), 'Plottning A1', { qty: 6, unit: 'st', price: 85, amount: 510 });
   book.prefs.weekRows[mon] = ['proj1~upg1', 'proj2~upg3', 'proj3~upg4', 'proj4~upg5'];
   // förra veckan avcheckad, veckan innan dess även signerad av administratören
   for (const [n, sign] of [[-7, false], [-14, true]]) {
@@ -1576,7 +1589,10 @@ const MIGRATIONS = {
   // 10 → 11: timpriser med datum (ett pris kan vara en prislista [{from, rate}]), timpris hos kunden (customers[].roleRates)
   // och på uppgiften (tasks[].rate), inställningen för signering (book.signWeeks). Inget behöver räknas om – ett tal
   // är ett pris som gäller alltid. Formatet höjs för att en äldre app inte ska läsa en prislista som ett tal.
-  10: d => { d.version = 11; return d; }
+  10: d => { d.version = 11; return d; },
+  // 11 → 12: kostnader på dagboken (händelsetypen cost i personens logg, 0.20.0) och plats för planen (claude/belaggning.md).
+  // Inget behöver skrivas om – formatet höjs för att en äldre app inte ska tappa kostnaderna när den sparar boken.
+  11: d => { d.version = 12; return d; }
 };
 function migrate(d) {
   if (!d || d.format !== FORMAT) throw new Error('Filen är inte en Sisyfos-bok.');
@@ -1608,10 +1624,14 @@ function migrate(d) {
    week: { week:'ÅÅÅÅ-MM-DD' (måndag), checked:true|false } – medarbetaren checkar av sin vecka i sin egen logg.
    Administratörens signatur ligger i registret (register.signed['personId|vecka']). */
 const ck = (pid, p, t, d) => `${pid}|${p}~${t}|${d}`;
-let WEEKS, DN = new Map();
+let WEEKS, DN = new Map(), COST = new Map();
 const dayNote = (d, pid = who()) => DN.get(pid + '|' + d) || '';
 function apply(ev, pid) {
   AGG = null;
+  /* Kostnad (0.20.0, format 12): en post på en dag i ett projekt och en uppgift – t.ex. kartunderlag 1 500 kr eller
+     3 st × 120 kr. Varje händelse har postens hela innehåll (det senaste gäller); deleted: true tar bort den. Påverkar
+     inte timmar, saldo eller budget; kommer med i fakturaunderlaget, fakturan och projektdagboken. */
+  if (ev.type === 'cost') { const o = COST.get(ev.entryId); if (ev.data?.deleted) { if (o) { o.deleted = true; o.updated = ev.at; } return; } COST.set(ev.entryId, { ...ev.data, id: ev.entryId, person: pid, deleted: false, created: o?.created || ev.at, updated: ev.at, by: ev.by }); return; }
   if (ev.type === 'week') { WEEKS.set(pid + '|' + ev.data.week, { checked: !!ev.data.checked, at: ev.at }); return; }
   // Dagsanteckning (format 8): en kort text per dag i personens logg – den senaste gäller, tom text tar bort den
   if (ev.type === 'daynote') { const k = pid + '|' + ev.data?.date; if (String(ev.data?.text || '').trim()) DN.set(k, String(ev.data.text).trim()); else DN.delete(k); return; }
@@ -1630,7 +1650,7 @@ function apply(ev, pid) {
     else if (ev.type === 'restore') { e.deleted = false; e.removed = null; e.updated = ev.at; if (!IDX.has(k)) IDX.set(k, e.id); }
   }
 }
-function derive() { AGG = null; E = new Map(); IDX = new Map(); WEEKS = new Map(); DN = new Map(); devAttach(S); for (const pid in S.logs) for (const ev of S.logs[pid].events) apply(ev, pid); }
+function derive() { AGG = null; E = new Map(); IDX = new Map(); WEEKS = new Map(); DN = new Map(); COST = new Map(); devAttach(S); for (const pid in S.logs) for (const ev of S.logs[pid].events) apply(ev, pid); }
 
 const R = () => S.register;
 const me = () => S.session.personId;
@@ -2139,6 +2159,138 @@ function parseHours(s) {
 function pin(rk, wk) {
   const a = S.prefs.weekRows[wk] = S.prefs.weekRows[wk] || []; if (!a.includes(rk)) a.push(rk);
 }
+/* ───────────── Kostnader (0.20.0, format 12) ─────────────
+   Annat än timmar på en dag: kartunderlag 1 500 kr, 6 st plottning à 85 kr, 12 kg … – en post i personens logg
+   (händelsen cost, se apply) på ett projekt, en uppgift och en dag. Beloppet skrivs direkt eller räknas fram ur
+   antal × à-pris (enheten är fri text). Påslag i procent (förval 0). Beloppen är exkl. moms och räknas aldrig om.
+   Låses som tiden (avcheckad/signerad vecka, hanterad period). Räknas inte mot budgeten (brukar ligga utöver) och
+   påverkar inte timmar, saldo eller debiteringsgrad. Kommer med i fakturaunderlaget, fakturan och projektdagboken. */
+const cAmt = c => +c.amount || 0;
+const cTot = c => cAmt(c) * (1 + (+c.markup || 0) / 100);
+const cRk = c => c.projectId + '~' + c.taskId;
+const fkc = n => Math.abs(n - Math.round(n)) < 0.005 ? fkr(n) : fkr2(n);
+const cQty = c => c.qty != null && c.price != null ? `${fhs(c.qty)}${c.unit ? ' ' + c.unit : ''} à ${fkc(c.price)}` : '';
+function costList(f) {
+  const out = []; for (const c of COST.values()) if (!c.deleted && f(c)) out.push(c);
+  return out.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : String(a.created).localeCompare(String(b.created)));
+}
+const costsAt = (rk, d, pid = who()) => COST.size ? costList(c => c.person === pid && c.date === d && cRk(c) === rk) : [];
+const pCosts = pId => COST.size ? costList(c => c.projectId === pId) : [];
+// Sparar en kostnad (ny, eller ändrad när prev finns). Ger posten eller null (låst).
+function costPut(c, prev) {
+  const rk = cRk(c);
+  for (const [k, d] of [[rk, c.date], ...(prev ? [[cRk(prev), prev.date]] : [])]) if (lockedK(k, d)) { lockMsg(d, k); return null; }
+  const data = { date: c.date, projectId: c.projectId, taskId: c.taskId, text: c.text, amount: r2(c.amount), markup: +c.markup || 0 };
+  if (c.qty != null && c.price != null) Object.assign(data, { qty: c.qty, unit: c.unit || '', price: c.price });
+  const id = prev?.id || c.id || 'k' + uid();
+  const ev = { id: uid(), entryId: id, type: 'cost', at: new Date().toISOString(), by: me(), dev: devId(), data };
+  log().push(ev); apply(ev, me()); pin(rk, monday(c.date));
+  return COST.get(id);
+}
+function costRemove(id) {
+  const c = COST.get(id); if (!c || c.deleted) return null;
+  if (lockedK(cRk(c), c.date)) { lockMsg(c.date, cRk(c)); return null; }
+  const prev = { ...c }, ev = { id: uid(), entryId: id, type: 'cost', at: new Date().toISOString(), by: me(), dev: devId(), data: { deleted: true } };
+  log().push(ev); apply(ev, me());
+  return prev;
+}
+const costRedraw = () => { renderMain(); renderPanel(); renderStatus(); };
+// Kostnaderna på en dag i en rad (smartmenyn och dagvyn)
+function costListHtml(rk, d) {
+  const l = costsAt(rk, d); if (!l.length) return '';
+  return `<ul class="ko-l">${l.map(c => `<li><button type="button" class="ko-i" data-act="costEdit" data-id="${c.id}" title="${esc(c.text)}${cQty(c) ? ' – ' + esc(cQty(c)) : ''}${c.markup ? ` + påslag ${fhs(c.markup)} %` : ''}">${ic('cost')}<span class="ko-t">${esc(c.text)}</span><span class="mono">${fkc(cTot(c))}</span></button></li>`).join('')}</ul>`;
+}
+function costDlg(rk, d, id) {
+  const c = id ? COST.get(id) : null; if (c) { rk = cRk(c); d = c.date; }
+  const { P, T } = rowInfo(rk), v = n => n != null && n !== '' && isFinite(n) ? fhs(n) : '';
+  st.costEd = { rk, id: c?.id || null };
+  openDlg(`<h2 id="dlgTitle">${c ? 'Ändra kostnad' : 'Ny kostnad'}</h2><p>${esc(P.name)}${P.tasks.length > 1 ? ' · ' + esc(T.name) : ''} – kommer med som en egen rad i fakturaunderlaget, på fakturan och i projektdagboken. Räknas inte mot budgeten.</p><form class="form" id="koForm" novalidate>
+  <div class="fld full"><label for="koT">Beskrivning</label><input id="koT" value="${esc(c?.text || '')}" placeholder="Kartunderlag" autocomplete="off"></div>
+  <div class="fld"><label for="koD">Datum</label><input type="date" id="koD" value="${d}"></div>
+  <div class="fld"><label for="koA">Belopp exkl. moms</label><input id="koA" inputmode="decimal" value="${c ? v(c.amount) : ''}" placeholder="kr – eller antal × à-pris" autocomplete="off"></div>
+  <div class="fld"><label for="koQ">Antal</label><input id="koQ" inputmode="decimal" value="${v(c?.qty)}" placeholder="–" autocomplete="off"></div>
+  <div class="fld"><label for="koU">Enhet</label><input id="koU" value="${esc(c?.unit || '')}" placeholder="st, kg, m²" autocomplete="off"></div>
+  <div class="fld"><label for="koP">À-pris</label><input id="koP" inputmode="decimal" value="${v(c?.price)}" placeholder="kr per enhet" autocomplete="off"></div>
+  <div class="fld"><label for="koM">Påslag %</label><input id="koM" inputmode="decimal" value="${v(c ? +c.markup || 0 : 0)}" autocomplete="off"></div>
+  <p class="fld full small" id="koSum" aria-live="polite"></p>
+  <div class="dlg-foot fld full">${c ? `<button type="button" class="btn ghost" data-act="costDel" data-id="${c.id}">${ic('trash')}Ta bort</button><span class="spacer"></span>` : ''}<button type="button" class="btn ghost" data-act="closeDlg">Avbryt</button><button type="submit" class="btn primary">${c ? 'Spara' : 'Lägg till'}</button></div></form>`);
+  costCalc(); setTimeout(() => $('#koT')?.focus(), 30);
+}
+function costRead() {
+  const n = id => { const t = String($(id)?.value || '').trim(); return t === '' ? null : pNum(t); };
+  return { text: String($('#koT')?.value || '').trim(), date: $('#koD')?.value || '', qty: n('#koQ'), unit: String($('#koU')?.value || '').trim(), price: n('#koP'), amount: n('#koA'), markup: n('#koM') ?? 0 };
+}
+// Antal × à-pris räknar fram beloppet; annars skrivs beloppet direkt
+function costCalc(src) {
+  const x = costRead(), a = $('#koA'), out = $('#koSum'); if (!out) return;
+  if ([x.qty, x.price, x.amount, x.markup].some(v => v != null && Number.isNaN(v))) { out.innerHTML = '<span class="err">Skriv tal, till exempel 12,5</span>'; return; }
+  const qp = x.qty != null && x.price != null;
+  if (qp && src !== 'koA' && a) { a.value = fhs(r2(x.qty * x.price)); x.amount = x.qty * x.price; }
+  const am = qp ? x.qty * x.price : x.amount || 0, m = x.markup || 0;
+  out.innerHTML = m ? `Belopp <b class="mono">${fkc(am)}</b> + påslag ${fhs(m)} % = på fakturan <b class="mono">${fkc(am * (1 + m / 100))}</b>` : `På fakturan <b class="mono">${fkc(am)}</b> exkl. moms${qp ? '' : ' · antal × à-pris räknar fram beloppet'}`;
+}
+function costSave() {
+  const ed = st.costEd; if (!ed) return;
+  const x = costRead();
+  if ([x.qty, x.price, x.amount, x.markup].some(v => v != null && Number.isNaN(v))) { toast('Skriv tal, till exempel 12,5'); return; }
+  if (!x.text) { toast('Skriv vad kostnaden gäller'); $('#koT')?.focus(); return; }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(x.date)) { toast('Välj ett datum'); $('#koD')?.focus(); return; }
+  const qp = x.qty != null && x.price != null, amount = qp ? x.qty * x.price : x.amount;
+  if (amount == null || !amount) { toast('Skriv ett belopp – eller antal och à-pris'); $('#koA')?.focus(); return; }
+  const [p, t] = splitRow(ed.rk), cur = ed.id ? COST.get(ed.id) : null, prev = cur ? { ...cur } : null;
+  const c = costPut({ projectId: p, taskId: t, date: x.date, text: cap(x.text), amount, markup: x.markup || 0, ...(qp ? { qty: x.qty, unit: x.unit, price: x.price } : {}) }, prev);
+  if (!c) return;
+  save(); st.costEd = null; closeDlg(); costRedraw();
+  toast(prev ? 'Kostnaden är ändrad' : `Kostnad: ${c.text} ${fkc(cTot(c))}${c.date !== quickDate() ? ', ' + sdate(c.date) : ''}`, { label: 'Ångra', fn: () => { if (prev) costPut(prev, COST.get(prev.id)); else costRemove(c.id); save(); costRedraw(); } });
+}
+function costDelGo(id) {
+  const prev = costRemove(id); if (!prev) return;
+  save(); st.costEd = null; closeDlg(); costRedraw();
+  toast(`Tog bort ${prev.text}`, { label: 'Ångra', fn: () => { costPut(prev); save(); costRedraw(); } });
+}
+// Smartshell: kost strand kartunderlag 1500 · kost strand tor plottning 6 st à 85 · kost strand ritningar 2500 15 %
+const KO_SEP = ['à', 'á', 'a', 'x', '×', '@', 'á-pris', 'à-pris', 'styckpris'];
+function shCost(a) {
+  const help = 'Skriv projektet, vad kostnaden gäller och beloppet: <b>kost strand kartunderlag 1500</b>, <b>kost strand tor plottning 6 st à 85</b> eller med påslag <b>kost strand underkonsult 12000 10 %</b>. Utan dag gäller den dagen du står i.';
+  if (!a.length) return { info: true, html: help };
+  const r = shProjRest(a); if (!r) return noP(a.slice(0, 1));
+  const P = r.P; if (P.kind === 'absence') return { bad: true, html: 'Frånvaron kan inte ha kostnader.' };
+  const w = parseWhen(shJoin(r.rest), curWeek()); if (w.err) return { bad: true, html: esc(w.err) };
+  if (w.days && w.days.length > 1) return { bad: true, html: 'En kostnad gäller en dag – skriv en dag, till exempel <b>tor</b> eller <b>12/11</b>.' };
+  const d = w.days?.[0] || quickDate();
+  let ws = shTok(w.rest || '').map(x => x.t);
+  const num = s => { const v = pNum(String(s).replace(/:-$/, '')); return Number.isFinite(v) ? v : null; };
+  // Påslag sist: 15 % eller 15%
+  let markup = 0;
+  if (ws.length >= 2 && ws.at(-1) === '%' && num(ws.at(-2)) != null) { markup = num(ws.at(-2)); ws = ws.slice(0, -2); }
+  else if (ws.length && /^-?\d+([.,]\d+)?%$/.test(ws.at(-1))) { markup = num(ws.at(-1).slice(0, -1)); ws = ws.slice(0, -1); }
+  if (ws.length && /^(kr|kronor|sek)$/i.test(ws.at(-1))) ws = ws.slice(0, -1);
+  const last = ws.length ? num(ws.at(-1)) : null;
+  if (last == null) return { info: true, html: help };
+  let qty = null, unit = '', price = null, amount = last, n = ws.length - 1;
+  const j = ws.length - 2;
+  if (j >= 1 && KO_SEP.includes(ws[j].toLowerCase())) {
+    if (num(ws[j - 1]) != null) { qty = num(ws[j - 1]); n = j - 1; }
+    else if (j >= 2 && num(ws[j - 2]) != null) { qty = num(ws[j - 2]); unit = ws[j - 1]; n = j - 2; }
+    if (qty != null) { price = last; amount = qty * price; } else n = ws.length - 1;
+  }
+  const text = cap(ws.slice(0, n).join(' ').trim());
+  if (!text) return { info: true, html: `Skriv vad kostnaden gäller före beloppet: <b>kost ${esc(a[0].t)} kartunderlag ${esc(ws.at(-1))}</b>.` };
+  if (!amount) return { info: true, html: help };
+  // Uppgiften: förkortningen om den skrevs, annars raden i veckan, den senast använda eller den första
+  const ts = P.tasks.filter(t => !taskHidden(P, t)), has = id => ts.some(t => t.id === id), pre = P.id + '~';
+  const byAbbr = !a[0].q && ts.find(t => abbrs(t).includes(a[0].lo));
+  const tid = byAbbr?.id || splitRow(rowsForWeek(monday(d)).find(rk => rk.startsWith(pre) && has(splitRow(rk)[1])) || '')[1] || splitRow(recentRows().find(rk => rk.startsWith(pre) && has(splitRow(rk)[1])) || '')[1] || (ts.find(t => t.billable) || ts[0])?.id;
+  if (!tid) return { bad: true, html: `${B(P.name)} har ingen uppgift att lägga kostnaden på.` };
+  const rk = pre + tid, T = taskOf(P, tid);
+  if (viewing()) return viewShell();
+  if (lockedK(rk, d)) return { bad: true, html: `${cap(sdate(d))} är låst i ${B(P.name)} (avcheckad, signerad eller hanterad).` };
+  const c = { projectId: P.id, taskId: tid, date: d, text, amount, markup, ...(qty != null ? { qty, unit, price } : {}) };
+  const what = `${B(text)} ${qty != null ? `(${esc(cQty(c))}) ` : ''}<b class="mono">${fkc(amount)}</b>${markup ? ` + påslag ${fhs(markup)} %` : ''}`;
+  return { html: `Enter lägger kostnaden ${what} på ${B(P.name)}${ts.length > 1 ? ' · ' + esc(T.name) : ''}, ${esc(ldate(d).replace(/^./, x => x.toLowerCase()))}`,
+    run: () => { const k = costPut(c); if (!k) return; save(); shRefresh(); toast(`Kostnad: ${k.text} ${fkc(cTot(k))}, ${sdate(d)}`, { label: 'Ångra', fn: () => { costRemove(k.id); save(); shRefresh(); } }); } };
+}
+
 // Ta bort en rad ur veckan. Har raden tid tas tiden bort på riktigt (räknas inte i något), men den kan komma
 // tillbaka: lägger man till samma projekt och uppgift i veckan igen återställs tid och anteckningar.
 function removeRowData(rk, wk) {
@@ -3694,6 +3846,7 @@ function rowsForWeek(wk) {
   const days = weekDays(wk), set = [...(S.prefs.weekRows[wk] || [])];
   const extra = new Set();
   for (const e of live()) if (e.date >= days[0] && e.date <= days[6]) { const rk = e.projectId + '~' + e.taskId; if (!set.includes(rk)) extra.add(rk); }
+  if (COST.size) { const p = who(); for (const c of COST.values()) if (!c.deleted && c.person === p && c.date >= days[0] && c.date <= days[6] && !set.includes(cRk(c))) extra.add(cRk(c)); }
   const sorted = [...extra].sort((a, b) => { const pa = proj(splitRow(a)[0]), pb = proj(splitRow(b)[0]); return (pRank(pa) - pRank(pb)) || String(pb.number).localeCompare(String(pa.number)); });
   return [...set, ...sorted].filter(rk => { const [p, t] = splitRow(rk); return taskOf(proj(p), t); });
 }
@@ -3873,10 +4026,10 @@ function wkStateHtml(wk, ws) {
 }
 function cellHtml(rk, d, ri, ci, P, selDate, lk) {
   const hdd = !!handled(P.id, d); lk = lk || hdd;
-  const e = cell(rk, d), h = e ? e.hours : 0, nn = needsNote(e);
+  const e = cell(rk, d), h = e ? e.hours : 0, nn = needsNote(e), ko = costsAt(rk, d);
   const f = Math.min(h / Math.max(norm(d) || 8, 1), 1);
-  const lab = `${P.name}, ${sdate(d)}${h ? ', ' + fh(h) + ' timmar' : ''}${nn ? ', anteckning saknas' : ''}${hdd && h ? ', hanterad' : ''}`;
-  return `<div class="cell${lk ? ' ro' : ''}${hdd && h > 0 ? ' hd' : ''}${h > 0 ? ' has' : ''}${nn ? ' nonote' : ''}${d === today() ? ' today' : ''}${d === selDate ? ' colsel' : ''}${st.sel === rk + '|' + d ? ' sel' : ''}" data-cellbox="${rk}|${d}" data-r="${ri}" data-c="${ci}" style="--f:${f.toFixed(3)}"><input class="h-in" id="h_${rk}_${d}" data-key="${rk}|${d}" value="${h > 0 ? fh(h) : ''}" placeholder="–" inputmode="decimal" autocomplete="off" spellcheck="false" ${lk ? 'readonly' : ''} aria-label="${esc(lab)}"><span class="nn" title="Anteckning saknas"></span><span class="hdm" title="Hanterad – låst"></span></div>`;
+  const lab = `${P.name}, ${sdate(d)}${h ? ', ' + fh(h) + ' timmar' : ''}${nn ? ', anteckning saknas' : ''}${hdd && h ? ', hanterad' : ''}${ko.length ? `, ${ko.length === 1 ? 'en kostnad' : ko.length + ' kostnader'}` : ''}`;
+  return `<div class="cell${ko.length ? ' ko' : ''}${lk ? ' ro' : ''}${hdd && h > 0 ? ' hd' : ''}${h > 0 ? ' has' : ''}${nn ? ' nonote' : ''}${d === today() ? ' today' : ''}${d === selDate ? ' colsel' : ''}${st.sel === rk + '|' + d ? ' sel' : ''}" data-cellbox="${rk}|${d}" data-r="${ri}" data-c="${ci}" style="--f:${f.toFixed(3)}"><input class="h-in" id="h_${rk}_${d}" data-key="${rk}|${d}" value="${h > 0 ? fh(h) : ''}" placeholder="–" inputmode="decimal" autocomplete="off" spellcheck="false" ${lk ? 'readonly' : ''} aria-label="${esc(lab)}"><span class="nn" title="Anteckning saknas"></span><span class="hdm" title="Hanterad – låst"></span>${ko.length ? `<span class="kom" title="${esc(ko.map(c => `${c.text} ${fkc(cTot(c))}`).join(' · '))}">kr</span>` : ''}</div>`;
 }
 const rowSum = (rk, days) => days.reduce((s, d) => s + (cell(rk, d)?.hours || 0), 0);
 function budgetBar(P) {
@@ -3957,7 +4110,7 @@ function dayHtml() {
       const { T, sub } = rowInfo(rk), e = cell(rk, d), hh = e?.hours || 0, nn = needsNote(e), key = `${rk}|${d}`, lbl = multi ? `${P.name}, ${T.name}` : P.name, ro = lockedK(rk, d) ? 'readonly' : '';
       if (multi) h += `<div class="dt-head"><span class="t-name">${esc(sub)}</span><button class="icon-btn" data-act="menuFor" data-key="${key}" aria-label="Smartmeny för ${esc(lbl)}">${ic('more')}</button></div>`;
       h += `<div class="stepper"><button class="sbtn" data-act="step" data-key="${key}" data-d="-0.5" aria-label="Minska en halvtimme">${ic('minus')}</button><div class="dv-h${nn ? ' nonote' : ''}${hh > 0 && handled(P.id, d) ? ' hd' : ''}" data-cellbox="${key}" style="--f:${Math.min(hh / Math.max(norm(d) || 8, 1), 1).toFixed(3)}"><input class="h-in" id="h_${rk}_${d}" data-key="${key}" value="${hh > 0 ? fh(hh) : ''}" placeholder="0" inputmode="decimal" autocomplete="off" ${ro} aria-label="Timmar ${esc(lbl)}"><span class="nn" title="Anteckning saknas"></span><span class="hdm" title="Hanterad – låst"></span></div><button class="sbtn" data-act="step" data-key="${key}" data-d="0.5" aria-label="Öka en halvtimme">${ic('plus')}</button></div>`;
-      h += `<label class="sr" for="n_${rk}_${d}">Anteckning ${esc(lbl)}</label><textarea class="n-in" id="n_${rk}_${d}" data-key="${key}" rows="${multi ? 2 : 3}" ${ro} placeholder="${lk ? '' : T.absence ? 'Anteckning (frivillig)' : 'Vad gjorde du?'}">${esc(e?.note)}</textarea><div class="sugg" data-sugg="${key}"></div>`;
+      h += `<label class="sr" for="n_${rk}_${d}">Anteckning ${esc(lbl)}</label><textarea class="n-in" id="n_${rk}_${d}" data-key="${key}" rows="${multi ? 2 : 3}" ${ro} placeholder="${lk ? '' : T.absence ? 'Anteckning (frivillig)' : 'Vad gjorde du?'}">${esc(e?.note)}</textarea><div class="sugg" data-sugg="${key}"></div>${costListHtml(rk, d)}`;
     }
     h += `</article>`;
   }
@@ -4453,6 +4606,7 @@ function smartItems(key) {
     { act: 'fillDay', icon: 'fill', label: 'Fyll resten av dagen', short: 'Fyll dagen', off: lk || !hasNorm() },
     { act: 'copyNext', icon: 'next', label: `Kopiera raden till vecka ${w}`, short: `Till v. ${w}` },
     { act: 'moveCell', icon: 'move', label: 'Flytta till projekt …', short: 'Flytta', off: !e || lk },
+    { act: 'costAdd', icon: 'cost', label: 'Lägg till kostnad (t.ex. kartunderlag) …', short: 'Kostnad', off: lk },
     { act: 'diary', icon: 'book', label: 'Visa radens dagböcker', short: 'Dagböcker' },
     { act: 'clearCell', icon: 'trash', label: 'Rensa rutan', short: 'Rensa', danger: true, off: !e || lk }
   ];
@@ -4479,7 +4633,7 @@ function openCellPop(key, x, anchor) {
     + (lk ? `<div class="cp-lock">${ic('lock')} ${locked(d) ? (weekState(monday(d)).signed ? 'Signerad vecka' : 'Avcheckad vecka') : 'Hanterad månad'} – ${e ? fh(e.hours) + ' h' : 'ingen tid'}</div>`
       : `<div class="cp-h"><button class="sbtn" data-act="step" data-key="${key}" data-d="-0.5" aria-label="Minska en halvtimme">${ic('minus')}</button><div class="hbox"><label class="sr" for="cpHours">Timmar</label><input class="h-in" id="cpHours" data-key="${key}" value="${e && e.hours > 0 ? fh(e.hours) : ''}" placeholder="0" inputmode="decimal" autocomplete="off"></div><button class="sbtn" data-act="step" data-key="${key}" data-d="0.5" aria-label="Öka en halvtimme">${ic('plus')}</button><span class="day" id="cpDay">${pDayHtml(d).replace('Dagen hittills: ', '')}</span></div><div class="chips cp-chips">${[0.5, 1, 2, 4, 8].map(v => `<button class="chip" data-act="setH" data-key="${key}" data-h="${v}">${fh(v)}</button>`).join('')}</div>`)
     + (T.absence && hasNorm() ? `<div class="acct" id="cpAcct">${acctHtml(T)}</div>` : '')
-    + `<label class="sr" for="cpNote">Dagbok</label><textarea class="n-in" id="cpNote" data-key="${key}" rows="3" ${ro} placeholder="${lk ? 'Ingen anteckning' : T.absence ? 'Anteckning (frivillig)' : e && e.hours > 0 ? 'Vad gjorde du? (Tab från rutan)' : 'Dagbok'}">${esc(e?.note)}</textarea><div class="sugg" data-sugg="${key}"></div>`
+    + `<label class="sr" for="cpNote">Dagbok</label><textarea class="n-in" id="cpNote" data-key="${key}" rows="3" ${ro} placeholder="${lk ? 'Ingen anteckning' : T.absence ? 'Anteckning (frivillig)' : e && e.hours > 0 ? 'Vad gjorde du? (Tab från rutan)' : 'Dagbok'}">${esc(e?.note)}</textarea><div class="sugg" data-sugg="${key}"></div>${costListHtml(rk, d)}`
     + `<div class="cp-acts" role="menu">${smartItems(key).map(it => `<button role="menuitem" data-act="${it.act}" data-key="${key}" class="${it.danger ? 'danger' : ''}" ${it.off ? 'aria-disabled="true"' : ''} title="${esc(it.label)}">${ic(it.icon)}<span>${esc(it.short)}</span></button>`).join('')}</div>`;
   cp.hidden = false;
   const r = anchor.getBoundingClientRect(), pr = cp.getBoundingClientRect();
@@ -6702,8 +6856,11 @@ function diaryData(pid, from, to, amt, o) {
     g.rows.push({ date: e.date, task: t.name, hours: e.hours, note: (e.note || '').trim(), amount: a, miss: needsNote(e), hd: !!handled(pid, e.date) });
   }
   const groups = [...gm.values()].sort((a, b) => pOrd(a.pid) - pOrd(b.pid)).map(g => ({ ...g, tasks: [...g.tm.values()].sort((a, b) => (a.i - b.i) || ((a.rate ?? -1) - (b.rate ?? -1))) }));
-  const xr = xrRows(st.rep?.xr?.[pid], k);
-  return { P, C, from, to, amt, vat, rows, groups, xr, xrA: xr.reduce((s, x) => s + x.total, 0), perTask: [...per.values()].sort((a, b) => a.i - b.i), hours: rows.reduce((s, r) => s + r.hours, 0), amount: rows.reduce((s, r) => s + r.amount, 0), hdH: rows.reduce((s, r) => s + (r.hd ? r.hours : 0), 0), hdA: rows.reduce((s, r) => s + (r.hd ? r.amount : 0), 0), multi: people.size > 1, showTask: P.tasks.length > 1, miss: rows.filter(r => r.miss).length, lay: o.lay === 'week' ? 'week' : 'task', empty: o.lay === 'week' && !!o.empty,
+  const xr = xrRows(st.rep?.xr?.[pid], k), xrA = xr.reduce((s, x) => s + x.total, 0);
+  // Kostnader i perioden (0.20.0) – med moms när beloppen visas inkl. moms
+  const cs = pCosts(pid).filter(c => c.date >= from && c.date <= to).map(c => costRow(P, c, k)), csA = cs.reduce((s, c) => s + c.total, 0);
+  const ex = [...(cs.length ? [['Kostnader', csA]] : []), ...(xr.length ? [['Egna rader', xrA]] : [])];
+  return { P, C, from, to, amt, vat, rows, groups, xr, xrA, cs, csA, ex, exA: csA + xrA, any: rows.length > 0 || cs.length > 0, perTask: [...per.values()].sort((a, b) => a.i - b.i), hours: rows.reduce((s, r) => s + r.hours, 0), amount: rows.reduce((s, r) => s + r.amount, 0), hdH: rows.reduce((s, r) => s + (r.hd ? r.hours : 0), 0), hdA: rows.reduce((s, r) => s + (r.hd ? r.amount : 0), 0), multi: people.size > 1, showTask: P.tasks.length > 1, miss: rows.filter(r => r.miss).length, lay: o.lay === 'week' ? 'week' : 'task', empty: o.lay === 'week' && !!o.empty,
     budget: !P.internal && P.budgetKr > 0 ? { budget: P.budgetKr, used: usedTo, pct: usedTo / P.budgetKr, to } : null };
 }
 const dLong = d => `${pd(d).getDate()} ${MON[pd(d).getMonth()]} ${d.slice(0, 4)}`;
@@ -6719,8 +6876,8 @@ function diaryTabHtml() {
    <div class="fld"><label for="rpM">Månad</label>${r.custom ? `<div class="two"><input type="date" id="rpFrom" value="${r.from}" aria-label="Från"><input type="date" id="rpTo" value="${r.to}" aria-label="Till"></div>` : `<div class="mnav"><button class="icon-btn" data-act="rpMonth" data-d="-1" aria-label="Föregående månad">${ic('left')}</button><input type="month" id="rpM" value="${r.ym}"><button class="icon-btn" data-act="rpMonth" data-d="1" aria-label="Nästa månad">${ic('right')}</button></div>`}<label class="chk small"><input type="checkbox" id="rpCustom" ${r.custom ? 'checked' : ''}> Egen period</label></div>
    <div class="fld"><label for="rpAmt">Belopp</label><select id="rpAmt"><option value="none" ${r.amount === 'none' ? 'selected' : ''}>Visa inte belopp</option><option value="ex" ${r.amount === 'ex' ? 'selected' : ''}>Exkl. moms</option><option value="inc" ${r.amount === 'inc' ? 'selected' : ''}>Inkl. moms ${fhs(+R().book.vatRate || 0)} %</option></select><label class="chk small"><input type="checkbox" id="rpBud" ${r.budget ? 'checked' : ''}> Visa budgetläge</label></div>
    <div class="fld"><label for="rpLay">Uppställning</label><select id="rpLay"><option value="task" ${r.lay !== 'week' ? 'selected' : ''}>Per uppgift</option><option value="week" ${r.lay === 'week' ? 'selected' : ''}>Per dag och vecka</option></select><label class="chk small"><input type="checkbox" id="rpEmpty" ${r.empty && r.lay === 'week' ? 'checked' : ''} ${r.lay === 'week' ? '' : 'disabled'}> Visa veckor utan tid</label></div>
-   <div class="rep-acts"><button class="btn primary" data-act="dlDiary" ${d.rows.length ? '' : 'disabled'}>${ic('export')}Ladda ner PDF</button>
-   ${hd?.all ? `<button class="btn done" data-act="unhandle" ${pa} title="Häv hanterad och lås upp">${ic('lock')}Hanterad ${sdate(hd.at.slice(0, 10))}</button>` : d.rows.length ? `<button class="btn" data-act="handle" ${pa}>${ic('lock')}${hd ? 'Markera resten som hanterad' : 'Markera som hanterad'}</button>${hd ? `<button class="btn ghost" data-act="unhandle" ${pa} title="Häv det som är hanterat i perioden (${hdSpan(hd)}) och lås upp">${ic('unlock')}Häv ${hdSpan(hd)}</button>` : ''}` : ''}</div></div>` + sug;
+   <div class="rep-acts"><button class="btn primary" data-act="dlDiary" ${d.any ? '' : 'disabled'}>${ic('export')}Ladda ner PDF</button>
+   ${hd?.all ? `<button class="btn done" data-act="unhandle" ${pa} title="Häv hanterad och lås upp">${ic('lock')}Hanterad ${sdate(hd.at.slice(0, 10))}</button>` : d.any ? `<button class="btn" data-act="handle" ${pa}>${ic('lock')}${hd ? 'Markera resten som hanterad' : 'Markera som hanterad'}</button>${hd ? `<button class="btn ghost" data-act="unhandle" ${pa} title="Häv det som är hanterat i perioden (${hdSpan(hd)}) och lås upp">${ic('unlock')}Häv ${hdSpan(hd)}</button>` : ''}` : ''}</div></div>` + sug;
   if (d.miss) h += `<div class="alert soft">${ic('alert')}<div class="txt">${d.miss === 1 ? 'En tid saknar' : d.miss + ' tider saknar'} anteckning i perioden. Den står med som tom rad i dagboken.</div></div>`;
   h += `<div class="paper">${diaryPreview(d)}</div>`;
   return h;
@@ -6736,7 +6893,7 @@ function diaryFacts(d) {
 function diaryPreview(d) {
   const am = d.amt !== 'none', ftxt = d.amt === 'inc' ? `inkl. moms ${fhs(d.vat)} %` : 'exkl. moms';
   let h = paperHead('Projektdagbok', d.P.name) + `<dl class="pp-facts">${diaryFacts(d).map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`;
-  if (!d.rows.length) return h + `<p class="muted">Ingen tid i perioden.</p>`;
+  if (!d.any) return h + `<p class="muted">Ingen tid i perioden.</p>`;
   const span = 2, money = v => v ? fkr(v) : '–';
   h += `<table class="pp-t dgrp"><thead><tr><th>Datum</th><th class="w">Anteckning</th><th class="r">Timmar</th>${am ? '<th class="r">Belopp</th>' : ''}</tr></thead><tbody>`;
   for (const g of d.groups) {
@@ -6749,7 +6906,7 @@ function diaryPreview(d) {
     }
   }
   const sumL = d.multi ? d.groups.map(g => [g.name, g.hours, g.amount]) : d.groups.flatMap(g => g.tasks).map(t => [t.name + (am && t.rate != null && d.groups[0].tasks.filter(x => x.tid === t.tid).length > 1 ? ` (à ${fkr(t.rate)}/h)` : ''), t.hours, t.amount]);
-  h += `</tbody></table>${d.hdH && d.hdH < d.hours ? `<p class="pp-hd-note">Gråa rader ingår i en period som redan är hanterad.</p>` : ''}<h3 class="pp-h">Sammanställning${am ? ` <span class="muted">· belopp ${ftxt}</span>` : ''}</h3><table class="pp-t sum"><thead><tr><th class="w">${d.multi ? 'Medarbetare' : 'Uppgift'}</th><th class="r">Timmar</th>${am ? '<th class="r">Belopp</th>' : ''}</tr></thead><tbody>${sumL.map(([n, hh, a]) => `<tr><td class="w">${esc(n)}</td><td class="r mono">${fh(hh)} h</td>${am ? `<td class="r mono">${fkr(a)}</td>` : ''}</tr>`).join('')}</tbody></table>${xrTableHtml(d.xr, am)}<table class="pp-t sum tot-t"><tbody>${d.xr.length && am ? `<tr><td class="w">Tid</td><td class="r mono">${fh(d.hours)} h</td><td class="r mono">${fkr(d.amount)}</td></tr><tr><td class="w">Egna rader</td><td></td><td class="r mono">${fkr(d.xrA)}</td></tr>` : ''}<tr class="tot"><td class="w">Summa</td><td class="r mono">${fh(d.hours)} h</td>${am ? `<td class="r mono">${fkr(d.amount + d.xrA)}</td>` : ''}</tr>${d.hdH ? `<tr><td class="w muted">varav redan hanterat</td><td class="r mono muted">${fh(d.hdH)} h</td>${am ? `<td class="r mono muted">${fkr(d.hdA)}</td>` : ''}</tr>` : ''}${am && d.amt === 'inc' ? `<tr><td class="w muted">varav moms</td><td></td><td class="r mono muted">${fkr((d.amount + d.xrA) * (1 - 1 / (1 + d.vat / 100)))}</td></tr>` : ''}</tbody></table>`;
+  h += `</tbody></table>${d.hdH && d.hdH < d.hours ? `<p class="pp-hd-note">Gråa rader ingår i en period som redan är hanterad.</p>` : ''}<h3 class="pp-h">Sammanställning${am ? ` <span class="muted">· belopp ${ftxt}</span>` : ''}</h3><table class="pp-t sum"><thead><tr><th class="w">${d.multi ? 'Medarbetare' : 'Uppgift'}</th><th class="r">Timmar</th>${am ? '<th class="r">Belopp</th>' : ''}</tr></thead><tbody>${sumL.map(([n, hh, a]) => `<tr><td class="w">${esc(n)}</td><td class="r mono">${fh(hh)} h</td>${am ? `<td class="r mono">${fkr(a)}</td>` : ''}</tr>`).join('')}</tbody></table>${d.cs.length ? `<h3 class="pp-h">Kostnader</h3>${costTableHtml(d.cs, am, 'Beskrivning')}` : ''}${xrTableHtml(d.xr, am)}<table class="pp-t sum tot-t"><tbody>${d.ex.length && am ? `<tr><td class="w">Tid</td><td class="r mono">${fh(d.hours)} h</td><td class="r mono">${fkr(d.amount)}</td></tr>${d.ex.map(([n, a]) => `<tr><td class="w">${n}</td><td></td><td class="r mono">${fkc(a)}</td></tr>`).join('')}` : ''}<tr class="tot"><td class="w">Summa</td><td class="r mono">${fh(d.hours)} h</td>${am ? `<td class="r mono">${fkr(d.amount + d.exA)}</td>` : ''}</tr>${d.hdH ? `<tr><td class="w muted">varav redan hanterat</td><td class="r mono muted">${fh(d.hdH)} h</td>${am ? `<td class="r mono muted">${fkr(d.hdA)}</td>` : ''}</tr>` : ''}${am && d.amt === 'inc' ? `<tr><td class="w muted">varav moms</td><td></td><td class="r mono muted">${fkr((d.amount + d.exA) * (1 - 1 / (1 + d.vat / 100)))}</td></tr>` : ''}</tbody></table>`;
   if (rep().budget && d.budget) { const b = d.budget; h += `<div class="pp-bud"><span>Budget ${fkr(b.budget)} exkl. moms · förbrukat till och med ${sdate(budTo(b.to))} <b>${fkr(b.used)}</b> (${fpct(b.pct)}) · kvar ${fkr(b.budget - b.used)}</span><div class="bbar lv${lvl(b.pct)}"><span class="track"><span class="val" style="width:${Math.min(b.pct, 1) * 100}%"></span></span></div></div>`; }
   return h;
 }
@@ -6772,17 +6929,18 @@ function diaryPdf(d, showBudget) {
   const one = d.groups[0]?.tasks || [], sl = d.multi ? d.groups.map(g => [g.name, g.hours, g.amount]) : one.map(t => [t.name + (am && t.rate != null && one.filter(x => x.tid === t.tid).length > 1 ? ` (à ${fkr(t.rate)}/h)` : ''), t.hours, t.amount]);
   const scol = [{ h: d.multi ? 'Medarbetare' : 'Uppgift', wrap: true }, { h: 'Timmar', w: 70, align: 'right' }, ...(am ? [{ h: 'Belopp', w: 90, align: 'right' }] : [])];
   pdfTable(doc, scol, sl.map(([n, hh, a]) => [n, fh(hh) + ' h', ...(am ? [money(a)] : [])]));
+  if (d.cs.length) { pdfH2(doc, 'Kostnader'); costTablePdf(doc, d.cs, am, 'Beskrivning'); }
   xrTablePdf(doc, d.xr, am);
-  const srows = [...(d.xr.length && am ? [['Tid', fh(d.hours) + ' h', money(d.amount)], ['Egna rader', '', money(d.xrA)]] : []), { cells: ['Summa', fh(d.hours) + ' h', ...(am ? [money(d.amount + d.xrA)] : [])], bold: true }];
+  const srows = [...(d.ex.length && am ? [['Tid', fh(d.hours) + ' h', money(d.amount)], ...d.ex.map(([n, a]) => [n, '', fkc(a)])] : []), { cells: ['Summa', fh(d.hours) + ' h', ...(am ? [money(d.amount + d.exA)] : [])], bold: true }];
   if (d.hdH) srows.push({ cells: ['varav redan hanterat', fh(d.hdH) + ' h', ...(am ? [money(d.hdA)] : [])], muted: true });
-  if (am && d.amt === 'inc') srows.push(['varav moms', '', fkr((d.amount + d.xrA) * (1 - 1 / (1 + d.vat / 100)))]);
+  if (am && d.amt === 'inc') srows.push(['varav moms', '', fkr((d.amount + d.exA) * (1 - 1 / (1 + d.vat / 100)))]);
   pdfTable(doc, [{ h: 'Totalt', wrap: true }, { h: 'Timmar', w: 70, align: 'right' }, ...(am ? [{ h: 'Belopp', w: 90, align: 'right' }] : [])], srows);
   if (showBudget && d.budget) pdfBudget(doc, d.budget);
   return doc.finish();
 }
 async function downloadDiary(pid, from, to, amt, budget, quiet) {
   const d = diaryData(pid, from, to, amt);
-  if (!d.rows.length) { toast('Ingen tid i perioden'); return; }
+  if (!d.any) { toast('Ingen tid i perioden'); return; }
   const name = fileSafe(`Projektdagbok ${d.P.number && d.P.number !== '–' ? d.P.number + ' ' : ''}${d.P.name} ${from.slice(8) === '01' && to === ymLast(ymOf(from)) ? ymOf(from) : from + '–' + to}.pdf`);
   const ok = await offerFile(name, diaryPdf(d, budget));
   if (!ok || quiet) return;
@@ -6811,7 +6969,7 @@ function invProjects(sel) {
 }
 function invoiceData(sel, from, to, old, withRows) {
   const ps = invProjects(sel), C = sel === 'all' ? null : sel.startsWith('c:') ? cust(sel.slice(2)) : cust(proj(sel.slice(2))?.customerId), vat = +R().book.vatRate || 0;
-  const out = { C, from, to, old, vat, projects: [], hours: 0, amount: 0, first: null, last: null, done: { h: 0, a: 0 }, later: { h: 0, a: 0 }, miss: 0, spans: [] };
+  const out = { C, from, to, old, vat, projects: [], hours: 0, amount: 0, csA: 0, nc: 0, first: null, last: null, done: { h: 0, a: 0, c: 0 }, later: { h: 0, a: 0, c: 0 }, miss: 0, spans: [] };
   for (const P of ps) {
     const lines = new Map(), rows = [], tIdx = id => P.tasks.findIndex(t => t.id === id); let ph = 0, pa = 0, pf = null;
     for (const e of pEs(P.id)) {
@@ -6827,11 +6985,22 @@ function invoiceData(sel, from, to, old, withRows) {
       if (!out.first || e.date < out.first) out.first = e.date; if (!out.last || e.date > out.last) out.last = e.date;
       if (!pf || e.date < pf) pf = e.date;
     }
+    // Kostnader (0.20.0): öppna (ej hanterade) i perioden, eller före den med All öppen tid
+    const costs = [];
+    for (const c of pCosts(P.id)) {
+      if (handled(P.id, c.date)) { if (c.date >= from && c.date <= to) out.done.c += cTot(c); continue; }
+      if (c.date > to) { out.later.c += cTot(c); continue; }
+      if (c.date < from && !old) continue;
+      costs.push(costRow(P, c));
+      if (!out.first || c.date < out.first) out.first = c.date; if (!out.last || c.date > out.last) out.last = c.date;
+      if (!pf || c.date < pf) pf = c.date;
+    }
+    const csA = costs.reduce((s, c) => s + c.total, 0);
     const pFrom = old && pf && pf < from ? pf : from;
     // Perioden som låses när underlaget markeras som hanterat: från projektets äldsta öppna tid (eller periodens början) till periodens slut
-    if (lines.size) out.spans.push({ pid: P.id, from: pf < from ? pf : from, to });
-    if (lines.size) out.projects.push({ P, lines: [...lines.values()].sort((a, b) => (a.i - b.i) || (b.rate - a.rate)), rows: rows.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.i - b.i), from: pFrom, hours: ph, amount: pa });
-    out.hours += ph; out.amount += pa;
+    if (lines.size || costs.length) out.spans.push({ pid: P.id, from: pf < from ? pf : from, to });
+    if (lines.size || costs.length) out.projects.push({ P, lines: [...lines.values()].sort((a, b) => (a.i - b.i) || (b.rate - a.rate)), rows: rows.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.i - b.i), from: pFrom, hours: ph, amount: pa, costs, csA });
+    out.hours += ph; out.amount += pa; out.csA += csA; out.nc += costs.length;
   }
   out.projects.sort((a, b) => String(a.P.number).localeCompare(String(b.P.number), 'sv'));
   out.vatA = out.amount * vat / 100;
@@ -6841,8 +7010,28 @@ function invoiceData(sel, from, to, old, withRows) {
   const v = st.rep?.inv; out.lay = withRows && v?.lay === 'week' ? 'week' : 'rows'; out.empty = out.lay === 'week' && !!v?.empty;
   out.label = periodLabel(out.first && out.first < from ? out.first : from, to);
   // Belopp av/på och egna rader (0.19.1)
-  out.money = v?.money !== false; out.xr = xrRows(v?.xr?.[sel]); out.xrA = out.xr.reduce((s, x) => s + x.total, 0); out.vatX = out.xrA * vat / 100;
+  out.money = v?.money !== false; out.xr = xrRows(v?.xr?.[sel]); out.xrA = out.xr.reduce((s, x) => s + x.total, 0);
+  // Utöver tiden: kostnader (0.20.0) och egna rader – moms på allt
+  out.ex = [...(out.nc ? [['Kostnader', out.csA]] : []), ...(out.xr.length ? [['Egna rader', out.xrA]] : [])]; out.exA = out.csA + out.xrA; out.vatX = out.exA * vat / 100;
+  out.any = out.hours > 0 || out.nc > 0;
   return out;
+}
+function costRow(P, c, k = 1) {
+  const m = 1 + (+c.markup || 0) / 100, qp = c.qty != null && c.price != null;
+  return { date: c.date, text: c.text, task: taskOf(P, c.taskId)?.name || '', qty: qp ? +c.qty : null, unit: qp ? c.unit || '' : '', price: qp ? c.price * m * k : null, amount: cAmt(c) * k, markup: +c.markup || 0, total: cTot(c) * k, by: c.person, hd: !!handled(P.id, c.date) };
+}
+const cRowQty = c => c.qty != null ? `${fhs(c.qty)}${c.unit ? ' ' + c.unit : ''}` : '–';
+// Tabellen med kostnader (am = med belopp): datum, beskrivning, antal, à-pris, belopp
+function costTableHtml(cs, am, title = 'Kostnader') {
+  if (!cs.length) return '';
+  return `<table class="pp-t ko-t"><thead><tr><th>Datum</th><th class="w">${title}</th><th class="r">Antal</th>${am ? '<th class="r">À-pris</th><th class="r">Belopp</th>' : ''}</tr></thead><tbody>${cs.map(c => `<tr class="${c.hd ? 'hd' : ''}"><td class="nw">${sdate(c.date)}</td><td class="w">${esc(c.text)}</td><td class="r mono">${esc(cRowQty(c))}</td>${am ? `<td class="r mono">${c.price != null ? fkc(c.price) : '–'}</td><td class="r mono">${fkc(c.total)}</td>` : ''}</tr>`).join('')}${am && cs.length > 1 ? `<tr class="tot"><td></td><td class="w">Summa ${title.toLowerCase()}</td><td></td><td></td><td class="r mono">${fkc(cs.reduce((s, c) => s + c.total, 0))}</td></tr>` : ''}</tbody></table>`;
+}
+function costTablePdf(doc, cs, am, title = 'Kostnader') {
+  if (!cs.length) return;
+  const cols = [{ h: 'Datum', w: 58 }, { h: title, wrap: true }, { h: 'Antal', w: 64, align: 'right' }, ...(am ? [{ h: 'À-pris', w: 76, align: 'right' }, { h: 'Belopp', w: 88, align: 'right' }] : [])];
+  const body = cs.map(c => (x => c.hd ? { cells: x, muted: true } : x)([sdate(c.date), c.text, cRowQty(c), ...(am ? [c.price != null ? fkc(c.price) : '–', fkc(c.total)] : [])]));
+  if (am && cs.length > 1) body.push({ cells: ['', 'Summa ' + title.toLowerCase(), '', '', fkc(cs.reduce((s, c) => s + c.total, 0))], bold: true });
+  pdfTable(doc, cols, body);
 }
 const invName = sel => sel === 'all' ? 'Alla projekt' : sel.startsWith('c:') ? cust(sel.slice(2))?.name || '' : (P => `${P.number && P.number !== '–' ? P.number + ' ' : ''}${P.name}`)(proj(sel.slice(2)));
 function invFacts(d) {
@@ -6882,7 +7071,7 @@ function invoiceTabHtml() {
    <div class="fld"><label for="ivM">${v.custom ? 'Period' : 'Till och med månad'}</label>${v.custom ? `<div class="two"><input type="date" id="ivFrom" value="${v.from}" aria-label="Från"><input type="date" id="ivTo" value="${v.to}" aria-label="Till"></div>` : `<div class="mnav"><button class="icon-btn" data-act="ivMonth" data-d="-1" aria-label="Föregående månad">${ic('left')}</button><input type="month" id="ivM" value="${v.ym}"><button class="icon-btn" data-act="ivMonth" data-d="1" aria-label="Nästa månad">${ic('right')}</button></div>`}<label class="chk small"><input type="checkbox" id="ivCustom" ${v.custom ? 'checked' : ''}> Egen period</label></div>
    <div class="fld"><span class="lbl">Innehåll</span><label class="chk small" style="margin-top:6px"><input type="checkbox" id="ivOld" ${v.old ? 'checked' : ''}> All öppen tid före perioden</label><label class="chk small"><input type="checkbox" id="ivRows" ${v.rows ? 'checked' : ''}> Dagboksrader med datum och anteckning</label><label class="chk small"><input type="checkbox" id="ivAmt" ${v.money !== false ? 'checked' : ''}> Belopp (av = bara timmar)</label></div>
    <div class="fld"><label for="ivLay">Dagboksrader</label><select id="ivLay" ${v.rows ? '' : 'disabled'}><option value="rows" ${v.lay !== 'week' ? 'selected' : ''}>En rad per tidpost</option><option value="week" ${v.lay === 'week' ? 'selected' : ''}>Per dag och vecka</option></select><label class="chk small"><input type="checkbox" id="ivEmpty" ${v.empty && v.lay === 'week' ? 'checked' : ''} ${v.rows && v.lay === 'week' ? '' : 'disabled'}> Visa veckor utan tid</label></div>
-   <div class="rep-acts"><button class="btn${invOn() ? '' : ' primary'}" data-act="dlInvPdf" ${d.hours ? '' : 'disabled'}>${ic('export')}PDF</button><button class="btn" data-act="dlInvCsv" ${d.hours ? '' : 'disabled'}>${ic('export')}CSV</button>${invOn() ? `<button class="btn primary" data-act="invNew" ${d.hours && v.sel !== 'all' ? '' : `disabled title="${d.hours ? 'Välj en kund eller ett projekt' : 'Ingen öppen tid'}"`}>${ic('report')}Skapa faktura</button>` : ''}${d.spans.length ? `<button class="btn" data-act="invHandle">${ic('lock')}Markera som hanterat</button>` : ''}</div></div>` + xrCtlHtml('inv') + repSuggestHtml('invoice');
+   <div class="rep-acts"><button class="btn${invOn() ? '' : ' primary'}" data-act="dlInvPdf" ${d.any ? '' : 'disabled'}>${ic('export')}PDF</button><button class="btn" data-act="dlInvCsv" ${d.any ? '' : 'disabled'}>${ic('export')}CSV</button>${invOn() ? `<button class="btn primary" data-act="invNew" ${d.any && v.sel !== 'all' ? '' : `disabled title="${d.any ? 'Välj en kund eller ett projekt' : 'Ingen öppen tid'}"`}>${ic('report')}Skapa faktura</button>` : ''}${d.spans.length ? `<button class="btn" data-act="invHandle">${ic('lock')}Markera som hanterat</button>` : ''}</div></div>` + xrCtlHtml('inv') + repSuggestHtml('invoice');
   if (d.miss) h += `<div class="alert soft">${ic('alert')}<div class="txt">${d.miss === 1 ? 'En tid saknar' : d.miss + ' tider saknar'} anteckning. Fyll i dem i tidboken innan du skickar ${v.rows ? 'underlaget' : 'projektdagboken som bilaga'}.</div></div>`;
   h += `<div class="paper">${invPreview(d, v.sel)}</div>`;
   return h;
@@ -6892,20 +7081,21 @@ const invTitle = (sel, rows, money = true) => !money ? (sel === 'all' ? 'Öppen 
 function invPreview(d, sel) {
   const am = d.money, ac = am ? 4 : 3;
   let h = paperHead(invTitle(sel, d.withRows, am), sel === 'all' ? '' : invName(sel)) + `<dl class="pp-facts">${invFacts(d).map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v).replace(/\n/g, '<br>')}</dd></div>`).join('')}</dl>`;
-  if (!d.hours) return h + `<p class="muted">Ingen öppen debiterbar tid${d.done.h ? ` – ${fh(d.done.h)} h i perioden är redan hanterade` : ''}.</p>`;
+  if (!d.any) return h + `<p class="muted">Ingen öppen debiterbar tid${d.done.h ? ` – ${fh(d.done.h)} h i perioden är redan hanterade` : ''}.</p>`;
   const bTh = am ? '<th class="r">Belopp</th>' : '';
   for (const x of d.projects) {
     const mt = x.P.tasks.length > 1;
     h += `<h3 class="pp-h">${esc(invPHead(d, x.P))}${x.P.property ? ` <span class="muted">· ${esc(x.P.property)}</span>` : ''}</h3>`;
     if (x.rows.length && d.lay === 'week') h += `<table class="pp-t dgrp"><thead><tr><th>Datum</th><th class="w">Anteckning</th><th class="r">Timmar</th>${bTh}</tr></thead><tbody>${weekRowsHtml(weekItems(x.rows, x.from, d.to, { empty: d.empty, task: mt }), am, fkr)}</tbody></table>`;
     else if (x.rows.length) h += `<table class="pp-t"><thead><tr><th>Datum</th>${mt ? '<th>Uppgift</th>' : ''}<th class="w">Anteckning</th><th class="r">Timmar</th>${bTh}</tr></thead><tbody>${x.rows.map(rw => `<tr><td class="nw">${sdate(rw.date)}</td>${mt ? `<td>${esc(rw.task)}</td>` : ''}<td class="w${rw.miss ? ' miss' : ''}">${rw.miss ? 'Anteckning saknas' : esc(rw.note)}</td><td class="r mono">${fh(rw.hours)}</td>${am ? `<td class="r mono">${fkr(rw.amount)}</td>` : ''}</tr>`).join('')}</tbody></table>`;
-    h += `<table class="pp-t"><thead><tr><th class="w">Uppgift</th><th>Roll</th><th class="r">Timmar</th>${am ? '<th class="r">À-pris</th><th class="r">Belopp</th>' : ''}</tr></thead><tbody>${x.lines.map(l => `<tr><td class="w">${esc(l.task)}</td><td>${esc(l.role)}</td><td class="r mono">${fh(l.hours)}</td>${am ? `<td class="r mono">${fkr(l.rate)}</td><td class="r mono">${fkr(l.amount)}</td>` : ''}</tr>`).join('')}<tr class="tot"><td class="w">Summa projektet</td><td></td><td class="r mono">${fh(x.hours)}</td>${am ? `<td></td><td class="r mono">${fkr(x.amount)}</td>` : ''}</tr></tbody></table>`;
+    if (x.lines.length) h += `<table class="pp-t"><thead><tr><th class="w">Uppgift</th><th>Roll</th><th class="r">Timmar</th>${am ? '<th class="r">À-pris</th><th class="r">Belopp</th>' : ''}</tr></thead><tbody>${x.lines.map(l => `<tr><td class="w">${esc(l.task)}</td><td>${esc(l.role)}</td><td class="r mono">${fh(l.hours)}</td>${am ? `<td class="r mono">${fkr(l.rate)}</td><td class="r mono">${fkr(l.amount)}</td>` : ''}</tr>`).join('')}<tr class="tot"><td class="w">Summa projektet</td><td></td><td class="r mono">${fh(x.hours)}</td>${am ? `<td></td><td class="r mono">${fkr(x.amount)}</td>` : ''}</tr></tbody></table>`;
+    h += costTableHtml(x.costs, am);
   }
   h += xrTableHtml(d.xr, am);
   if (am) {
-    const net = d.amount + d.xrA, vatA = d.vatA + d.vatX;
-    h += `<h3 class="pp-h">Att fakturera</h3><table class="pp-t sum"><tbody>${d.xr.length ? `<tr><td class="w">Tid</td><td class="r mono">${fh(d.hours)} h</td><td class="r mono">${fkr(d.amount)}</td></tr><tr><td class="w">Egna rader</td><td></td><td class="r mono">${fkr(d.xrA)}</td></tr>` : ''}<tr${d.xr.length ? ' class="tot"' : ''}><td class="w">Summa exkl. moms</td><td class="r mono">${d.xr.length ? '' : fh(d.hours) + ' h'}</td><td class="r mono">${fkr(net)}</td></tr><tr><td class="w">Moms ${fhs(d.vat)} %</td><td></td><td class="r mono">${fkr(vatA)}</td></tr><tr class="tot"><td class="w">Summa inkl. moms</td><td></td><td class="r mono">${fkr(net + vatA)}</td></tr></tbody></table>`;
-  } else h += `<h3 class="pp-h">Summa</h3><table class="pp-t sum"><tbody><tr class="tot"><td class="w">Öppen tid${d.projects.length > 1 ? `, ${d.projects.length} projekt` : ''}</td><td class="r mono">${fh(d.hours)} h</td></tr></tbody></table>`;
+    const net = d.amount + d.exA, vatA = d.vatA + d.vatX;
+    h += `<h3 class="pp-h">Att fakturera</h3><table class="pp-t sum"><tbody>${d.ex.length ? `<tr><td class="w">Tid</td><td class="r mono">${fh(d.hours)} h</td><td class="r mono">${fkr(d.amount)}</td></tr>${d.ex.map(([n, a]) => `<tr><td class="w">${n}</td><td></td><td class="r mono">${fkc(a)}</td></tr>`).join('')}` : ''}<tr${d.ex.length ? ' class="tot"' : ''}><td class="w">Summa exkl. moms</td><td class="r mono">${d.ex.length ? '' : fh(d.hours) + ' h'}</td><td class="r mono">${fkr(net)}</td></tr><tr><td class="w">Moms ${fhs(d.vat)} %</td><td></td><td class="r mono">${fkr(vatA)}</td></tr><tr class="tot"><td class="w">Summa inkl. moms</td><td></td><td class="r mono">${fkr(net + vatA)}</td></tr></tbody></table>`;
+  } else h += `<h3 class="pp-h">Summa</h3><table class="pp-t sum"><tbody><tr class="tot"><td class="w">Öppen tid${d.projects.length > 1 ? `, ${d.projects.length} projekt` : ''}</td><td class="r mono">${fh(d.hours)} h</td></tr>${d.nc ? `<tr><td class="w">Kostnader</td><td class="r mono">${d.nc} st</td></tr>` : ''}</tbody></table>`;
   h += `<p class="pp-hd-note">${am ? INV_NOTE : INV_NOTE_H}${d.done.h ? ` ${fh(d.done.h)} h i perioden är redan hanterade och ingår inte.` : ''}</p>`;
   return h;
 }
@@ -6918,18 +7108,19 @@ function invoicePdf(d, sel) {
     pdfH2(doc, `${invPHead(d, x.P)}${x.P.property ? ' · ' + x.P.property : ''}`);
     if (x.rows.length && d.lay === 'week') pdfTable(doc, [{ h: 'Datum', w: 58 }, { h: 'Anteckning', wrap: true }, { h: 'Timmar', w: 52, align: 'right' }, ...bC], weekRowsPdf(weekItems(x.rows, x.from, d.to, { empty: d.empty, task: mt }), am, fkr));
     else if (x.rows.length) pdfTable(doc, [{ h: 'Datum', w: 58 }, ...(mt ? [{ h: 'Uppgift', w: 92, wrap: true }] : []), { h: 'Anteckning', wrap: true }, { h: 'Timmar', w: 52, align: 'right' }, ...bC], x.rows.map(rw => [sdate(rw.date), ...(mt ? [rw.task] : []), rw.miss ? '(anteckning saknas)' : rw.note, fh(rw.hours), ...(am ? [fkr(rw.amount)] : [])]));
-    pdfTable(doc, [{ h: 'Uppgift', wrap: true }, { h: 'Roll', w: 100, wrap: true }, { h: 'Timmar', w: 56, align: 'right' }, ...(am ? [{ h: 'À-pris', w: 76, align: 'right' }, { h: 'Belopp', w: 88, align: 'right' }] : [])],
+    if (x.lines.length) pdfTable(doc, [{ h: 'Uppgift', wrap: true }, { h: 'Roll', w: 100, wrap: true }, { h: 'Timmar', w: 56, align: 'right' }, ...(am ? [{ h: 'À-pris', w: 76, align: 'right' }, { h: 'Belopp', w: 88, align: 'right' }] : [])],
       [...x.lines.map(l => [l.task, l.role, fh(l.hours), ...(am ? [fkr(l.rate), fkr(l.amount)] : [])]), { cells: ['Summa projektet', '', fh(x.hours), ...(am ? ['', fkr(x.amount)] : [])], bold: true }]);
+    costTablePdf(doc, x.costs, am);
   }
   xrTablePdf(doc, d.xr, am);
   if (am) {
-    const net = d.amount + d.xrA, vatA = d.vatA + d.vatX;
+    const net = d.amount + d.exA, vatA = d.vatA + d.vatX;
     pdfH2(doc, 'Att fakturera');
     pdfTable(doc, [{ h: '', wrap: true }, { h: 'Timmar', w: 70, align: 'right' }, { h: 'Belopp', w: 96, align: 'right' }],
-      [...(d.xr.length ? [['Tid', fh(d.hours) + ' h', fkr(d.amount)], ['Egna rader', '', fkr(d.xrA)]] : []), d.xr.length ? { cells: ['Summa exkl. moms', '', fkr(net)], bold: true } : ['Summa exkl. moms', fh(d.hours) + ' h', fkr(net)], [`Moms ${fhs(d.vat)} %`, '', fkr(vatA)], { cells: ['Summa inkl. moms', '', fkr(net + vatA)], bold: true }]);
+      [...(d.ex.length ? [['Tid', fh(d.hours) + ' h', fkr(d.amount)], ...d.ex.map(([n, a]) => [n, '', fkc(a)])] : []), d.ex.length ? { cells: ['Summa exkl. moms', '', fkr(net)], bold: true } : ['Summa exkl. moms', fh(d.hours) + ' h', fkr(net)], [`Moms ${fhs(d.vat)} %`, '', fkr(vatA)], { cells: ['Summa inkl. moms', '', fkr(net + vatA)], bold: true }]);
   } else {
     pdfH2(doc, 'Summa');
-    pdfTable(doc, [{ h: '', wrap: true }, { h: 'Timmar', w: 70, align: 'right' }], [{ cells: ['Öppen tid' + (d.projects.length > 1 ? `, ${d.projects.length} projekt` : ''), fh(d.hours) + ' h'], bold: true }]);
+    pdfTable(doc, [{ h: '', wrap: true }, { h: 'Timmar', w: 70, align: 'right' }], [{ cells: ['Öppen tid' + (d.projects.length > 1 ? `, ${d.projects.length} projekt` : ''), fh(d.hours) + ' h'], bold: true }, ...(d.nc ? [['Kostnader', d.nc + ' st']] : [])]);
   }
   doc.ensure(30); doc.pdf.wrap((am ? INV_NOTE : INV_NOTE_H) + (d.done.h ? ` ${fh(d.done.h)} h i perioden är redan hanterade och ingår inte.` : ''), 8, false, doc.w).forEach(l => { doc.pdf.text(doc.x, doc.y, l, { size: 8, color: MUTED }); doc.y += 11; });
   return doc.finish();
@@ -6941,13 +7132,14 @@ function invoiceCsv(d) {
   const head = ['Kund', 'Kundens org.nr', 'Kundens referens', 'Fakturaadress', 'Projektnummer', 'Projekt', 'Fastighet', 'Uppgift', 'Roll', 'Från', 'Till', 'Timmar', 'À-pris', 'Belopp exkl. moms', 'Momssats %', 'Moms', 'Belopp inkl. moms'];
   const rows = [head];
   for (const x of d.projects) for (const l of x.lines) { const m = l.amount * d.vat / 100, K = d.all ? cust(x.P.customerId) : C; rows.push([K?.name || '', K?.orgNr || '', K?.ref || '', (K?.invoiceAddress || K?.address || '').replace(/\n/g, ', '), x.P.number === '–' ? '' : x.P.number, x.P.name, x.P.property || '', l.task, l.role, from, d.to, n(l.hours), n(l.rate), n(l.amount), n(d.vat), n(m), n(l.amount + m)]); }
+  for (const x of d.projects) for (const c of x.costs || []) { const m = c.total * d.vat / 100, K = d.all ? cust(x.P.customerId) : C; rows.push([K?.name || '', K?.orgNr || '', K?.ref || '', (K?.invoiceAddress || K?.address || '').replace(/\n/g, ', '), x.P.number === '–' ? '' : x.P.number, x.P.name, x.P.property || '', c.text + (c.qty != null ? ` (${fhs(c.qty)}${c.unit ? ' ' + c.unit : ''} à ${n(c.price)})` : ''), c.markup ? `Kostnad, påslag ${fhs(c.markup)} %` : 'Kostnad', c.date, c.date, '', '', n(c.total), n(d.vat), n(m), n(c.total + m)]); }
   for (const x of d.xr || []) { const m = x.total * d.vat / 100; rows.push([C?.name || '', C?.orgNr || '', C?.ref || '', (C?.invoiceAddress || C?.address || '').replace(/\n/g, ', '), '', '', '', x.text, x.markup ? `Egen rad, påslag ${fhs(x.markup)} %` : 'Egen rad', from, d.to, x.hours ? n(x.hours) : '', x.rate != null ? n(x.rate) : '', n(x.total), n(d.vat), n(m), n(x.total + m)]); }
   return '﻿' + rows.map(r => r.map(q).join(';')).join('\r\n') + '\r\n';
 }
 const invFile = (d, sel, ext) => fileSafe(`${invTitle(sel, d.withRows, ext === 'csv' || d.money)} ${sel === 'all' ? '' : invName(sel)} ${(d.first && d.first < d.from ? d.first : d.from)}–${d.to}.${ext}`);
 async function invDownload(kind) {
   const v = invSel(), [from, to] = invPeriod(), d = invoiceData(v.sel, from, to, v.old, v.rows);
-  if (!d.hours) { toast('Ingen öppen tid att fakturera'); return; }
+  if (!d.any) { toast('Ingen öppen tid att fakturera'); return; }
   const ok = kind === 'csv' ? await offerFile(invFile(d, v.sel, 'csv'), new TextEncoder().encode(invoiceCsv(d)), 'text/csv;charset=utf-8') : await offerFile(invFile(d, v.sel, 'pdf'), invoicePdf(d, v.sel));
   if (!ok) return;
   toast(`Fakturaunderlaget är nedladdat (${kind.toUpperCase()})`, d.spans.length ? { label: 'Markera som hanterat', fn: () => invHandleAsk() } : null);
@@ -6970,7 +7162,7 @@ function invPanelHtml() {
   for (const x of openProjects()) { if (!x.p.customerId || simple()) { noC.push(x); continue; } const o = byC.get(x.p.customerId) || { c: cust(x.p.customerId), a: 0, first: x.o.first }; o.a += x.o.all.a; if (x.o.first < o.first) o.first = x.o.first; byC.set(x.p.customerId, o); }
   const l = [...byC.values()].filter(x => x.c).sort((a, b) => a.first < b.first ? -1 : 1);
   let h = pHead(simple() ? 'Öppen tid' : 'Fakturaunderlag', esc(invName(v.sel) || '')) + `<div class="p-body">`;
-  if (d.hours) h += `<section class="psec"><h3>I underlaget</h3>${pkv('Från', dYear(d.first), d.first < from ? 'warn' : '')}${pkv('Till och med', dYear(to))}${pkv('Exkl. moms', `${fkr(d.amount)}<small>${fh(d.hours)} h</small>`)}${pkv('Inkl. moms', fkr(d.amount + d.vatA), 'tot big')}${d.later.h ? pkv('Öppet efter perioden', hk(d.later)) : ''}</section>`;
+  if (d.any) h += `<section class="psec"><h3>I underlaget</h3>${pkv('Från', dYear(d.first), d.first < from ? 'warn' : '')}${pkv('Till och med', dYear(to))}${pkv('Exkl. moms', `${fkr(d.amount + d.exA)}<small>${fh(d.hours)} h${d.nc ? ` · ${d.nc} ${d.nc === 1 ? 'kostnad' : 'kostnader'}` : ''}</small>`)}${pkv('Inkl. moms', fkr(d.amount + d.exA + d.vatA + d.vatX), 'tot big')}${d.later.h ? pkv('Öppet efter perioden', hk(d.later)) : ''}</section>`;
   h += `<section class="psec"><h3>Att fakturera</h3>${l.length || noC.length ? `<ul class="plist">${l.slice(0, 8).map(x => `<li class="pl-li"><button class="pl" data-act="ivPick" data-s="c:${x.c.id}"><span class="r-text"><span class="r-name">${esc(x.c.name)}</span><span class="r-sub">från ${dYear(x.first)}</span></span><span class="mono small${x.first < cm1() ? ' open-t due' : ''}">${nk(x.a)}</span></button></li>`).join('')}${noC.slice(0, simple() ? 10 : 4).map(({ p, o }) => `<li class="pl-li"><button class="pl" data-act="ivPick" data-s="p:${p.id}" style="--pc:${pc(p)}"><span class="dot"></span><span class="r-text"><span class="r-name">${esc(p.name)}</span><span class="r-sub">${simple() ? '' : 'ingen kund · '}från ${dYear(o.first)}</span></span><span class="mono small">${nk(o.all.a)}</span></button></li>`).join('')}</ul>` : '<p class="p-note">Ingen öppen tid – allt är hanterat.</p>'}</section>`;
   return h + helpSec(simple() ? ['Visar <b>öppen debiterbar tid</b> per projekt – tid som redan är hanterad ingår inte.', 'Välj <b>alla projekt</b> eller ett projekt, och hur långt fram underlaget ska gå.', '<b>Dagboksrader</b> visar varje dag med anteckning – bra som specifikation till fakturan.', '<b>PDF</b> att bifoga, <b>CSV</b> för Excel eller bokföringsprogrammet.', invOn() ? '<b>Skapa faktura</b> gör ett utkast av ett projekts öppna tid. När fakturan utfärdas låses tiden av sig själv.' : 'När du har fakturerat: <b>Markera som hanterat</b> låser tiden så att den inte kommer med igen.'] : ['Underlaget tar med <b>öppen debiterbar tid</b> – tid som redan är hanterad ingår inte.', 'Välj en <b>kund</b> för alla dess projekt på ett underlag, eller ett enskilt projekt.', '<b>PDF</b> att läsa eller bifoga, <b>CSV</b> att öppna i Excel eller föra in i bokföringsprogrammet. Projektdagboken är specifikationen.', ...(invOn() ? ['<b>Skapa faktura</b> gör ett utkast av underlaget. När fakturan utfärdas låses tiden av sig själv.'] : ['När fakturan är skickad: <b>Markera som hanterat</b> låser tiden så att den inte kommer med igen.', 'Sisyfos gör inga fakturor om du inte slår på dem under Inställningar → Fakturor – annars sköts löpnummer, moms och arkivering i bokföringsprogrammet.'])]) + `</div>`;
 }
@@ -7061,6 +7253,7 @@ function invBuyerOf(C) { return { customerId: C?.id || null, zone: C?.zone || 's
 function invBasis(spans) {
   let h = 0, a = 0;
   for (const s of spans || []) for (const e of pEs(s.pid)) { if (e.deleted || !(e.hours > 0) || !billable(e) || e.date < s.from || e.date > s.to || handled(s.pid, e.date)) continue; h += e.hours; a += amountOf(e); }
+  for (const s of spans || []) for (const c of pCosts(s.pid)) if (c.date >= s.from && c.date <= s.to && !handled(s.pid, c.date)) a += cTot(c);
   return { h: r2(h), a: r2(a) };
 }
 // Fakturor som omfattar projektets tid i perioden (och inte är krediterade) – varning när hanteringen hävs
@@ -7071,9 +7264,13 @@ function invNewFromBasis() {
   if (!invOn()) { A.page({ dataset: { page: 'installningar' } }); return; }
   const v = invSel(), [from, to] = invPeriod();
   if (v.sel === 'all') { toast('Välj en kund eller ett projekt – en faktura går till en kund'); return; }
-  const d = invoiceData(v.sel, from, to, v.old, false); if (!d.hours) { toast('Ingen öppen tid att fakturera'); return; }
+  const d = invoiceData(v.sel, from, to, v.old, false); if (!d.any) { toast('Ingen öppen tid att fakturera'); return; }
   const c = invCfg(), C = d.C, lines = [];
-  for (const x of d.projects) for (const l of x.lines) lines.push({ text: `${invPHead({ all: false }, x.P)}: ${l.task}${!simple() && l.role ? ` (${l.role})` : ''}`, qty: r2(l.hours), unit: 'h', price: r2(l.rate), amount: r2(l.amount) });
+  for (const x of d.projects) {
+    for (const l of x.lines) lines.push({ text: `${invPHead({ all: false }, x.P)}: ${l.task}${!simple() && l.role ? ` (${l.role})` : ''}`, qty: r2(l.hours), unit: 'h', price: r2(l.rate), amount: r2(l.amount) });
+    // Kostnader (0.20.0): en rad var – antal × à-pris (med påslaget) eller 1 st × beloppet
+    for (const c of x.costs) { const q = c.qty != null ? r2(c.qty) : 1, pr = c.qty != null ? r2(c.price) : r2(c.total); lines.push({ text: `${invPHead({ all: false }, x.P)}: ${c.text}`, qty: q, unit: c.qty != null ? c.unit || 'st' : 'st', price: pr, amount: r2(q * pr) }); }
+  }
   const x = { id: 'f' + uid(), kind: 'invoice', status: 'draft', created: new Date().toISOString(), by: me(), dev: devId(), issued: today(), terms: Math.max(0, Math.floor(+(C?.terms ?? c.terms))) || 0, buyer: invBuyerOf(C), ourRef: meP().name || '', msg: '', period: { from: d.first && d.first < from ? d.first : from, to }, lines, vatMode: zoneMode(C?.zone), vat: (C?.zone || 'se') === 'se' ? d.vat : 0, spans: d.spans.map(s => ({ pid: s.pid, from: s.from, to: s.to })), basis: { h: r2(d.hours), a: r2(d.amount) } };
   if (!C && d.projects.length === 1) x.buyer.customerId = null;
   INVS().push(x); save(); renderMain(); invEdit(x.id);
@@ -7607,7 +7804,7 @@ Object.assign(A, {
   invPay: el => invPayDlg(el.dataset.i), invPayGo: () => invPayGo(), invPayDel: () => invPayDel(),
   invSie: () => invSieDlg(), invSieGo: () => invSieGo()
 });
-document.addEventListener('input', ev => { const t = ev.target; if (t.closest?.('#xrForm')) xrCalc(t.id); if (t.closest?.('#sieForm')) invSieInfo(); if (t.closest?.('#ieForm') && t.id !== 'ieCust') { invEdRead(); invEdSum(); } if (t.id === 'ivOcrT') { const r = $('#ivOcrR'), v = t.value.replace(/\s/g, ''); if (r) r.textContent = !v ? '' : ocrCheck(v, invCfg().ocr) || 'Numret är rätt uppbyggt'; } });
+document.addEventListener('input', ev => { const t = ev.target; if (t.closest?.('#xrForm')) xrCalc(t.id); if (t.closest?.('#koForm')) costCalc(t.id); if (t.closest?.('#sieForm')) invSieInfo(); if (t.closest?.('#ieForm') && t.id !== 'ieCust') { invEdRead(); invEdSum(); } if (t.id === 'ivOcrT') { const r = $('#ivOcrR'), v = t.value.replace(/\s/g, ''); if (r) r.textContent = !v ? '' : ocrCheck(v, invCfg().ocr) || 'Numret är rätt uppbyggt'; } });
 document.addEventListener('change', ev => {
   const t = ev.target;
   if (t.matches?.('[data-inv]')) { invSet(t.dataset.inv, t); return; }
@@ -7723,6 +7920,9 @@ Object.assign(A, {
   perStep: el => { const r = rep(), n = +el.dataset.d; if (r.ptype === 'week') r.pwk = addD(r.pwk, 7 * n); else r.pym = ymAdd(r.pym, n); renderMain(); },
   dlPerson: () => personDownload(),
   dlInvPdf: () => invDownload('pdf'),
+  costAdd: el => { closeFloating(); const [rk, d] = splitKey(el.dataset.key); if (lockedK(rk, d)) { lockMsg(d, rk); return; } costDlg(rk, d); },
+  costEdit: el => { closeFloating(); const c = COST.get(el.dataset.id); if (!c) return; if (lockedK(cRk(c), c.date)) { lockMsg(c.date, cRk(c)); return; } costDlg(null, null, c.id); },
+  costDel: el => costDelGo(el.dataset.id),
   xrAdd: el => xrDlg(el.dataset.k),
   xrEdit: el => xrDlg(el.dataset.k, el.dataset.id),
   xrDel: el => xrDel(el.dataset.k, el.dataset.id),
@@ -7788,7 +7988,7 @@ document.addEventListener('change', ev => {
     renderMain();
   }
 });
-document.addEventListener('submit', ev => { if (ev.target.id === 'ieForm' || ev.target.id === 'ioForm') { ev.preventDefault(); return; } if (ev.target.id === 'wzForm') { ev.preventDefault(); wizNext(1); return; } if (ev.target.id === 'rrForm') { ev.preventDefault(); saveRoleRate(); return; } if (ev.target.id === 'xrForm') { ev.preventDefault(); xrSave(); return; } if (ev.target.id === 'cuForm') { ev.preventDefault(); saveCust(); } if (ev.target.id === 'pjForm') { ev.preventDefault(); saveProj(); } });
+document.addEventListener('submit', ev => { if (ev.target.id === 'ieForm' || ev.target.id === 'ioForm') { ev.preventDefault(); return; } if (ev.target.id === 'wzForm') { ev.preventDefault(); wizNext(1); return; } if (ev.target.id === 'rrForm') { ev.preventDefault(); saveRoleRate(); return; } if (ev.target.id === 'xrForm') { ev.preventDefault(); xrSave(); return; } if (ev.target.id === 'koForm') { ev.preventDefault(); costSave(); return; } if (ev.target.id === 'cuForm') { ev.preventDefault(); saveCust(); } if (ev.target.id === 'pjForm') { ev.preventDefault(); saveProj(); } });
 document.addEventListener('keydown', ev => {
   if (ev.target.id === 'calIn' && ev.key === 'Enter') { ev.preventDefault(); const v = +ev.target.value.replace(',', '.'); if (!(v >= 0 && v <= 24)) { toast('Ange 0–24 timmar'); return; } calSet(ev.target.dataset.d, roundH(v)); }
 });
@@ -7875,6 +8075,7 @@ const SHC = [
   { k: 'kund', w: ['kund'], g: 'Skapa och öppna', t: 'Öppna eller skapa kund', ex: [['kund diamanten', 'öppnar kunden'], ['kund Diamanten Bygg', 'skapar den om den inte finns']] },
   { k: 'uppg', w: ['uppg', 'uppgift'], g: 'Ändra', t: 'Ny uppgift i ett projekt', ex: [['uppg strand Bygglov', 'lägger till uppgiften']] },
   { k: 'ant', w: ['ant', 'anteckning'], g: 'Ändra', t: 'Anteckning på projekt eller kund', ex: [['ant strand Vill ha bygglov före jul', 'projektanteckning'], ['ant kund diamanten Ringde om offerten', 'kundanteckning']] },
+  { k: 'kost', w: ['kost', 'kostnad', 'utlägg'], g: 'Ändra', t: 'Kostnad på en dag', ex: [['kost strand kartunderlag 1500', 'på dagen du står i'], ['kost strand tor plottning 6 st à 85', 'antal × à-pris, en annan dag'], ['kost strand underkonsult 12000 10 %', 'med påslag']] },
   { k: 'dag', w: ['dag', 'dagsanteckning'], g: 'Ändra', t: 'Dagsanteckning', ex: [['dag studieresa Sthlm', 'på dagen du står i'], ['dag tor kurs i Revit', 'torsdag i veckan'], ['dag mån-fre mässa i Göteborg', 'flera dagar'], ['dag bort tor', 'tar bort den']] },
   { k: 'budget', w: ['budget'], g: 'Ändra', t: 'Ändra budget', ex: [['budget strand 180000', 'ny budget'], ['budget strand löp', 'löpande räkning']] },
   { k: 'status', w: ['aktiv', 'aktivera', 'inaktiv', 'vila', 'avsluta', 'avsl'], g: 'Ändra', t: 'Ändra status', ex: [['avsluta strand', 'avslutar projektet'], ['inaktiv strand', 'sätter det som inaktivt'], ['aktiv strand', 'aktivt igen']] },
@@ -8156,7 +8357,7 @@ const SH = {
     const lbl = sp => periodLabel(...sp).replace(/^[A-ZÅÄÖ]/, c => c.toLowerCase());
     if (P) {
       const sp = span(P.id); if (!sp) return { info: true, html: `${B(P.name)} har ingen öppen tid – allt är hanterat.` };
-      const d = diaryData(P.id, sp[0], sp[1], 'ex'); if (!d.rows.length) return { info: true, html: `${B(P.name)} har ingen tid ${per.kind === 'months' || per.kind === 'weeks' ? 'i ' + esc(per.label) : esc(lbl(sp))}.` };
+      const d = diaryData(P.id, sp[0], sp[1], 'ex'); if (!d.any) return { info: true, html: `${B(P.name)} har ingen tid ${per.kind === 'months' || per.kind === 'weeks' ? 'i ' + esc(per.label) : esc(lbl(sp))}.` };
       return { html: `Enter ${verb} projektdagboken för ${B(P.name)}, ${esc(lbl(sp))} – ${fh(d.hours)} h${d.amount > 0 ? ', ' + fkr(d.amount) : ''}${d.hdH ? ` · varav ${fh(d.hdH)} h redan hanterat` : ''}${d.miss ? ` · <span class="sh-warn">${d.miss} utan anteckning</span>` : ''}${alts}`,
         run: () => f.dl ? downloadDiary(P.id, sp[0], sp[1], rep().amount, rep().budget) : shShowDiary(P.id, sp[0], sp[1]) };
     }
@@ -8182,7 +8383,7 @@ const SH = {
     const per = r.per || shDefMonth(), t = today(), old = invSel().old || per.kind === 'open';
     const set = per.kind === 'open' ? { custom: false, ym: ymOf(t) } : per.kind === 'months' && per.months.length === 1 ? { custom: false, ym: per.months[0] } : per.kind === 'year' ? { custom: true, from: `${per.year}-01-01`, to: `${per.year}-12-31` } : { custom: true, from: per.from || t, to: per.to || t };
     const from = set.custom ? set.from : `${set.ym}-01`, to = set.custom ? set.to : ymLast(set.ym), d = invoiceData(sel, from, to, old);
-    if (!d.hours) return { info: true, html: `${B(invName(sel))} har ingen öppen debiterbar tid ${per.kind === 'open' ? '' : 'till och med ' + esc(dYear(to))}.` };
+    if (!d.any) return { info: true, html: `${B(invName(sel))} har ingen öppen debiterbar tid ${per.kind === 'open' ? '' : 'till och med ' + esc(dYear(to))}.` };
     const verb = f.dl ? `laddar ner (${csv ? 'CSV' : 'PDF'})` : 'visar';
     return { html: `Enter ${verb} ${simple() ? 'öppen tid' : 'fakturaunderlaget'} för ${B(invName(sel))}, ${esc(d.label.replace(/^[A-ZÅÄÖ]/, c => c.toLowerCase()))} – ${fh(d.hours)} h, ${fkr(d.amount)} exkl. moms${d.miss ? ` · <span class="sh-warn">${d.miss} utan anteckning</span>` : ''}`,
       run: () => { const R0 = rep(); R0.tab = 'invoice'; Object.assign(invSel(), set, { sel, old }); if (f.dl) { if (st.page === 'rapporter') renderMain(); return invDownload(csv ? 'csv' : 'pdf'); } shPage('rapporter'); } };
@@ -8215,6 +8416,7 @@ const SH = {
     return { html: off ? `Enter tar bort dagsanteckningen ${esc(lbl)}${todo.length === 1 ? ` (<i>${esc(dayNote(todo[0]))}</i>)` : ''}` : `Enter skriver <b>${esc(text)}</b> som dagsanteckning ${esc(lbl)}${rep ? ' · ersätter den som finns' : ''}${lk.length ? ` · ${lk.length} låst${lk.length > 1 ? 'a' : ''} hoppas över` : ''}`,
       run: () => { const prev = todo.map(d => [d, dayNote(d)]); todo.forEach(d => dnSet(d, off ? '' : text)); save(); shRefresh(); toast(off ? 'Dagsanteckningen är borttagen' : `Dagsanteckning: ${text}`, { label: 'Ångra', fn: () => { prev.forEach(([d, x]) => dnSet(d, x)); save(); shRefresh(); } }); } };
   },
+  kost(a) { return shCost(a); },
   hant(a) { return shHandle(a, true); },
   unhant(a) { return shHandle(a, false); },
   proj(a) {
@@ -8607,7 +8809,7 @@ I.more = '<circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circ
 // Provkrok för testerna (test/delar_test.py): bara med ?test i adressen
 if (/[?&]test\b/.test(location.search)) window.SISYFOS = { get S() { return S; }, set S(v) { S = v; }, st, me, R, byId, canon, migrate, sampleBook, bookSplit, bookJoin, partRule, bookMerge,
   encCreate, encStore, keysEnsure, keysAdopt, keysCreate, keysOpen, keysPublic, encBookText, decBook, decParts, unseal, gz, aesKey, rnd, b64, unb64, kvGet, AAD_DATA, FORMAT_VERSION,
-  rateFor, rv, rPut, rHist, rateSnap, repriceSince, signOn, checkOn, wkOpen, perReady, weekItems, invoiceData, invoicePdf, invoiceCsv, locked, handled, moveDay, dragAt, xrList, xrRows, invSel, setCell, weekEvent, weekState, webApply, save, log, uid, devId, apply, select, cell, closeCellPop, render, derive, diaryData, diaryPdf, rep,
+  rateFor, rv, rPut, rHist, rateSnap, repriceSince, signOn, checkOn, wkOpen, perReady, weekItems, invoiceData, invoicePdf, invoiceCsv, locked, handled, moveDay, dragAt, xrList, xrRows, invSel, costPut, costRemove, costsAt, pCosts, cTot, get COST() { return COST; }, setCell, weekEvent, weekState, webApply, save, log, uid, devId, apply, select, cell, closeCellPop, render, derive, diaryData, diaryPdf, rep,
   who, viewing, isAdm, asPick, wkChecked, openWeeksOf, repriceOrders, repricePrune, eRate, monday, today, live, mine, priceGate, closeDlg, alertsHtml, budgetPct, get E() { return E; } };
 })();
 </script>

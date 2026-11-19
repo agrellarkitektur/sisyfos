@@ -44,6 +44,7 @@ Fältet överst på alla sidor – tryck **Enter** när inget annat har fokus s�
 | `fakt strand` · `fakt kund smeden` · `fakt ner fm strand` · `fakt csv öppet strand` | visar eller laddar ner fakturaunderlaget (PDF eller CSV) |
 | `hant fm strand` · `hant 1/10-15/10 strand` · `häv okt strand` | markerar en period som hanterad och låser, eller häver |
 | `dag tor studieresa Sthlm` · `dag bort tor` | dagsanteckning – en kort text för hela dagen |
+| `kost strand kartunderlag 1500` · `kost strand tor plottning 6 st à 85` · `kost strand underkonsult 12000 10 %` | kostnad på en dag – belopp, antal × à-pris, påslag sist (0.20.0) |
 | `förk dbn = db ner` · `förk bort dbn` | egna kommandon: `dbn okt strand` blir `db ner okt strand` |
 | `proj strand` · `proj Kv. Lärkan 2 100000 Diamanten` · `proj Tennis 100k 850` · `proj Golf 850/h` | öppnar eller skapar projekt (budget, timpris och kund valfritt – ett tal direkt efter budgeten är timpriset) |
 | `kund Diamanten Bygg` · `uppg strand Bygglov` · `ant strand …` · `budget strand 180k` · `avsluta strand` | kunder, uppgifter, anteckningar, budget, status |
@@ -107,6 +108,17 @@ Projektdagboken (*Uppställning*) och fakturaunderlagets dagboksrader kan visas 
 
 - **Belopp** under *Innehåll* i fakturaunderlaget (i enkelt läge *Öppen tid*): av ger ett underlag med bara timmar – inga belopp, à-priser eller moms, och rubriken *Öppen tid*. Projektdagboken har samma val under *Belopp → Visa inte belopp*. CSV:en har alltid beloppen.
 - **Egna rader** – t.ex. *Underkonsult, se separat dagbok* – läggs till med *Egen rad* ovanför förhandsvisningen: beskrivning, timmar och timpris (självkostnad) eller ett belopp direkt, och påslag i procent (0 % går bra). Totalt = belopp × (1 + påslag). Raderna står i en egen tabell och ingår i summan (och momsen) i projektdagboken och fakturaunderlaget, på skärmen, i PDF:en och i CSV:en. De gäller projektet (projektdagboken) eller urvalet (fakturaunderlaget), **sparas inte i boken** och påverkar inte budget, hanterad tid eller fakturor – de finns kvar tills appen laddas om.
+
+### Kostnader (0.20.0)
+
+Annat än timmar – kartunderlag, plottning, en underkonsult – läggs på **en dag** i tidboken, så att det kommer med i underlaget av sig själv och inte behöver hållas i minnet till rapporten:
+
+- **Lägg till kostnad …** i rutans smartmeny (veckovyn, dagvyn och månadsvyn), eller `kost strand kartunderlag 1500` i smartshell (`kost strand tor plottning 6 st à 85`, `kost strand underkonsult 12000 10 %`). Utan dag gäller den dagen du står i.
+- **Beloppet** skrivs direkt, eller räknas fram ur **antal × à-pris** med en fri enhet (st, kg, m² …). **Påslag** i procent (förval 0 %). Beloppen är exkl. moms och räknas aldrig om.
+- Rutan i veckan får ett litet **kr**; kostnaden står under anteckningen i smartmenyn och dagvyn – klicka för att ändra eller ta bort (*Ångra* finns).
+- **Fakturaunderlaget** har en tabell *Kostnader* per projekt (datum, beskrivning, antal, à-pris och belopp med påslaget) och raden *Kostnader* i *Att fakturera* – moms på allt. CSV:en har en rad per kostnad (Roll = *Kostnad*). **Fakturautkastet** får en rad per kostnad. **Projektdagboken** har tabellen *Kostnader* och raden i summan.
+- Låses som tiden: avcheckad eller signerad vecka och hanterad period. *Markera som hanterat* gäller också projektets kostnader i perioden; hanterade kostnader kommer inte med nästa gång.
+- Räknas **inte mot budgeten** (kostnader brukar ligga utöver) och påverkar inte timmar, saldo eller debiteringsgrad.
 
 ### Hanterad tid
 
@@ -275,6 +287,8 @@ Sisyfos är en PWA och fungerar utan nät.
 
 Boken är en JSON-fil med versionsnummer (`format`). Varje ändring av formatet får en migrering, och **gamla böcker går alltid att öppna** i nyare versioner. En bok från en nyare version öppnas inte av en äldre – och skrivs aldrig över.
 
+Format 12 (0.20.0) lade till kostnader på dagboken: händelsetypen `cost` i personens logg (`{entryId, data: {date, projectId, taskId, text, amount, markup, qty?, unit?, price?}}` – postens hela innehåll, det senaste gäller; `data: {deleted: true}` tar bort den). `amount` är beloppet före påslaget (= `qty × price` när antal och à-pris finns), `markup` påslaget i procent. Formatet höjs för att en äldre app inte ska tappa kostnaderna när den sparar boken.
+
 Format 11 (0.17.0) lade till timpriser med datum: ett pris (`roles[].rate`, `projects[].roleRates`, `projects[].personRates`, och de nya `customers[].roleRates` och `tasks[].rate`) är ett tal som gäller alltid eller en prislista `[{from: 'ÅÅÅÅ-MM-DD', rate}]`, där `rate: null` betyder nästa nivå. Dessutom inställningen för signering (`book.signWeeks`). Inget räknas om i migreringen – formatet höjs för att en äldre app inte ska läsa en prislista som ett tal.
 
 Format 10 (0.16.0) lade till organisationen (`register.org = {id, created}` – id:t räknas fram ur bokens skapad-datum, så samma bok får samma id på alla enheter) och personernas offentliga nycklar (`register.people[].keys`, när boken sparas krypterad). Den krypterade filen fick version 2 med delar – se *Kryptering*.
@@ -300,7 +314,7 @@ python3 test/oppna_gamla_bocker.py
 | `manifest.webmanifest`, `icon.svg`, `*.png` | Appikon och installation |
 | `feedback.php` | Tar emot synpunktsformuläret och skickar det som e-post. Sparar ingenting |
 | `api.php` | Servern för lagring på webben och organisationerna – tar bara emot krypterade böcker och delar |
-| `test/` | Gamla böcker och kontrollen att de öppnas (`oppna_gamla_bocker.py`), test av fakturorna (`faktura_test.py` och `faktura2_test.py` – betalningar, kunder utomlands och SIE), test av boken i delar och nycklarna (`delar_test.py`), av arbetet med flera (`flera_test.py` – vems tidbok, åt andra, omräkning för medarbetare, medarbetarens gränssnitt), av flödet utan avcheckning och veckouppställningen i rapporterna (`enkel_test.py`), av rapporterna utan belopp, egna rader och att dra tid till en annan dag (`rapport2_test.py`), test av servern (`api_test.py`, också organisationerna), av en organisation med admin på två enheter och en medarbetare (`org_test.py`) och av synken mellan två enheter (`webb_test.py`, körs för hand). För hand vid omskrivningar: `stor_bok.py` bygger en testbok på tio år, `prestanda.py` mäter vanliga åtgärder med den och `jamfor_versioner.py` kontrollerar att skärmarna är lika med en tidigare version |
+| `test/` | Gamla böcker och kontrollen att de öppnas (`oppna_gamla_bocker.py`), test av fakturorna (`faktura_test.py` och `faktura2_test.py` – betalningar, kunder utomlands och SIE), test av boken i delar och nycklarna (`delar_test.py`), av arbetet med flera (`flera_test.py` – vems tidbok, åt andra, omräkning för medarbetare, medarbetarens gränssnitt), av flödet utan avcheckning och veckouppställningen i rapporterna (`enkel_test.py`), av rapporterna utan belopp, egna rader och att dra tid till en annan dag (`rapport2_test.py`), av kostnaderna på dagboken (`kostnad_test.py`), test av servern (`api_test.py`, också organisationerna), av en organisation med admin på två enheter och en medarbetare (`org_test.py`) och av synken mellan två enheter (`webb_test.py`, körs för hand). För hand vid omskrivningar: `stor_bok.py` bygger en testbok på tio år, `prestanda.py` mäter vanliga åtgärder med den och `jamfor_versioner.py` kontrollerar att skärmarna är lika med en tidigare version |
 
 ## Publicera på ett webbhotell
 
