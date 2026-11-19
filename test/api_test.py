@@ -95,11 +95,23 @@ def kor(laget):
         v = vault(); login = base64.b64encode(os.urandom(32)).decode()
         s, d, _ = api.call('register', {'invite': 'FEL00-00000', 'email': 'anna@exempel.se', 'login': login, 'vault': v})
         ok(s == 403, 'registrering med fel kod nekas')
-        s, d, _ = api.call('register', {'invite': kod.lower(), 'email': 'Anna@Exempel.se', 'login': login, 'vault': v, 'device': 'Testdator'})
+        proof = base64.b64encode(os.urandom(32)).decode()
+        s, d, _ = api.call('register', {'invite': kod.lower(), 'email': 'Anna@Exempel.se', 'login': login, 'vault': v, 'device': 'Testdator', 'proof': proof})
         ok(s == 201 and d['email'] == 'anna@exempel.se' and d['rev'] == 0, 'konto skapat (kod med gemener, adress normaliserad)')
         api.token = d['token']
         s, d, _ = api.call('register', {'invite': kod, 'email': 'bertil@exempel.se', 'login': login, 'vault': vault()})
         ok(s == 403, 'koden kan inte användas två gånger')
+        # 0.20.1 (B5): utan giltig kod avslöjas inte om adressen har konto
+        tk = api.token; api.token = None
+        s, d, _ = api.call('register', {'invite': 'FEL00-00000', 'email': 'anna@exempel.se', 'login': login, 'vault': vault()})
+        ok(s == 403 and d['error'] == 'invite', 'befintlig adress med fel kod → 403 som för okänd adress (B5)')
+        s, d, _ = api.call('invite', {'note': 'b5', 'max': 1}, headers={'X-Sisyfos-Admin': quote(ADMIN)}); kod2 = d['code']
+        s, d, _ = api.call('register', {'invite': kod2, 'email': 'anna@exempel.se', 'login': login, 'vault': vault()})
+        ok(s == 409 and d['error'] == 'exists', 'befintlig adress med giltig kod → 409')
+        s, d, _ = api.call('register', {'invite': kod2, 'email': 'cecilia@exempel.se', 'login': login, 'vault': vault()})
+        ok(s == 201, 'koden lämnades tillbaka och går att använda')
+        s, d, _ = api.call('remove', {'email': 'cecilia@exempel.se'}, headers={'X-Sisyfos-Admin': quote(ADMIN)})
+        api.token = tk
 
         s, k3, _ = api.call('kdf', {'email': 'anna@exempel.se'})
         ok(k3['kdf']['salt'] == v['kdf']['salt'], 'kdf: kontots riktiga salt')
@@ -149,10 +161,19 @@ def kor(laget):
         # byt lösenord: nytt valv + ny inloggning, logga ut andra enheter
         api.token = tok1
         v2 = dict(v, kdf=dict(v['kdf'], salt=base64.b64encode(os.urandom(16)).decode()), pw={'iv': 'n', 'ct': 'm'})
-        s, d, _ = api.call('vault', {'vault': v2})
-        ok(s == 400, 'nytt salt utan ny inloggning nekas')
         login2 = base64.b64encode(os.urandom(32)).decode()
-        s, d, _ = api.call('vault', {'vault': v2, 'login': login2, 'logoutOthers': True})
+        # 0.20.1 (B4): token räcker inte – den nuvarande inloggningen eller beviset på boknyckeln krävs
+        s, d, _ = api.call('vault', {'vault': v2, 'login': login2})
+        ok(s == 403 and d['error'] == 'reauth', 'byte med bara token nekas (B4)')
+        s, d, _ = api.call('vault', {'vault': v2, 'login': login2, 'old': base64.b64encode(os.urandom(32)).decode()})
+        ok(s == 401, 'byte med fel nuvarande lösenord nekas')
+        s, d, _ = api.call('vault', {'vault': v2, 'login': login2, 'proof': base64.b64encode(os.urandom(32)).decode()})
+        ok(s == 401, 'byte med fel bevis nekas')
+        s, d, _ = api.call('vault', {'vault': v2, 'old': login})
+        ok(s == 400, 'nytt salt utan ny inloggning nekas')
+        s, d, _ = api.call('vault', {'vault': dict(v, pw={'iv': 'p', 'ct': 'q'}), 'proof': proof})
+        ok(s == 200, 'byte med beviset på boknyckeln (återställningsnyckeln, inget lösenord)')
+        s, d, _ = api.call('vault', {'vault': v2, 'login': login2, 'logoutOthers': True, 'old': login})
         ok(s == 200, 'lösenordsbyte sparat')
         api.token = tok2; s, d, _ = api.call('info')
         ok(s == 401, 'andra enheten utloggad')
@@ -298,6 +319,13 @@ def organisation(api, datadir):
     # lösenordsbyte följer med till omslaget
     v2 = dict(vA, pw={'iv': 'n2', 'ct': 'm2'})
     s, d, _ = api.call('vault', {'vault': v2})
+    ok(s == 403, 'valvet byts inte med bara token (B4)')
+    s, d, _ = api.call('proof', {'login': base64.b64encode(os.urandom(32)).decode(), 'proof': base64.b64encode(os.urandom(32)).decode()})
+    ok(s == 401, 'bevis med fel lösenord nekas')
+    pA = base64.b64encode(os.urandom(32)).decode()
+    s, d, _ = api.call('proof', {'login': lA, 'proof': pA})
+    ok(s == 200, 'beviset sparas för ett konto som saknar det')
+    s, d, _ = api.call('vault', {'vault': v2, 'proof': pA})
     s, d, _ = api.call('get', raw=True, query=q)
     ok(json.loads(d)['vault']['pw']['ct'] == 'm2', 'nytt valv i organisationens omslag')
 

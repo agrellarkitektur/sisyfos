@@ -1289,7 +1289,7 @@ body.dragging,body.dragging *{cursor:grabbing!important;user-select:none!importa
 
 /* ───────────── Hjälpfunktioner ───────────── */
 const FORMAT = 'sisyfos', FORMAT_VERSION = 12, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.20.0', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const APP_VERSION = '0.20.1', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 { const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
@@ -1602,6 +1602,7 @@ function migrate(d) {
   if (!d.register || !d.logs) throw new Error('Boken saknar register eller tidlogg.');
   d.prefs = Object.assign({ showWeekend: false, expanded: [], weekRows: {}, hiddenRows: {}, compact: false, aliases: {} }, d.prefs || {});
   if (!isObj(d.prefs.aliases)) d.prefs.aliases = {};
+  for (const k of Object.keys(d.prefs.aliases)) if (typeof d.prefs.aliases[k] !== 'string' || !k.trim()) delete d.prefs.aliases[k];
   d.session = d.session || { personId: d.register.people[0].id };
   for (const p of d.register.people) d.logs[p.id] = d.logs[p.id] || { events: [] };
   d.register.handled = isObj(d.register.handled) ? d.register.handled : {};
@@ -1631,15 +1632,17 @@ function apply(ev, pid) {
   /* Kostnad (0.20.0, format 12): en post på en dag i ett projekt och en uppgift – t.ex. kartunderlag 1 500 kr eller
      3 st × 120 kr. Varje händelse har postens hela innehåll (det senaste gäller); deleted: true tar bort den. Påverkar
      inte timmar, saldo eller budget; kommer med i fakturaunderlaget, fakturan och projektdagboken. */
-  if (ev.type === 'cost') { const o = COST.get(ev.entryId); if (ev.data?.deleted) { if (o) { o.deleted = true; o.updated = ev.at; } return; } COST.set(ev.entryId, { ...ev.data, id: ev.entryId, person: pid, deleted: false, created: o?.created || ev.at, updated: ev.at, by: ev.by }); return; }
+  if (ev.type === 'cost') { const o = COST.get(ev.entryId); if (o && o.person !== pid) return; if (ev.data?.deleted) { if (o) { o.deleted = true; o.updated = ev.at; } return; } COST.set(ev.entryId, { ...ev.data, id: ev.entryId, person: pid, deleted: false, created: o?.created || ev.at, updated: ev.at, by: ev.by }); return; }
   if (ev.type === 'week') { WEEKS.set(pid + '|' + ev.data.week, { checked: !!ev.data.checked, at: ev.at }); return; }
   // Dagsanteckning (format 8): en kort text per dag i personens logg – den senaste gäller, tom text tar bort den
   if (ev.type === 'daynote') { const k = pid + '|' + ev.data?.date; if (String(ev.data?.text || '').trim()) DN.set(k, String(ev.data.text).trim()); else DN.delete(k); return; }
   if (ev.type === 'create') {
+    // En händelse i en persons logg rör bara den personens poster (0.20.1, B2) – ingen del har två skribenter
+    if (E.get(ev.entryId)?.person && E.get(ev.entryId).person !== pid) return;
     const e = { id: ev.entryId, person: pid, ...ev.data, created: ev.at, updated: ev.at };
     E.set(e.id, e); IDX.set(ck(pid, e.projectId, e.taskId, e.date), e.id);
   } else {
-    const e = E.get(ev.entryId); if (!e) return;
+    const e = E.get(ev.entryId); if (!e || e.person !== pid) return;
     const k = ck(pid, e.projectId, e.taskId, e.date);
     if (ev.type === 'update') {
       Object.assign(e, ev.data); e.updated = ev.at;
@@ -1650,7 +1653,88 @@ function apply(ev, pid) {
     else if (ev.type === 'restore') { e.deleted = false; e.removed = null; e.updated = ev.at; if (!IDX.has(k)) IDX.set(k, e.id); }
   }
 }
-function derive() { AGG = null; E = new Map(); IDX = new Map(); WEEKS = new Map(); DN = new Map(); COST = new Map(); devAttach(S); for (const pid in S.logs) for (const ev of S.logs[pid].events) apply(ev, pid); }
+function derive() { AGG = null; E = new Map(); IDX = new Map(); WEEKS = new Map(); DN = new Map(); COST = new Map(); devAttach(S); for (const pid in S.logs) for (const ev of S.logs[pid].events) apply(ev, pid); dedupe(); orphans(); }
+/* Två poster i samma ruta (0.20.1, A1): samma person har skrivit tid i samma projekt, uppgift och dag på två enheter
+   innan de synkat. Båda finns i loggen; här slås de ihop som när tid dras till en dag som redan har tid – timmarna
+   läggs ihop och anteckningarna efter varandra. Rutan visar summan och summorna räknar den en gång. Den andra posten
+   markeras som borttagen här (dup = den kvarvarande), och nästa ändring i rutan skriver ihopslagningen i loggen
+   (undup). Samma svep rättar IDX om den pekar på en borttagen post medan en annan i rutan lever. */
+function dedupe() {
+  const G = new Map();
+  for (const e of E.values()) { if (e.deleted) continue; const k = ck(e.person, e.projectId, e.taskId, e.date); const g = G.get(k); if (g) g.push(e); else G.set(k, [e]); }
+  for (const [k, g] of G) {
+    const p = g.find(e => e.id === IDX.get(k)) || g[0]; IDX.set(k, p.id);
+    if (g.length < 2) continue;
+    p.dups = [];
+    for (const e of g) {
+      if (e === p) continue;
+      p.hours = (+p.hours || 0) + (+e.hours || 0);
+      p.note = [p.note, e.note].filter(x => x && String(x).trim()).join('. ');
+      e.deleted = true; e.removed = null; e.dup = p.id; p.dups.push(e.id);
+    }
+  }
+}
+// Skriv en ihopslagen ruta i loggen: posten får summan, dubbletterna tas bort (bara den egna loggen skrivs)
+function undup(e, now = new Date().toISOString()) {
+  if (!e?.dups?.length || e.person !== me()) return;
+  const L = log();
+  L.push({ id: uid(), entryId: e.id, type: 'update', at: now, by: me(), dev: devId(), data: { hours: e.hours, note: e.note || '' } });
+  for (const id of e.dups) L.push({ id: uid(), entryId: id, type: 'delete', at: now, by: me(), dev: devId(), data: { merged: e.id } });
+  delete e.dups;
+}
+/* Tid på ett projekt eller en uppgift som inte finns (0.20.1, A5): t.ex. projektet togs bort på en enhet medan en annan
+   skrev tid på det. Sammanslagningen lägger tillbaka projektet (orphanFix) när enheten skriver registret; tills dess –
+   och för en medarbetare – visas tiden på ett projekt *Borttaget projekt* som bara finns här, så att vyerna inte går
+   sönder och tiden inte tyst faller ur fakturaunderlaget. */
+let ORPH = new Map();
+function orphans() {
+  ORPH = new Map();
+  const need = (p, t) => {
+    const P = byId(R().projects || [], p);
+    if (P && P.tasks?.some(x => x.id === t)) return;
+    const k = P ? P.id : p;
+    let o = ORPH.get(k);
+    if (!o) ORPH.set(k, o = P ? { P, tasks: [] } : { P: orphProj(p), tasks: null });
+    const T = o.P.tasks.find(x => x.id === t) || (o.tasks || []).find(x => x.id === t);
+    if (!T) { const x = orphTask(t); if (o.tasks) o.tasks.push(x); else o.P.tasks.push(x); }
+  };
+  for (const e of E.values()) if (!e.deleted && e.projectId) need(e.projectId, e.taskId);
+  for (const c of COST.values()) if (!c.deleted && c.projectId) need(c.projectId, c.taskId);
+}
+const orphProj = id => ({ id, number: '', name: 'Borttaget projekt', customerId: null, property: '', budgetKr: 0, internal: false, color: 0, status: 'active', created: '', notes: [], tasks: [], roleRates: {}, personRates: {}, memberRoles: {}, notices: {}, orphan: true });
+const orphTask = id => ({ id, name: 'Borttagen uppgift', billable: true, orphan: true });
+/* I boken (den som skriver registret): projekt och uppgifter som saknas men har levande tid eller kostnader läggs
+   tillbaka – ur någon av de andra versionerna (srcs: den här enheten, den andra, basen), annars som *Återställt projekt*.
+   Tid går före borttagning. Ändrar inget i det som skickas in (sammanslagningen kan dela objekt med versionerna):
+   ger null när inget saknas, annars { book (ny), names }. */
+function orphanFix(b, srcs = []) {
+  const reg0 = b?.register; if (!reg0 || !Array.isArray(reg0.projects)) return null;
+  const reg = { ...reg0, projects: [...reg0.projects] };
+  const live = new Map(), cost = new Map();
+  for (const pid in b.logs || {}) for (const ev of b.logs[pid]?.events || []) {
+    if (ev.type === 'cost') { if (ev.data?.deleted) cost.delete(ev.entryId); else if (ev.data?.projectId) cost.set(ev.entryId, ev.data); continue; }
+    if (ev.type === 'create') live.set(ev.entryId, { ...ev.data, dead: false });
+    else { const x = live.get(ev.entryId); if (!x) continue; if (ev.type === 'update') Object.assign(x, ev.data); else if (ev.type === 'delete') x.dead = true; else if (ev.type === 'restore') x.dead = false; }
+  }
+  const out = [], find = (pId, tId) => { for (const s of srcs) { const P = (s?.register?.projects || []).find(p => p?.id === pId); if (P && (!tId || P.tasks?.some(t => t.id === tId))) return P; } return null; };
+  const want = [...[...live.values()].filter(x => !x.dead), ...cost.values()].filter(x => x.projectId);
+  for (const x of want) {
+    let i = reg.projects.findIndex(p => p?.id === x.projectId), P = reg.projects[i];
+    if (!P) {
+      const S0 = find(x.projectId);
+      P = S0 ? JSON.parse(JSON.stringify(S0)) : { ...orphProj(x.projectId), name: 'Återställt projekt', created: new Date().toISOString() };
+      delete P.orphan; P.tasks = Array.isArray(P.tasks) ? P.tasks : [];
+      reg.projects.push(P); i = reg.projects.length - 1; out.push(P.name);
+    }
+    if (x.taskId && !(P.tasks || []).some(t => t.id === x.taskId)) {
+      const T = find(x.projectId, x.taskId)?.tasks.find(t => t.id === x.taskId);
+      const nt = T ? JSON.parse(JSON.stringify(T)) : { ...orphTask(x.taskId), name: 'Återställd uppgift' };
+      delete nt.orphan; delete nt.archived;
+      reg.projects[i] = P = { ...P, tasks: [...(P.tasks || []), nt] }; out.push(P.name + ' · ' + nt.name);
+    }
+  }
+  return out.length ? { book: { ...b, register: reg }, names: [...new Set(out)] } : null;
+}
 
 const R = () => S.register;
 const me = () => S.session.personId;
@@ -1704,8 +1788,8 @@ function byId(a, id) {
   if (x) BYID.set(a, new Map(a.map((o, j) => [o.id, j])));
   return x;
 }
-const proj = id => byId(R().projects, id);
-const taskOf = (p, id) => p?.tasks.find(t => t.id === id);
+const proj = id => byId(R().projects, id) || ORPH.get(id)?.P;
+const taskOf = (p, id) => p?.tasks.find(t => t.id === id) || (p && ORPH.get(p.id)?.tasks?.find(t => t.id === id));
 const role = id => byId(R().roles, id);
 const cust = id => byId(R().customers, id);
 const roleFor = (p, pid = who()) => proj(p)?.memberRoles?.[pid] || byId(R().people, pid)?.defaultRoleId;
@@ -2265,6 +2349,11 @@ function shCost(a) {
   if (ws.length >= 2 && ws.at(-1) === '%' && num(ws.at(-2)) != null) { markup = num(ws.at(-2)); ws = ws.slice(0, -2); }
   else if (ws.length && /^-?\d+([.,]\d+)?%$/.test(ws.at(-1))) { markup = num(ws.at(-1).slice(0, -1)); ws = ws.slice(0, -1); }
   if (ws.length && /^(kr|kronor|sek)$/i.test(ws.at(-1))) ws = ws.slice(0, -1);
+  // Belopp med mellanslag (0.20.1, A6): 1 500 och 12 000,50 – 1–3 siffror följt av grupper om tre, som i budget
+  if (ws.length >= 2 && /^\d{3}(?:[.,]\d{1,2})?$/.test(ws.at(-1))) {
+    let i = ws.length - 2; while (i > 0 && /^\d{3}$/.test(ws[i]) && /^\d{1,3}$/.test(ws[i - 1])) i--;
+    if (/^\d{1,3}$/.test(ws[i]) && i < ws.length - 1) ws = [...ws.slice(0, i), ws.slice(i).join('')];
+  }
   const last = ws.length ? num(ws.at(-1)) : null;
   if (last == null) return { info: true, html: help };
   let qty = null, unit = '', price = null, amount = last, n = ws.length - 1;
@@ -2286,15 +2375,17 @@ function shCost(a) {
   if (viewing()) return viewShell();
   if (lockedK(rk, d)) return { bad: true, html: `${cap(sdate(d))} är låst i ${B(P.name)} (avcheckad, signerad eller hanterad).` };
   const c = { projectId: P.id, taskId: tid, date: d, text, amount, markup, ...(qty != null ? { qty, unit, price } : {}) };
-  const what = `${B(text)} ${qty != null ? `(${esc(cQty(c))}) ` : ''}<b class="mono">${fkc(amount)}</b>${markup ? ` + påslag ${fhs(markup)} %` : ''}`;
+  const what = `${B(text)} ${qty != null ? `(${esc(cQty(c))}) ` : ''}– <b class="mono">${fkc(amount)}</b>${markup ? ` + påslag ${fhs(markup)} %` : ''}`;
   return { html: `Enter lägger kostnaden ${what} på ${B(P.name)}${ts.length > 1 ? ' · ' + esc(T.name) : ''}, ${esc(ldate(d).replace(/^./, x => x.toLowerCase()))}`,
-    run: () => { const k = costPut(c); if (!k) return; save(); shRefresh(); toast(`Kostnad: ${k.text} ${fkc(cTot(k))}, ${sdate(d)}`, { label: 'Ångra', fn: () => { costRemove(k.id); save(); shRefresh(); } }); } };
+    run: () => { const k = costPut(c); if (!k) return; save(); shRefresh(); toast(`Kostnad: ${k.text} – ${fkc(cTot(k))}, ${sdate(d)}`, { label: 'Ångra', fn: () => { costRemove(k.id); save(); shRefresh(); } }); } };
 }
 
 // Ta bort en rad ur veckan. Har raden tid tas tiden bort på riktigt (räknas inte i något), men den kan komma
 // tillbaka: lägger man till samma projekt och uppgift i veckan igen återställs tid och anteckningar.
 function removeRowData(rk, wk) {
-  const days = weekDays(wk), es = days.map(d => cell(rk, d)).filter(Boolean), now = new Date().toISOString();
+  const days = weekDays(wk), es0 = days.map(d => cell(rk, d)).filter(Boolean), now = new Date().toISOString();
+  for (const e of es0) undup(e, now);
+  const es = es0;
   for (const e of es) { const ev = { id: uid(), entryId: e.id, type: 'delete', at: now, by: me(), dev: devId(), data: { row: true } }; log().push(ev); apply(ev, me()); }
   S.prefs.weekRows[wk] = (S.prefs.weekRows[wk] || []).filter(r => r !== rk);
   return es;
@@ -2308,7 +2399,11 @@ function restoreRow(rk, wk) {
   for (const e of removedInWeek(rk, wk)) {
     if (lockedK(rk, e.date)) continue;
     const live1 = cell(rk, e.date);
-    if (live1) setCell0(rk, e.date, { hours: live1.hours + e.hours, note: [live1.note, e.note].filter(x => x && x.trim()).join('. ') });
+    if (live1) {
+      setCell0(rk, e.date, { hours: live1.hours + e.hours, note: [live1.note, e.note].filter(x => x && x.trim()).join('. ') });
+      // Den borttagna posten är nu förbrukad – annars läggs den på igen nästa gång raden tas bort och läggs tillbaka (0.20.1)
+      const ev = { id: uid(), entryId: e.id, type: 'delete', at: now, by: me(), dev: devId(), data: { merged: live1.id } }; log().push(ev); apply(ev, me());
+    }
     else { const ev = { id: uid(), entryId: e.id, type: 'restore', at: now, by: me(), dev: devId() }; log().push(ev); apply(ev, me()); }
     h += e.hours; n++;
   }
@@ -2332,6 +2427,7 @@ function absWarn(T, dates) {
 function setCell0(rk, date, patch) {
   if (lockedK(rk, date)) { lockMsg(date, rk); return false; }
   const [p, t] = splitRow(rk), cur = cell(rk, date), now = new Date().toISOString(), L = log();
+  undup(cur, now);
   if (!cur) {
     const hours = patch.hours ?? 0, note = patch.note ?? '';
     if (!(hours > 0) && !note.trim()) return;
@@ -2358,6 +2454,7 @@ function setCell0(rk, date, patch) {
 function moveCell(key, toRk) {
   const [rk, d] = splitKey(key), cur = cell(rk, d); if (!cur || rk === toRk) return;
   if (lockedK(rk, d) || lockedK(toRk, d)) { lockMsg(d, lockedK(rk, d) ? rk : toRk); return; }
+  undup(cur); undup(cell(toRk, d));
   const [p, t] = splitRow(toRk), tgt = cell(toRk, d), now = new Date().toISOString();
   if (!tgt) {
     const roleId = roleFor(p);
@@ -2377,6 +2474,7 @@ function moveCell(key, toRk) {
 function moveDay(rk, d, toD) {
   const cur = cell(rk, d); if (!cur || d === toD) return null;
   if (lockedK(rk, d) || lockedK(rk, toD)) { lockMsg(lockedK(rk, d) ? d : toD, rk); return null; }
+  undup(cur); undup(cell(rk, toD));
   const tgt = cell(rk, toD), h = cur.hours, n = cur.note || '';
   if (!tgt) {
     const [p, t] = splitRow(rk), was = { date: d, rate: cur.rate };
@@ -2663,7 +2761,7 @@ async function backupFile() {
    Valvet (salt och låsta nycklar) ligger i IndexedDB (kv 'vault') och i varje krypterad fil;
    den upplåsta boknyckeln sparas som en icke-exporterbar CryptoKey (kv 'vaultKey') – boken
    ligger ändå okrypterad i samma databas, så det skyddar inget att låta bli. */
-const ENC_FORMAT = 'sisyfos-krypterad', ENC_ITER = 600000, PW_MIN = 10, RK_ALPHA = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+const ENC_FORMAT = 'sisyfos-krypterad', ENC_ITER = 600000, ITER_MIN_FILE = 100000, PW_MIN = 10, RK_ALPHA = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 const te = s => new TextEncoder().encode(s);
 const b64 = u => { u = new Uint8Array(u); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
 const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
@@ -2707,7 +2805,20 @@ async function encCreate(pw) {
   const raw = rnd(32), r = await rkBox(raw), out = {};
   const vault = { v: 1, id: b64(rnd(9)).replace(/[+/=]/g, ''), created: new Date().toISOString(), ...(await pwBox(raw, pw, out)), ...r.box };
   const key = await aesKey(raw, ['encrypt', 'decrypt']);
-  return { vault, key, raw, rk: r.rkStr, login: out.login };
+  return { vault, key, raw, rk: r.rkStr, login: out.login, proof: await keyProof(raw) };
+}
+/* Bevis på boknyckeln (0.20.1, B4): härlett ur boknyckeln med HKDF. Servern sparar det (hashat) vid registrering och
+   inloggning och kräver det – eller det nuvarande lösenordet – för att byta valv och inloggning. Beviset avslöjar inte
+   nyckeln och kan bara räknas fram av den som låst upp boken med lösenordet eller återställningsnyckeln. */
+async function keyProof(raw) {
+  const k = await crypto.subtle.importKey('raw', raw, 'HKDF', false, ['deriveBits']);
+  return b64(new Uint8Array(await crypto.subtle.deriveBits({ name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: new TextEncoder().encode('sisyfos-bevis-1') }, k, 256)));
+}
+/* Lösenordets inställningar kommer utifrån (servern, en fil): vägra för få varv eller en annan metod (0.20.1, A4) –
+   annars kan en server som fuskar få en inloggning som går att gissa billigt. */
+function kdfOk(kdf, min) {
+  if (kdf?.name !== 'PBKDF2-SHA-256' || !(+kdf.iter >= min) || +kdf.iter > 1e7) throw new Error(min >= ENC_ITER ? 'Servern begär för svaga inställningar för lösenordet – inloggningen är stoppad. Fråga serverns ägare.' : 'Filens inställningar för lösenordet är för svaga eller okända – den öppnas inte.');
+  return +kdf.iter;
 }
 // Lås upp med lösenord eller återställningsnyckel → { raw, key }
 async function encUnlock(vault, { pw, rk }) {
@@ -2717,7 +2828,7 @@ async function encUnlock(vault, { pw, rk }) {
       const b = rkParse(rk); if (!b) throw new Error('Återställningsnyckeln ska vara 32 tecken (8 grupper om 4).');
       raw = await unseal(await rkKek(b, unb64(vault.rk.salt)), vault.rk, AAD_KEY);
     } else {
-      const bits = await pwBits(pw, unb64(vault.kdf.salt), vault.kdf.iter);
+      const bits = await pwBits(pw, unb64(vault.kdf.salt), kdfOk(vault.kdf, ITER_MIN_FILE));
       raw = await unseal(await aesKey(bits.slice(0, 32), ['decrypt']), vault.pw, AAD_KEY);
     }
   } catch (e) { if (e?.name === 'OperationError') throw new Error(rk != null ? 'Återställningsnyckeln stämmer inte för den här boken.' : 'Fel lösenord.'); throw e; }
@@ -2817,7 +2928,7 @@ function bookSplit(b) {
   if (mine) { if (b.prefs !== undefined) mine.prefs = b.prefs; if (b.session !== undefined) mine.session = b.session; }
   return P;
 }
-function bookJoin(P) {
+function bookJoin(P, mePid) {
   if (!P.reg) throw new Error('Registret saknas i filen.');
   const reg = P.reg.register || {}, adm = P.adm || {}, b = { ...(P.reg.top || {}) }, r = b.register = {};
   for (const k in reg) {
@@ -2829,8 +2940,12 @@ function bookJoin(P) {
   for (const n of Object.keys(P).sort()) if (n.startsWith('card.')) for (const m of CARD_MAPS) if (P[n][m]) Object.assign(r[m] = r[m] || {}, P[n][m]);
   for (const k of ADM_KEYS) if (adm[k] !== undefined) r[k] = adm[k];
   b.logs = {};
+  // Inställningarna och vem som är inloggad tas ur den egna tidloggen (0.20.1, A2) – admin läser också medarbetarnas
+  // tidloggar, och deras inställningar (egna kommandon, dolda rader) ska inte hamna i admins
+  const own = mePid && P['log.' + mePid] ? 'log.' + mePid : null;
   for (const n of Object.keys(P).sort()) if (n.startsWith('log.')) {
     const x = P[n]; b.logs[n.slice(4)] = x.log || { events: [] };
+    if (own && n !== own) continue;
     if (x.prefs !== undefined) b.prefs = x.prefs;
     if (x.session !== undefined) b.session = x.session;
   }
@@ -2865,6 +2980,12 @@ const pubJwk = j => ({ kty: j.kty, crv: j.crv, x: j.x, y: j.y });
 const keyOlder = (a, b) => !b || String(a.at) < String(b.at) || (a.at === b.at && String(a.fp) < String(b.fp));
 const fpText = fp => String(fp || '').toUpperCase().match(/.{1,4}/g)?.join(' ') || '–';
 async function keyFp(pub) { return (await sha256([pub.enc.x, pub.enc.y, pub.sig.x, pub.sig.y].join('.'))).slice(0, 16); }
+// En medarbetares nycklar från servern: fingeravtrycket räknas här och ska stämma med det som följer med (0.20.1, A3)
+async function keyFpOk(k) {
+  let fp = null; try { fp = await keyFp(k); } catch (_) {}
+  if (!fp || fp !== k?.fp) { toast('Nyckeln från servern stämmer inte med sitt fingeravtryck – personen tas inte in. Be personen logga in igen och fråga serverns ägare.'); return null; }
+  return fp;
+}
 async function keysCreate(pid, master) {
   const s = crypto.subtle, e = await s.generateKey(EC_ENC, true, ['deriveBits']), g = await s.generateKey(EC_SIG, true, ['sign', 'verify']);
   const pub = { enc: pubJwk(await s.exportKey('jwk', e.publicKey)), sig: pubJwk(await s.exportKey('jwk', g.publicKey)) };
@@ -2998,7 +3119,7 @@ async function decParts(file, master, opt) {
     if (!partRule(n, reg, k.pid).w.includes(by) && by !== k.pid && !handover) { if (n === 'reg') throw new Error('Registret är skrivet av någon som inte är admin.'); delete P[n]; }
   }
   if (opt) { const rb = parts.reg.by, rk = rb === k.pid ? k.pub : (reg.people || []).find(x => x.id === rb)?.keys; opt.P = P; opt.regFp = rk ? await keyFp(rk) : null; }
-  return bookJoin(P);
+  return bookJoin(P, k.pid);
 }
 
 /* Återställningsnyckeln som PDF att skriva ut, med QR-kod */
@@ -3221,7 +3342,7 @@ function merge3(b, o, t, path, cf) {
   return o;
 }
 function bookMerge(base, ours, theirs, cf) {
-  const m = merge3(base, ours, theirs, [], cf);
+  let m = merge3(base, ours, theirs, [], cf);
   // Händelserna i tidsordning (stabilt) – så räknas posterna fram likadant på alla enheter
   for (const pid in m.logs || {}) { const ev = m.logs[pid]?.events; if (Array.isArray(ev)) m.logs[pid].events = ev.map((x, i) => [x, i]).sort((x, y) => String(x[0].at).localeCompare(String(y[0].at)) || x[1] - y[1]).map(x => x[0]); }
   // Inställningar för visningen och vem som är inloggad i boken: den här enheten bestämmer, inget att fråga om
@@ -3230,6 +3351,9 @@ function bookMerge(base, ours, theirs, cf) {
   invDedupe(m);
   // Nycklar och organisation (0.16.0): den äldsta nyckeln och det lägsta id:t gäller – likadant på alla enheter
   keysSettle(m, ours, theirs, cf);
+  // Tid går före borttagning (0.20.1, A5): ett projekt eller en uppgift med levande tid läggs tillbaka
+  const back = orphanFix(m, [ours, theirs, base]);
+  if (back) { m = back.book; st.orphNote = back.names; }
   return m;
 }
 function getAt(root, path) { let c = root; for (const k of path) { if (c == null) return undefined; c = typeof k === 'object' ? (Array.isArray(c) ? c.find(x => x?.id === k.id) : undefined) : c[k]; } return c; }
@@ -3277,6 +3401,8 @@ async function webSyncOnce() {
   if ((isExample() || st.noSave) && !orgFirst) { webState('paused'); return; }
   if (!st.enc?.key) { webState('locked'); return; }
   if (navigator.onLine === false) { webState('offline'); return; }
+  // Ett timpris som väntar på svar i Så påverkas summan ligger osparat i minnet – synka först när dialogen är stängd (0.20.1, B10)
+  if (st.pg) { webQueue(3000); return; }
   flush();
   if (!orgFirst) { try { await keysEnsure(); } catch (_) {} }
   flush();
@@ -3336,6 +3462,8 @@ function webApply(book) {
   // Omräkningar som administratören godkänt för den här personens tid (0.18.0), och admin städar bort de som är gjorda
   const n = n0 + repriceOrders(); if (isAdm()) repricePrune();
   if (n) setTimeout(() => toast(`${orgMember() ? 'Administratören har ändrat timpriset' : 'Timpriset har ändrats på en annan enhet'} – ${n === 1 ? 'en tidpost' : n + ' tidposter'} fick det nya priset`), 0);
+  const back = st.orphNote; st.orphNote = null;
+  if (back?.length && !orgMember()) setTimeout(() => toast(`Togs bort på en annan enhet men har tid – lagt tillbaka: ${back.join(', ')}`), 50);
   if (st.as && !viewing()) st.as = null;
   lastRaw = null; writeNow(); render();
 }
@@ -3422,7 +3550,7 @@ function webRegDlg(msg, pre = {}) {
    <div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="webRegGo">Skapa konto</button></div>`);
 }
 async function webRegister(o) {
-  const r = await api('register', { body: { invite: o.invite, email: o.email, login: o.login, vault: vaultPublic(o.vault), device: devName() }, noAuth: true });
+  const r = await api('register', { body: { invite: o.invite, email: o.email, login: o.login, vault: vaultPublic(o.vault), device: devName(), ...(o.proof ? { proof: o.proof } : {}) }, noAuth: true });
   if (!st.enc || st.enc.vault.id !== o.vault.id || !st.enc.key) await encStore(o.vault, o.key);
   await webStore({ email: r.email, token: r.token, rev: 0, saved: null, base: null, replace: false, used: r.used, quota: r.quota }, true);
   if (r.org) await orgJoined(r.org);
@@ -3538,9 +3666,9 @@ async function webAdmLoad() {
   if (err) err.textContent = '';
 }
 // Före lösenordsbyte eller ny återställningsnyckel: skicka det nya valvet till servern först – går det inte ändras inget
-async function webVault(vault, login, logoutOthers) {
+async function webVault(vault, login, logoutOthers, auth = {}) {
   if (!webOn()) return;
-  try { await api('vault', { body: { vault: vaultPublic(vault), ...(login ? { login } : {}), ...(logoutOthers ? { logoutOthers: true } : {}) } }); }
+  try { await api('vault', { body: { vault: vaultPublic(vault), ...(login ? { login } : {}), ...(logoutOthers ? { logoutOthers: true } : {}), ...(auth.old ? { old: auth.old } : {}), ...(auth.proof ? { proof: auth.proof } : {}) } }); }
   catch (e) { throw new Error((e.offline ? 'Ingen kontakt med servern' : e.message) + ' Bytet är inte gjort – försök igen när du har nät.'); }
 }
 
@@ -3679,7 +3807,7 @@ function orgOverlay(m, t, b, o) {
     if (T[n] !== undefined) P[n] = T[n];
     if (O[n] !== undefined && canon(O[n]) !== canon(Bs[n] ?? null) && canon(O[n]) !== canon(T[n] ?? null)) reverted = true;
   }
-  return { book: bookJoin(P), reverted };
+  return { book: bookJoin(P, m.session?.personId), reverted };
 }
 // Admin: en person som tagits bort ur organisationen får sin nyckel markerad som borta – delarna krypteras om utan den
 function orgSweep(o) {
@@ -4468,7 +4596,10 @@ function parseQuick(s) {
   const words = rest.split(/\s+/), m = matchTarget(words);
   if (!m) return w.days || hours != null ? { error: `Hittar inget projekt eller förkortning som matchar ”${words[0]}”.` } : null;
   if (hours == null && !hasNorm()) return { error: simple() ? 'Skriv timmar – i enkelt läge finns ingen normtid att fylla upp till.' : 'Skriv timmar – som timanställd har du ingen normtid att fylla upp till.' };
-  return { hours, rk: m.rk, note: cap(words.slice(m.used).join(' ')), days: w.days || [quickDate()], dated: !!w.days };
+  let note = words.slice(m.used).join(' '), days = w.days;
+  // En dag direkt efter projektet (0.20.1): 3 strand igår, 3 strand tor möte, 2 lärkan 10/11 – bara en enda dag
+  if (!days && note) { const w2 = parseWhen(note, curWeek()); if (!w2.err && w2.days?.length === 1 && w2.rest !== note) { days = w2.days; note = (w2.rest || '').trim(); } }
+  return { hours, rk: m.rk, note: cap(note), days: days || [quickDate()], dated: !!days };
 }
 // Vad Enter kommer att göra: låsta veckor hoppas över; utan timmar fylls varje dag upp till normtiden
 function quickPlan(q) {
@@ -5251,7 +5382,7 @@ function dataDlg() {
   <h3>Vad som skickas över nätet</h3>
   <ul><li><b>Appen hämtas</b> från agrellarkitektur.se. Webbhotellet för, som alla webbservrar, tekniska loggar över anrop (IP-adress, tidpunkt, vilken fil). Inget ur boken följer med.</li>
   <li><b>Synpunkter</b> – bara när du trycker på Skicka: det du skrivit i formuläret, din e-postadress om du anger den och, om du kryssat i det, version och skärmstorlek. Skriptet skickar det vidare som e-post och sparar ingenting.</li>
-  <li><b>Med konto på webben:</b> den krypterade boken när den ändras, e-postadressen och en inloggning som räknas fram ur lösenordet (servern sparar bara ett hashvärde av den). Webbhotellets loggar visar då också IP-adress och tidpunkt för synken.</li>
+  <li><b>Med konto på webben:</b> den krypterade boken när den ändras, e-postadressen och en inloggning som räknas fram ur lösenordet och ett bevis som räknas fram ur boknyckeln (servern sparar bara hashvärden av dem). Webbhotellets loggar visar då också IP-adress och tidpunkt för synken.</li>
   <li><b>Inget annat.</b> Ingen statistik, spårning, reklam, AI eller tjänster från andra företag. Typsnitten är inbyggda.</li></ul>
   <h3>Ditt ansvar</h3>
   <ul><li>Du ansvarar för personuppgifterna du för in i boken, på samma sätt som för ett eget kalkylark eller pappersarkiv. Utan konto på webben når inget ur boken Agrell Arkitektur. Med konto sparar vi din e-postadress och den krypterade boken – som vi inte kan läsa – bara för att tjänsten ska fungera. Lagringen på webben är ett test utan garanti; ändras eller avvecklas den får du besked till e-postadressen, och boken finns kvar på dina enheter.</li>
@@ -5565,9 +5696,11 @@ const A = {
     const btn = $('#dlg [data-act="webLoginGo"]'); busy(btn, true, 'Loggar in …');
     try {
       const k = await api('kdf', { body: { email }, noAuth: true });
-      const bits = await pwBits(pw, unb64(k.kdf.salt), k.kdf.iter);
+      const bits = await pwBits(pw, unb64(k.kdf.salt), kdfOk(k.kdf, ENC_ITER));
       const r = await api('login', { body: { email, login: b64(bits.slice(32)), device: devName() }, noAuth: true });
       let raw; try { raw = await unseal(await aesKey(bits.slice(0, 32), ['decrypt']), r.vault.pw, AAD_KEY); } catch (_) { throw new Error('Inloggningen gick igenom men bokens nyckel kunde inte låsas upp med lösenordet.'); }
+      // Beviset på boknyckeln (0.20.1) går bara att räkna när valvet är upplåst – servern sparar det om kontot saknar det
+      await api('proof', { body: { login: b64(bits.slice(32)), proof: await keyProof(raw) }, token: r.token }).catch(() => {});
       bits.fill(0); const key = await aesKey(raw, ['encrypt', 'decrypt']); raw.fill(0);
       await webLoginDone({ email, token: r.token, vault: r.vault, key, rev: r.rev, saved: r.saved, used: r.used, quota: r.quota, orgs: r.orgs || [], moved: r.moved });
     } catch (x) { busy(btn, false); if ($('#encErr')) $('#encErr').textContent = x instanceof SyntaxError ? 'Boken på webben gick att låsa upp men innehållet är skadat.' : x.message; else toast(x.message); }
@@ -5588,8 +5721,8 @@ const A = {
       try {
         const v = st.enc.vault, bits = await pwBits(pw, unb64(v.kdf.salt), v.kdf.iter);
         let raw; try { raw = await unseal(await aesKey(bits.slice(0, 32), ['decrypt']), v.pw, AAD_KEY); } catch (_) { throw new Error('Fel lösenord – använd samma lösenord som för krypteringen.'); }
-        const key = st.enc.key || await aesKey(raw, ['encrypt', 'decrypt']); raw.fill(0);
-        await webRegister({ invite, email, login: b64(bits.slice(32)), vault: v, key }); bits.fill(0);
+        const key = st.enc.key || await aesKey(raw, ['encrypt', 'decrypt']), proof = await keyProof(raw); raw.fill(0);
+        await webRegister({ invite, email, login: b64(bits.slice(32)), vault: v, key, proof }); bits.fill(0);
       } catch (x) { busy(btn, false); err.textContent = x.message; }
     } else {
       const a = $('#encPw').value, m = pwCheck(a, $('#encPw2').value); if (m) { err.textContent = m; return; }
@@ -5617,7 +5750,7 @@ const A = {
     if (!pw) { err.textContent = 'Skriv lösenordet.'; return; }
     busy(btn, true, 'Raderar …');
     try {
-      const k = await api('kdf', { body: { email: st.web.email }, noAuth: true }), bits = await pwBits(pw, unb64(k.kdf.salt), k.kdf.iter);
+      const k = await api('kdf', { body: { email: st.web.email }, noAuth: true }), bits = await pwBits(pw, unb64(k.kdf.salt), kdfOk(k.kdf, ENC_ITER));
       await api('delete', { body: { login: b64(bits.slice(32)) } }); bits.fill(0);
       await webForget(); closeDlg(); toast('Kontot och allt på servern är raderat. Boken finns kvar här.'); if (st.page === 'installningar') safetyRender();
     } catch (x) { busy(btn, false); err.textContent = x.message; }
@@ -5691,16 +5824,19 @@ const A = {
   },
   orgCopy: el => { navigator.clipboard?.writeText(el.dataset.code).then(() => toast('Koden är kopierad'), () => toast(el.dataset.code)); },
   orgUninvite: async el => { try { await api('orgUninvite', { body: { code: el.dataset.code } }); toast('Koden gäller inte längre'); webRender(true); } catch (x) { toast(x.message); } },
-  orgApprove: el => {
+  orgApprove: async el => {
     const m = (st.webInfo?.org?.members || []).find(x => x.pid === el.dataset.pid), p = byId(R().people, el.dataset.pid); if (!m || !p) return;
+    // Fingeravtrycket räknas ur nycklarna här – inte det servern påstår (0.20.1, A3)
+    const fp = await keyFpOk(m.keys); if (!fp) return;
     st.orgAppr = m.pid;
-    openDlg(`<h2 id="dlgTitle">Ta in ${esc(p.name)} i boken</h2><p>${esc(p.name)} (${esc(m.email)}) har gått med i organisationen. Personens nyckel:</p><p class="mono" style="font-size:18px;letter-spacing:.06em">${esc(fpText(m.keys.fp))}</p>
+    openDlg(`<h2 id="dlgTitle">Ta in ${esc(p.name)} i boken</h2><p>${esc(p.name)} (${esc(m.email)}) har gått med i organisationen. Personens nyckel:</p><p class="mono" style="font-size:18px;letter-spacing:.06em">${esc(fpText(fp))}</p>
      <p class="small">Jämför gärna med fingeravtrycket under <i>Inställningar → Spara boken → Kryptering → Personlig nyckel</i> på personens enhet – så vet du att nyckeln kommer från ${esc(p.name)} och inte från någon annan. När du tar in personen krypteras registret, personens kort och personens tidlogg också till henne eller honom.</p>
      <div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="orgApproveGo">Ta in i boken</button></div>`);
   },
   orgApproveGo: async () => {
     const m = (st.webInfo?.org?.members || []).find(x => x.pid === st.orgAppr), p = m && byId(R().people, m.pid); closeDlg(); if (!p) return;
-    p.keys = { enc: m.keys.enc, sig: m.keys.sig, at: m.keys.at, fp: m.keys.fp }; save();
+    const fp = await keyFpOk(m.keys); if (!fp) return;
+    p.keys = { enc: m.keys.enc, sig: m.keys.sig, at: m.keys.at, fp }; save();
     toast(`${p.name} är med i boken – synkar`);
     await webSync(); if (st.page === 'installningar') webRender(true);
   },
@@ -5742,11 +5878,11 @@ const A = {
     const n = st.encNew, err = $('#encErr'); if (!n) return;
     if ($('#rkLast').value.trim().toUpperCase() !== n.rk.slice(-4)) { err.textContent = 'Tecknen stämmer inte med slutet av nyckeln.'; $('#rkLast').select(); return; }
     const first = !n.renew;
-    if (n.renew && webOn()) { const btn = $('#dlg [data-act="rkConfirm"]'); busy(btn, true, 'Sparar …'); try { await webVault(n.vault); } catch (x) { busy(btn, false); err.textContent = x.message; return; } }
+    if (n.renew && webOn()) { const btn = $('#dlg [data-act="rkConfirm"]'); busy(btn, true, 'Sparar …'); try { await webVault(n.vault, null, false, n.auth || {}); } catch (x) { busy(btn, false); err.textContent = x.message; return; } }
     n.raw?.fill?.(0);
     await encStore(n.vault, n.key); st.encNew = null; closeDlg();
     if (first) await keysEnsure().catch(() => {});
-    if (n.web) { try { await webRegister({ ...n.web, login: n.login, vault: n.vault, key: n.key }); } catch (x) { webRegDlg(x.message + ' Krypteringen är påslagen – skriv krypteringens lösenord.', n.web); } if (st.page === 'installningar') safetyRender(); return; }
+    if (n.web) { try { await webRegister({ ...n.web, login: n.login, vault: n.vault, key: n.key, proof: n.proof }); } catch (x) { webRegDlg(x.message + ' Krypteringen är påslagen – skriv krypteringens lösenord.', n.web); } if (st.page === 'installningar') safetyRender(); return; }
     toast(first ? 'Krypteringen är på' : 'Den nya återställningsnyckeln gäller', first ? { label: 'Spara krypterad kopia', fn: () => encSaveFile() } : null);
     if (st.page === 'installningar') safetyRender();
   },
@@ -5762,8 +5898,10 @@ const A = {
     const btn = $('#dlg [data-act="encUnlockGo"]'); busy(btn, true);
     try {
       const u = await encUnlock(e.vault, useRk ? { rk: $('#ulRk').value } : { pw: $('#ulPw').value });
-      if (what === 'pw') { const out = {}, vault = { ...e.vault, ...(await pwBox(u.raw, np, out)) }; await webVault(vault, out.login, $('#wOthers')?.checked); u.raw.fill(0); await encStore(vault, u.key); closeDlg(); toast(webOn() ? 'Lösenordet är bytt – även för inloggningen på webben' : 'Lösenordet är bytt'); }
-      else if (what === 'rk') { const r = await rkBox(u.raw); u.raw.fill(0); st.encNew = { vault: { ...e.vault, ...r.box }, key: u.key, rk: r.rkStr, renew: true }; rkShowDlg(r.rkStr, false); return; }
+      // Till servern: beviset på boknyckeln, och med lösenordet också den nuvarande inloggningen (0.20.1, B4)
+      const auth = webOn() && (what === 'pw' || what === 'rk') ? { proof: await keyProof(u.raw), ...(!useRk ? { old: b64((await pwBits($('#ulPw').value, unb64(e.vault.kdf.salt), e.vault.kdf.iter)).slice(32)) } : {}) } : {};
+      if (what === 'pw') { const out = {}, vault = { ...e.vault, ...(await pwBox(u.raw, np, out)) }; await webVault(vault, out.login, $('#wOthers')?.checked, auth); u.raw.fill(0); await encStore(vault, u.key); closeDlg(); toast(webOn() ? 'Lösenordet är bytt – även för inloggningen på webben' : 'Lösenordet är bytt'); }
+      else if (what === 'rk') { const r = await rkBox(u.raw); u.raw.fill(0); st.encNew = { vault: { ...e.vault, ...r.box }, key: u.key, rk: r.rkStr, renew: true, auth }; rkShowDlg(r.rkStr, false); return; }
       else { u.raw.fill(0); await encStore(e.vault, u.key); closeDlg(); encSaveFile(); }
       if (st.page === 'installningar') safetyRender();
     } catch (x) { busy(btn, false); err.textContent = x.message; }
@@ -5784,7 +5922,7 @@ const A = {
   encNewPwGo: async () => {
     const err = $('#encErr'), a = $('#encPw').value, m = pwCheck(a, $('#encPw2').value); err.textContent = m; if (m || !st.encRaw || !st.enc) return;
     const btn = $('#dlg [data-act="encNewPwGo"]'); busy(btn, true);
-    try { const out = {}, vault = { ...st.enc.vault, ...(await pwBox(st.encRaw, a, out)) }; await webVault(vault, out.login); st.encRaw.fill(0); st.encRaw = null; await encStore(vault, st.enc.key); closeDlg(); toast('Det nya lösenordet gäller för krypterade kopior'); }
+    try { const out = {}, vault = { ...st.enc.vault, ...(await pwBox(st.encRaw, a, out)) }; await webVault(vault, out.login, false, { proof: await keyProof(st.encRaw) }); st.encRaw.fill(0); st.encRaw = null; await encStore(vault, st.enc.key); closeDlg(); toast('Det nya lösenordet gäller för krypterade kopior'); }
     catch (x) { busy(btn, false); err.textContent = x.message; }
   },
   importBook: () => { closeFloating(); importDlg(); },
@@ -7024,13 +7162,13 @@ const cRowQty = c => c.qty != null ? `${fhs(c.qty)}${c.unit ? ' ' + c.unit : ''}
 // Tabellen med kostnader (am = med belopp): datum, beskrivning, antal, à-pris, belopp
 function costTableHtml(cs, am, title = 'Kostnader') {
   if (!cs.length) return '';
-  return `<table class="pp-t ko-t"><thead><tr><th>Datum</th><th class="w">${title}</th><th class="r">Antal</th>${am ? '<th class="r">À-pris</th><th class="r">Belopp</th>' : ''}</tr></thead><tbody>${cs.map(c => `<tr class="${c.hd ? 'hd' : ''}"><td class="nw">${sdate(c.date)}</td><td class="w">${esc(c.text)}</td><td class="r mono">${esc(cRowQty(c))}</td>${am ? `<td class="r mono">${c.price != null ? fkc(c.price) : '–'}</td><td class="r mono">${fkc(c.total)}</td>` : ''}</tr>`).join('')}${am && cs.length > 1 ? `<tr class="tot"><td></td><td class="w">Summa ${title.toLowerCase()}</td><td></td><td></td><td class="r mono">${fkc(cs.reduce((s, c) => s + c.total, 0))}</td></tr>` : ''}</tbody></table>`;
+  return `<table class="pp-t ko-t"><thead><tr><th>Datum</th><th class="w">${title}</th><th class="r">Antal</th>${am ? '<th class="r">À-pris</th><th class="r">Belopp</th>' : ''}</tr></thead><tbody>${cs.map(c => `<tr class="${c.hd ? 'hd' : ''}"><td class="nw">${sdate(c.date)}</td><td class="w">${esc(c.text)}</td><td class="r mono">${esc(cRowQty(c))}</td>${am ? `<td class="r mono">${c.price != null ? fkc(c.price) : '–'}</td><td class="r mono">${fkc(c.total)}</td>` : ''}</tr>`).join('')}${am && cs.length > 1 ? `<tr class="tot"><td></td><td class="w">Summa kostnader</td><td></td><td></td><td class="r mono">${fkc(cs.reduce((s, c) => s + c.total, 0))}</td></tr>` : ''}</tbody></table>`;
 }
 function costTablePdf(doc, cs, am, title = 'Kostnader') {
   if (!cs.length) return;
   const cols = [{ h: 'Datum', w: 58 }, { h: title, wrap: true }, { h: 'Antal', w: 64, align: 'right' }, ...(am ? [{ h: 'À-pris', w: 76, align: 'right' }, { h: 'Belopp', w: 88, align: 'right' }] : [])];
   const body = cs.map(c => (x => c.hd ? { cells: x, muted: true } : x)([sdate(c.date), c.text, cRowQty(c), ...(am ? [c.price != null ? fkc(c.price) : '–', fkc(c.total)] : [])]));
-  if (am && cs.length > 1) body.push({ cells: ['', 'Summa ' + title.toLowerCase(), '', '', fkc(cs.reduce((s, c) => s + c.total, 0))], bold: true });
+  if (am && cs.length > 1) body.push({ cells: ['', 'Summa kostnader', '', '', fkc(cs.reduce((s, c) => s + c.total, 0))], bold: true });
   pdfTable(doc, cols, body);
 }
 const invName = sel => sel === 'all' ? 'Alla projekt' : sel.startsWith('c:') ? cust(sel.slice(2))?.name || '' : (P => `${P.number && P.number !== '–' ? P.number + ' ' : ''}${P.name}`)(proj(sel.slice(2)));
@@ -7184,7 +7322,8 @@ const nf2 = new Intl.NumberFormat('sv-SE', { minimumFractionDigits: 2, maximumFr
 const nfQ = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 2 });
 const fkr2 = n => (n < -0.004 ? '-' : '') + nf2.format(Math.abs(n)) + ' kr';
 const fq = n => (n < 0 ? '-' : '') + nfQ.format(Math.abs(n));
-const r2 = n => Math.round((+n || 0) * 100) / 100;
+// Avrundning till öre lika åt båda håll (0.20.1, B1): −771,875 blir −771,88 som 771,875 blir 771,88 – kreditfakturan tar ut fakturan exakt
+const r2 = n => { const v = +n || 0, a = Math.round(Math.abs(v) * 100) / 100; return a ? (v < 0 ? -a : a) : 0; };
 const pNum = v => { const s = String(v ?? '').replace(/[\s ]/g, '').replace(/kr$/i, '').replace(',', '.'); return s === '' ? NaN : +s; };
 const vatFromOrg = o => { const d = String(o || '').replace(/\D/g, ''); return d.length === 10 ? 'SE' + d + '01' : d.length === 12 ? 'SE' + d.slice(2) + '01' : ''; };
 const INV_TERMS = [
@@ -7320,9 +7459,13 @@ function invEdRead() {
   const vi = $('#ieVat');
   if (invMode(x) !== 'se') { x.vat = 0; if (vi) { vi.value = '0'; vi.disabled = true; } }
   else { if (vi?.disabled) { vi.disabled = false; if (pNum(vi.value) === 0) vi.value = fhs(+R().book.vatRate || 0); } const v = pNum(g('ieVat')); if (v >= 0 && v <= 100) x.vat = v; }
-  x.lines = $$('#ieRows .ie-row').map(row => {
-    const q = k => $(`[data-l="${k}"]`, row).value, qty = pNum(q('qty')), price = pNum(q('price'));
-    return { text: q('text').trim(), qty: isNaN(qty) ? 0 : qty, unit: q('unit').trim(), price: isNaN(price) ? 0 : r2(price), amount: r2((isNaN(qty) ? 0 : qty) * (isNaN(price) ? 0 : price)), bad: isNaN(qty) || isNaN(price) };
+  const was = x.lines || [];
+  x.lines = $$('#ieRows .ie-row').map((row, i) => {
+    const q = k => $(`[data-l="${k}"]`, row).value, qty = pNum(q('qty')), price = pNum(q('price')), p = was[i];
+    // Raden behåller sitt belopp ur underlaget tills antal eller à-pris ändras (0.20.1, B12) – timmarna står avrundade
+    // till två decimaler, men beloppet är räknat på de exakta timmarna
+    const keep = p && p.amount != null && !isNaN(qty) && !isNaN(price) && qty === p.qty && r2(price) === p.price;
+    return { text: q('text').trim(), qty: isNaN(qty) ? 0 : qty, unit: q('unit').trim(), price: isNaN(price) ? 0 : r2(price), amount: keep ? r2(p.amount) : r2((isNaN(qty) ? 0 : qty) * (isNaN(price) ? 0 : price)), bad: isNaN(qty) || isNaN(price) };
   });
   return x;
 }
@@ -7380,6 +7523,8 @@ async function invIssueFlow(prep) {
     Object.assign(x, o ? { net: -o.net, vatA: -o.vatA, total: -o.total, round: -o.round, pay: -o.pay } : invCalc(x));
     delete x.basis;
     if (b.logo) { const h = (await sha256(b.logo.src))?.slice(0, 16) || 'logga'; (R().invoiceLogos = R().invoiceLogos || {})[h] = R().invoiceLogos[h] || b.logo; x.logo = h; } else x.logo = null;
+    // Fakturan låser bara de dagar som inte redan var hanterade (0.20.1, B13) – så låses de upp igen om den krediteras
+    if (x.kind === 'invoice' && x.spans?.length) x.spans = x.spans.flatMap(s => proj(s.pid) ? spanMinus(s, R().handled[s.pid] || []) : [s]);
     for (const s of x.spans || []) if (proj(s.pid)) hdSet(s.pid, s.from, s.to, true);
     for (const s of x.unlock || []) if (proj(s.pid)) hdSet(s.pid, s.from, s.to, false);
     x.hash = await invHash(x);
@@ -7400,7 +7545,7 @@ function invCreditAsk(id) {
   if (invCreditOf(o)) { toast(`Faktura ${o.num} är redan krediterad`); return; }
   if (!invOn()) { toast('Slå på fakturor under Inställningar för att kreditera'); return; }
   st.invCr = id; const ul = invUnlockOf(o), sp = ul.filter(s => proj(s.pid)), kept = !jeq(ul, (o.spans || []).map(s => ({ pid: s.pid, from: s.from, to: s.to })));
-  openDlg(`<h2 id="dlgTitle">Kreditera faktura ${esc(o.num)}?</h2><p>En kreditfaktura med samma rader och negativa belopp (${fkr2(-o.pay)}) utfärdas med nästa nummer, <b class="mono">${esc(invNum(invNextNo()))}</b>, och hänvisar till faktura ${esc(o.num)}. Den kan inte ändras eller tas bort.</p>${sp.length ? `<label class="chk"><input type="checkbox" id="crUnlock" checked> Lås upp tiden i fakturan igen, så att den kan faktureras på nytt (${sp.map(s => esc(`${proj(s.pid).name}, ${perTxt(s.from, s.to)}`)).join('; ')})${kept ? ' – tid som också ingår i en annan faktura förblir låst' : ''}</label>` : ''}<p class="small muted">Vill du bara rätta en del: kreditera hela fakturan och gör en ny.</p><div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="invCreditGo">${ic('lock')}Utfärda kreditfaktura</button></div>`);
+  openDlg(`<h2 id="dlgTitle">Kreditera faktura ${esc(o.num)}?</h2><p>En kreditfaktura med samma rader och negativa belopp (${fkr2(-o.pay)}) utfärdas med nästa nummer, <b class="mono">${esc(invNum(invNextNo()))}</b>, och hänvisar till faktura ${esc(o.num)}. Den kan inte ändras eller tas bort.</p>${!sp.length && (o.spans || []).length ? `<p>Tiden i fakturan förblir hanterad och låst – den ingår också i ${(cov => cov.length === 1 ? 'faktura ' + esc(cov[0]) : 'fakturorna ' + esc(cov.join(', ')))([...new Set((o.spans || []).flatMap(s => invCovering(s.pid, s.from, s.to).filter(y => y.id !== o.id).map(y => y.num)))])}. Häv hanteringen på projektsidan om tiden ska faktureras på nytt.</p>` : ''}${sp.length ? `<label class="chk"><input type="checkbox" id="crUnlock" checked> Lås upp tiden i fakturan igen, så att den kan faktureras på nytt (${sp.map(s => esc(`${proj(s.pid).name}, ${perTxt(s.from, s.to)}`)).join('; ')})${kept ? ' – tid som också ingår i en annan faktura förblir låst' : ''}</label>` : ''}<p class="small muted">Vill du bara rätta en del: kreditera hela fakturan och gör en ny.</p><div class="dlg-foot"><button class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" data-act="invCreditGo">${ic('lock')}Utfärda kreditfaktura</button></div>`);
 }
 function invCreditGo() {
   const id = st.invCr, unlock = !!$('#crUnlock')?.checked; closeDlg();
@@ -8652,7 +8797,7 @@ function shAnswer(ans) {
 /* ── Förteckningen i panelen ── */
 const shPanelFree = () => !narrow() && !$('#app').classList.contains('pmin');
 const shPanelOn = () => !!st.sh?.on && shPanelFree();
-const shCode = (c, note) => `<li><button class="sh-ex" data-act="shIns" data-v="${esc(c)}" title="Lägg in i fältet"><code>${esc(c)}</code></button><span>${note}</span></li>`;
+const shCode = (c, note) => `<li><button class="sh-ex" data-act="shIns" data-v="${esc(c)}" title="Lägg in i fältet"><code>${esc(c)}</code></button><span>${note}</span></li>`;   // note är HTML från appen – egna kommandon escapas nedan
 function shRefHtml(v) {
   let t0 = shTok(v)[0]; const al0 = t0 && !t0.q && !SHW.has(t0.lo) && S.prefs.aliases?.[t0.lo]; if (al0) t0 = shTok(al0)[0];
   const cur = t0 && !t0.q ? SHW.get(t0.lo) || (t0.lo.startsWith('?') ? SHW.get('?') : null) : null;
@@ -8664,7 +8809,7 @@ function shRefHtml(v) {
   h += `<section class="psec"><h3>Perioder</h3><ul class="sh-list sh-per">${[['idag igår tor mån-fre', 'dagar i veckan du står i'], ['15/10 15/10-22/10', 'datum'], ['v43 v40-43 fv', 'veckor, förra veckan'], ['okt sept-okt fm', 'månader, förra månaden'], ['sept- -15/10', 'från och med, till och med'], ['2026 öppet', 'år, all öppen tid']].map(([c, n]) => `<li><code>${esc(c)}</code><span>${n}</span></li>`).join('')}</ul></section>`;
   h += helpSec(['<b>Kommandot först</b>, sedan period och projekt. Tid skrivs som förut, med timmarna först.', 'Raden under fältet säger vad <b>Enter</b> gör – inget händer innan.', '<b>Tab</b> fyller i kommandon, projekt och kunder. <b>Pil upp</b> hämtar tidigare rader.', 'Namn med siffror: <b>proj Kv. Lärkan 2 100000</b> fungerar – en budget är minst fyra siffror, 100k eller löp. Annars citattecken: <b>proj "Hus 2000"</b>.'], 'Så fungerar det');
   const al = Object.entries(S.prefs.aliases || {});
-  if (al.length) h += `<section class="psec"><h3>Egna kommandon</h3><ul class="sh-list">${al.sort().map(([k, v]) => shCode(k, '= ' + v)).join('')}</ul></section>`;
+  if (al.length) h += `<section class="psec"><h3>Egna kommandon</h3><ul class="sh-list">${al.sort().map(([k, v]) => shCode(k, '= ' + esc(v))).join('')}</ul></section>`;
   h += `<section class="psec"><div class="p-acts"><button class="btn sm" data-act="quickHelp">${ic('bolt')}Förkortningar och egna kommandon …</button></div></section>`;
   return h;
 }
@@ -8810,7 +8955,8 @@ I.more = '<circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circ
 if (/[?&]test\b/.test(location.search)) window.SISYFOS = { get S() { return S; }, set S(v) { S = v; }, st, me, R, byId, canon, migrate, sampleBook, bookSplit, bookJoin, partRule, bookMerge,
   encCreate, encStore, keysEnsure, keysAdopt, keysCreate, keysOpen, keysPublic, encBookText, decBook, decParts, unseal, gz, aesKey, rnd, b64, unb64, kvGet, AAD_DATA, FORMAT_VERSION,
   rateFor, rv, rPut, rHist, rateSnap, repriceSince, signOn, checkOn, wkOpen, perReady, weekItems, invoiceData, invoicePdf, invoiceCsv, locked, handled, moveDay, dragAt, xrList, xrRows, invSel, costPut, costRemove, costsAt, pCosts, cTot, get COST() { return COST; }, setCell, weekEvent, weekState, webApply, save, log, uid, devId, apply, select, cell, closeCellPop, render, derive, diaryData, diaryPdf, rep,
-  who, viewing, isAdm, asPick, wkChecked, openWeeksOf, repriceOrders, repricePrune, eRate, monday, today, live, mine, priceGate, closeDlg, alertsHtml, budgetPct, get E() { return E; } };
+  who, viewing, isAdm, asPick, wkChecked, openWeeksOf, repriceOrders, repricePrune, eRate, monday, today, live, mine, priceGate, closeDlg, alertsHtml, budgetPct, get E() { return E; },
+  orphanFix, proj, taskOf, parseQuick, r2, invCalc, keyFp, keyFpOk, kdfOk, keyProof, shRefHtml, restoreRow, removeRowData, invUnlockOf, spanMinus, hdSet, invNewFromBasis, invEdRead, orgOverlay, get IDX() { return IDX; } };
 })();
 </script>
 </body>

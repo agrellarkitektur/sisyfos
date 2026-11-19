@@ -365,9 +365,10 @@ case 'register': {
   $kod = code_norm($in['invite'] ?? '');
   if ($kod === '') fel(400, 'invite', 'Inbjudningskoden saknas.');
   $id = acc_id($email);
-  if (is_file(acc_file($id))) fel(409, 'exists', 'Det finns redan ett konto med den e-postadressen. Logga in i stället.');
+  $proof = isset($in['proof']) ? b64ok($in['proof'], 32) : null;
   // Förbruka koden först (under lås), lämna tillbaka den om kontot redan finns. En medarbetares kod (0.16.1)
-  // skapar kontot och lägger in det i organisationen.
+  // skapar kontot och lägger in det i organisationen. Koden prövas innan något sägs om adressen (0.20.1, B5) –
+  // utan giltig kod går det inte att ta reda på om en adress har konto.
   $okKod = use_code($kod, ['account', 'member'], $email);
   if (!$okKod) { failed(); fel(403, 'invite', 'Inbjudningskoden gäller inte.'); }
   $dir = acc_dir($id);
@@ -377,14 +378,15 @@ case 'register': {
   }
   if (!is_dir($dir)) mkdir($dir, 0700);
   $device = (string)($in['device'] ?? '');
-  $tok = locked_json(acc_file($id), function ($acc) use ($email, $login, $vault, $kod, $device) {
+  $tok = locked_json(acc_file($id), function ($acc) use ($email, $login, $vault, $kod, $device, $proof) {
     if (is_array($acc)) return [null, null];
     $acc = ['v' => 1, 'email' => $email, 'created' => time(), 'invite' => $kod, 'login' => password_hash($login, PASSWORD_DEFAULT),
             'vault' => $vault, 'rev' => 0, 'saved' => null, 'size' => 0, 'history' => [], 'tokens' => [], 'orgs' => []];
+    if ($proof !== null) $acc['proof'] = password_hash($proof, PASSWORD_DEFAULT);
     $t = new_token($acc, $device);
     return [$acc, $t];
   });
-  if (!$tok) fel(409, 'exists', 'Det finns redan ett konto med den e-postadressen. Logga in i stället.');
+  if (!$tok) { give_back($kod); fel(409, 'exists', 'Det finns redan ett konto med den e-postadressen. Logga in i stället.'); }
   $org = null;
   if (($okKod['kind'] ?? '') === 'member') {
     $why = org_join($okKod['org'], $okKod['pid'], $id, $email, 'member');
@@ -403,9 +405,12 @@ case 'login': {
   $f = acc_file($id);
   if (!is_file($f)) { password_verify($login, dummy_hash()); failed($ak); fel(401, 'login', 'Fel e-postadress eller lösenord.'); }
   $device = (string)($in['device'] ?? '');
-  $res = locked_json($f, function ($acc) use ($login, $device) {
+  $proof = isset($in['proof']) ? b64ok($in['proof'], 32) : null;
+  $res = locked_json($f, function ($acc) use ($login, $device, $proof) {
     if (!is_array($acc) || !password_verify($login, $acc['login'])) return [null, null];
     if (password_needs_rehash($acc['login'], PASSWORD_DEFAULT)) $acc['login'] = password_hash($login, PASSWORD_DEFAULT);
+    // Bevis på boknyckeln (0.20.1): sparas första gången, efter en riktig inloggning
+    if ($proof !== null && empty($acc['proof'])) $acc['proof'] = password_hash($proof, PASSWORD_DEFAULT);
     $t = new_token($acc, $device);
     return [$acc, [$t, $acc]];
   });
@@ -532,13 +537,26 @@ case 'put': {
 }
 
 /* Nytt valv efter byte av lösenord eller återställningsnyckel. Med nytt lösenord skickas också ny inloggningshemlighet. */
+/* Byte av valv och inloggning (lösenordsbyte, ny återställningsnyckel). Kräver mer än token (0.20.1, B4): den nuvarande
+   inloggningshemligheten (old) eller beviset på boknyckeln (proof, sparat vid registrering eller inloggning) – den som
+   bara kommit över en inloggad enhet ska inte kunna byta inloggning och låsa ute de andra. */
 case 'vault': {
-  $need(); [$id, $acc0] = auth(); $me = $acc0['_token']; $in = json_in();
+  $need(); [$id, $acc0] = auth(); $me = $acc0['_token']; $in = json_in(); $ak = 'acc|' . $id;
+  guard($ak);
   $vault = check_vault($in['vault'] ?? null);
   $login = isset($in['login']) ? b64ok($in['login'], 32) : null;
+  $old = isset($in['old']) ? b64ok($in['old'], 32) : null;
+  $proof = isset($in['proof']) ? b64ok($in['proof'], 32) : null;
   $others = !empty($in['logoutOthers']);
-  $ok = locked_json(acc_file($id), function ($acc) use ($vault, $login, $others, $me) {
+  $byOld = $old !== null && password_verify($old, $acc0['login']);
+  $byProof = $proof !== null && !empty($acc0['proof']) && password_verify($proof, $acc0['proof']);
+  if (!$byOld && !$byProof) {
+    if ($old !== null || ($proof !== null && !empty($acc0['proof']))) { failed($ak); fel(401, 'login', 'Fel lösenord.'); }
+    fel(403, 'reauth', 'Servern behöver lösenordet för att byta. Logga ut och in på webben på den här enheten och försök igen.');
+  }
+  $ok = locked_json(acc_file($id), function ($acc) use ($vault, $login, $others, $me, $proof, $byOld) {
     if ($vault['id'] !== $acc['vault']['id']) return [null, false];
+    if ($byOld && $proof !== null && empty($acc['proof'])) $acc['proof'] = password_hash($proof, PASSWORD_DEFAULT);
     if ($vault['kdf']['salt'] !== $acc['vault']['kdf']['salt'] && $login === null) return [null, false];
     $acc['vault'] = $vault;
     if ($login !== null) $acc['login'] = password_hash($login, PASSWORD_DEFAULT);
@@ -548,6 +566,17 @@ case 'vault': {
   if (!$ok) fel(400, 'vault', 'Valvet hör inte till kontot, eller så saknas den nya inloggningen.');
   // Omslagen i organisationerna bär samma valv (0.16.1)
   foreach ($acc0['orgs'] ?? [] as $o) { $f = org_dir($o['id']) . "/env-$id.json"; if (is_file($f)) locked_json($f, fn($e) => [is_array($e) ? ['vault' => $vault] + $e : null, null]); }
+  svar(200);
+}
+
+/* Beviset på boknyckeln (0.20.1, B4) för ett konto som saknar det: kräver token och inloggningshemligheten. Sparas bara
+   första gången – ett bevis som redan finns ändras inte. */
+case 'proof': {
+  $need(); [$id, $acc0] = auth(); $in = json_in(); $ak = 'acc|' . $id;
+  guard($ak);
+  $login = b64ok($in['login'] ?? '', 32); $proof = b64ok($in['proof'] ?? '', 32);
+  if (!password_verify($login, $acc0['login'])) { failed($ak); fel(401, 'login', 'Fel lösenord.'); }
+  locked_json(acc_file($id), function ($acc) use ($proof) { if (!is_array($acc) || !empty($acc['proof'])) return [null, null]; $acc['proof'] = password_hash($proof, PASSWORD_DEFAULT); return [$acc, null]; });
   svar(200);
 }
 

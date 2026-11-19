@@ -53,9 +53,12 @@ jobs:
           python test/enkel_test.py
           python test/rapport2_test.py
           python test/kostnad_test.py
+          python test/rattning_test.py
       - name: Servern för lagring på webben
         run: |
           php -v | head -1
           python test/api_test.py
       - name: En organisation – admin och medarbetare
         run: python test/org_test.py
+      - name: Två enheter – borttaget projekt mot osynkad tid, prisdialogen öppen under synk
+        run: python test/synk_test.py

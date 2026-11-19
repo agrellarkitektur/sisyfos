@@ -1,5 +1,34 @@
 # Ändringar i Sisyfos
 
+## 0.20.1
+
+Filformat 12, oförändrat. Rättningar ur granskningen av 0.20.0 (två omgångar, 19 november) – inget nytt att lära sig. Användarens beslut: två poster i samma ruta slås ihop; ett borttaget projekt med tid läggs tillbaka; en tömd ruta förblir tömd.
+
+**Fel belopp och tidbok som inte gick att öppna**
+- **Två poster i samma ruta.** Skrevs tid i samma projekt, uppgift och dag på två enheter innan de synkat visade rutan den ena posten medan summorna räknade båda – och den andra gick inte att nå. Nu läggs timmarna ihop (anteckningarna efter varandra), som när tid dras till en dag som redan har tid; nästa ändring i rutan skriver ihopslagningen i loggen.
+- **Borttaget projekt mot osynkad tid.** Togs ett projekt bort på en enhet medan en annan hade skrivit tid på det gick tidboken inte att öppna efter synken. Nu går tid före borttagning: projektet (eller uppgiften) läggs tillbaka vid synken, med ett besked. Går det inte att hämta ur någon version blir det *Återställt projekt*. Vyerna klarar också tid på ett projekt som saknas (raden *Borttaget projekt*), och en sådan uppgift faller inte längre tyst ur fakturaunderlaget.
+- **`kost` med mellanslag i beloppet.** `kost strand taxi 1 500` bokförde 500 kr med texten *Taxi 1* (förhandsraden såg rätt ut). Nu blir det 1 500 kr, också `2 st à 1 200`, och förhandsraden skriver beloppet för sig: *Taxi – 1 500 kr*.
+
+**Säkerhet**
+- Egna kommandon vars betydelse innehöll HTML kunde köra kod när smartshellens förteckning ritades. Nu visas de som text, och boken tar bort egna kommandon som inte är text.
+- Admins inställningar (egna kommandon, dolda rader) kunde blandas med en medarbetares vid synken. Nu läses de bara ur den egna tidloggen.
+- *Ta in i boken* räknar fingeravtrycket ur medarbetarens nyckel i stället för att lita på det servern skickar, och vägrar om de skiljer sig.
+- Appen vägrar logga in om servern begär färre än 600 000 PBKDF2-varv (en krypterad fil: färre än 100 000).
+- En händelse i en persons tidlogg kan inte längre ändra någon annans post eller kostnad.
+- **Servern:** byte av lösenord eller valv kräver det nuvarande lösenordet eller ett bevis på boknyckeln – inloggningen ensam räcker inte. Registreringen prövar inbjudningskoden innan den säger om en e-postadress har konto. Nytt anrop `proof` (beviset sparas vid registrering och inloggning). **Ladda upp den nya `api.php`** – det sker av sig självt vid publiceringen.
+
+**Fakturor**
+- Kreditfakturans moms kunde skilja ett öre från fakturans (avrundningen av −0,5 öre). Nu avrundas lika åt båda håll.
+- I en bok utan avrundning av timmar ändrades beloppet när utkastet utfärdades (3 958,33 kr blev 3 961,50 kr). Nu behåller raden sitt belopp tills antal eller à-pris ändras.
+- En faktura låser bara de dagar som inte redan var hanterade. Förut kunde tid förbli låst när en annan faktura krediterades; krediteringsdialogen säger nu också när tiden förblir låst och varför.
+- Ett timpris som väntar på svar i *Så påverkas summan* synkas inte ut förrän dialogen är stängd.
+
+**Smått**
+- `3 strand igår`, `3 strand tor möte` och `2 lärkan 10/11` lägger tiden på den dagen – förut blev dagen en anteckning. Bara en enda dag räknas, så `fm` och `v43` efter projektet blir kvar i anteckningen.
+- *Ta bort rad* och *lägg tillbaka* räknade upp timmarna varje varv. Nu läggs de borttagna timmarna på en gång.
+- Projektdagbokens kostnadstabell summeras som *Summa kostnader* (stod *Summa beskrivning*).
+- Test: `test/rattning_test.py` (ett prov per fynd) och `test/synk_test.py` (två enheter mot `php -S`: projekt borttaget mot osynkad tid, prisdialogen öppen under synk) – båda körs i GitHub; `api_test.py` prövar bytet av valv och registreringen.
+
 ## 0.20.0
 
 **Filformat 12.** Ladda om på alla enheter – en äldre app öppnar inte boken (i stället för att tappa kostnaderna när den sparar). Gamla böcker öppnas som förut.
