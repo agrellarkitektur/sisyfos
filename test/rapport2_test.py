@@ -65,7 +65,7 @@ with sync_playwright() as p:
     pg.goto(URL); pg.wait_for_timeout(1200)
 
     # ── Projektdagboken: veckosumman och kolumnerna
-    ev(pg, "() => { const r = rep(); r.tab = 'diary'; r.pid = 'proj1'; r.custom = true; r.from = '2026-10-01'; r.to = '2026-11-15'; r.lay = 'week'; r.empty = true; r.amount = 'ex'; }")
+    ev(pg, "() => { const r = rep(); r.tab = 'diary'; r.pid = 'proj1'; r.custom = true; r.from = '2026-10-01'; r.to = '2026-11-15'; r.lay = 'week'; r.empty = true; r.amount = 'ex'; r.adv = true; }")
     pg.click('.rail [data-page=rapporter]'); pg.wait_for_timeout(500)
     ws = pg.locator('.paper tr.wk-s').first
     bt = ws.evaluate("tr => getComputedStyle(tr.cells[0]).borderTopWidth")

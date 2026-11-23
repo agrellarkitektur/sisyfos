@@ -94,7 +94,8 @@ När veckans tid är klar **checkar du av veckan** – rutorna låses tills du �
 
 Sisyfos gör alltid ett **underlag** att föra in i bokföringsprogrammet: *Rapporter → Fakturaunderlag*, eller knappen *Fakturaunderlag* på kund- och projektsidan. Riktiga fakturor är ett tillägg som slås på särskilt – se *Fakturor* nedan.
 
-- Underlaget tar med **öppen debiterbar tid** för en kund (alla projekt) eller ett projekt, till och med vald månad eller för en egen period – som standard även äldre öppen tid. Hanterad tid ingår inte.
+- Underlaget tar med **öppen debiterbar tid** för en kund (alla projekt) eller ett projekt i perioden **Från – Till** (pilarna går en hel månad i taget) – som standard även äldre öppen tid. Hanterad tid ingår inte.
+- **Rapportförslagen** under reglagen (0.20.2) ger all öppen tid **till och med i dag**, oavsett vad perioden står på, och underlaget säger dagen (*10 aug 2026 – 23 nov 2026*), inte månaden.
 - Tiden summeras per projekt, uppgift, roll och timpris, med summa exkl. moms, moms och summa inkl. moms. Kundens fakturaadress, org.nr och referens står med.
 - **PDF** att läsa eller bifoga och **CSV** (semikolon, decimalkomma, UTF-8) att öppna i Excel eller föra in i bokföringsprogrammet. Projektdagboken är specifikationen.
 - **Dagboksrader** (valet *Dagboksrader med datum och anteckning*) kan ställas upp **en rad per tidpost** eller **per dag och vecka** (0.19.0) – se *Per dag och vecka* nedan.
@@ -106,8 +107,14 @@ Projektdagboken (*Uppställning*) och fakturaunderlagets dagboksrader kan visas 
 
 ### Utan belopp och egna rader (0.19.1)
 
-- **Belopp** under *Innehåll* i fakturaunderlaget (i enkelt läge *Öppen tid*): av ger ett underlag med bara timmar – inga belopp, à-priser eller moms, och rubriken *Öppen tid*. Projektdagboken har samma val under *Belopp → Visa inte belopp*. CSV:en har alltid beloppen.
+- **Belopp** under *Fler val* (från 0.20.2; tidigare *Innehåll*) i fakturaunderlaget (i enkelt läge *Öppen tid*): av ger ett underlag med bara timmar – inga belopp, à-priser eller moms, och rubriken *Öppen tid*. Projektdagboken har samma val under *Belopp → Visa inte belopp*. CSV:en har alltid beloppen.
 - **Egna rader** – t.ex. *Underkonsult, se separat dagbok* – läggs till med *Egen rad* ovanför förhandsvisningen: beskrivning, timmar och timpris (självkostnad) eller ett belopp direkt, och påslag i procent (0 % går bra). Totalt = belopp × (1 + påslag). Raderna står i en egen tabell och ingår i summan (och momsen) i projektdagboken och fakturaunderlaget, på skärmen, i PDF:en och i CSV:en. De gäller projektet (projektdagboken) eller urvalet (fakturaunderlaget), **sparas inte i boken** och påverkar inte budget, hanterad tid eller fakturor – de finns kvar tills appen laddas om.
+
+### Fler val och hanterat hittills (0.20.2)
+
+Projektdagboken och fakturaunderlaget visar bara det viktigaste: vad, period och innehåll. **Fler val** (utfällbart, stängt från början och med en kort sammanfattning) har belopp, uppställning och veckor utan tid – och i projektdagboken budgetläget. *Egen period* finns inte längre: Från och Till syns alltid.
+
+Med belopp på kan fakturaunderlaget visa **Hanterat före och med detta underlag**: per projekt det som redan är markerat som hanterat (fakturerat) – tid och kostnader –, det här underlaget och totalt, och mot budgeten när projektet har en (inte för medarbetare). Egna rader står på en egen rad. På skärmen och i PDF:en, belopp exkl. moms.
 
 ### Kostnader (0.20.0)
 

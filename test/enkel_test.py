@@ -117,7 +117,7 @@ with sync_playwright() as p:
     akt(pg, 'unhandle', p='proj1', ym='2026-10')
     if pg.locator('#dlg:not([hidden]) [data-act=unhandleForce]').count(): pg.click('#dlg [data-act=unhandleForce]'); pg.wait_for_timeout(300)
     ev(pg, "() => { setCell('proj1~upg2', '2026-10-20', { hours: 1.5, note: 'skisser fasad' }); }")
-    ev(pg, f"() => {{ const r = rep(); r.tab = 'diary'; r.pid = 'proj1'; r.custom = true; r.from = '2026-10-01'; r.to = '2026-11-15'; r.lay = 'task'; r.empty = false; r.amount = 'ex'; }}")
+    ev(pg, f"() => {{ const r = rep(); r.tab = 'diary'; r.pid = 'proj1'; r.custom = true; r.from = '2026-10-01'; r.to = '2026-11-15'; r.lay = 'task'; r.empty = false; r.amount = 'ex'; r.adv = true; }}")
     pg.click('.rail [data-page=rapporter]'); pg.wait_for_timeout(500)
     tot_task = ev(pg, "() => { const d = diaryData('proj1', '2026-10-01', '2026-11-15', 'ex'); return [d.hours, d.amount, d.lay]; }")
     ok(tot_task[2] == 'task' and pg.locator('.paper tr.wk-s').count() == 0, 'Per uppgift som förut')

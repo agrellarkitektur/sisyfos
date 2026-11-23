@@ -1,5 +1,16 @@
 # Ändringar i Sisyfos
 
+## 0.20.2
+
+Filformat 12, oförändrat. Synpunkter på rapporterna (23 november).
+
+- **Rapportförslagen ger all öppen tid till och med i dag.** Knapparna under reglagen (*Alla projekt*, kunderna, projekten) påverkas inte längre av perioden ovanför: de tar med all öppen tid fram till och med dagens datum. Underlaget – på skärmen och i PDF:en – säger då dagen (*10 aug 2026 – 23 nov 2026*), inte *November 2026*. Samma sak för projektdagbokens förslag och *Dagbok för all öppen tid*.
+- **Från och Till syns alltid.** *Egen period* är borta; pilarna på var sin sida går en hel månad i taget. Gäller fakturaunderlaget (*Öppen tid*) och projektdagboken.
+- **Fler val.** Belopp, uppställning av dagboksraderna och *Visa veckor utan tid* (och i projektdagboken budgetläget) ligger i en utfällbar del under reglagen, stängd från början och med en kort sammanfattning av vad som är valt. Den minns om den är öppen.
+- **Hanterat före och med detta underlag.** Nytt val under *Fler val* när belopp är på: en tabell per projekt med det som redan är hanterat (fakturerat) – tid och kostnader –, det här underlaget och totalt, och budget och andel när projektet har budget (inte för medarbetare). Egna rader på en egen rad, summa med flera rader. Skärm och PDF, exkl. moms.
+
+Test: nya `test/rapport3_test.py` (i GitHub). `enkel_test.py` och `rapport2_test.py` öppnar *Fler val* först.
+
 ## 0.20.1
 
 Filformat 12, oförändrat. Rättningar ur granskningen av 0.20.0 (två omgångar, 19 november) – inget nytt att lära sig. Användarens beslut: två poster i samma ruta slås ihop; ett borttaget projekt med tid läggs tillbaka; en tömd ruta förblir tömd.

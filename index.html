@@ -854,6 +854,12 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 .rep-ctl .chk{margin-top:4px}
 .rep-ctl .two{display:flex;gap:6px}
 .mnav{display:flex;align-items:center;gap:4px}
+.rep-ctl .per-f input[type=date]{width:148px;padding:0 6px}
+.rep-adv{flex-basis:100%;border-top:1px solid var(--rule);padding-top:6px;margin-top:-2px}
+.rep-adv>summary{cursor:pointer;font-size:13px;font-weight:560;padding:2px 0;width:max-content;max-width:100%}
+.rep-adv>summary .muted{font-weight:400}
+.rep-adv-b{display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px 16px;padding:8px 0 2px}
+@media (max-width:420px){.rep-ctl .per-f input[type=date]{width:118px}}
 .per-l{font-size:14px;min-width:150px;text-align:center}
 .rep-acts{display:flex;flex-wrap:wrap;gap:8px;margin-left:auto;align-self:center}
 .app.nopanel,.app.nopanel.pmin{grid-template-columns:var(--rail-w) minmax(0,1fr) 0}
@@ -1289,7 +1295,7 @@ body.dragging,body.dragging *{cursor:grabbing!important;user-select:none!importa
 
 /* ───────────── Hjälpfunktioner ───────────── */
 const FORMAT = 'sisyfos', FORMAT_VERSION = 12, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.20.1', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const APP_VERSION = '0.20.2', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 { const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
 // Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
 const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
@@ -4873,7 +4879,7 @@ function repPanelHtml() {
         <div class="p-acts">${o.before.h ? `<button class="btn sm" data-act="rpRange" data-from="${o.first}" data-to="${to}">Börja ${dYear(o.first)}</button>` : ''}${o.first !== from || o.last !== to ? `<button class="btn sm" data-act="rpRange" data-from="${o.first}" data-to="${o.last}">All öppen tid</button>` : ''}</div>` : '<p class="p-note">Ingen öppen tid i projektet – allt är hanterat.</p>'}</section>`;
       if (o.done.h) h += `<section class="psec"><h3>Redan hanterat i perioden</h3>${pkv('Hanterat tidigare', hk(o.done))}<p class="p-note">Raderna är gråa i dagboken.</p></section>`;
     }
-    return h + helpSec(['Välj <b>månad</b> eller kryssa i <b>Egen period</b> för valfria datum, till exempel mitt i en månad eller flera månader.', '<b>Markera som hanterad</b> låser projektets tid i perioden – en månad eller en egen period. Det som redan är hanterat rörs inte.', 'Rader som redan ingick i en hanterad period visas <b>gråa</b>.', 'Tider utan anteckning står med som tomma rader – fyll i dem i tidboken innan du skickar dagboken.']) + `</div>`;
+    return h + helpSec(['Välj perioden <b>från</b> och <b>till</b> – pilarna går en hel månad i taget. <b>Belopp</b>, budgetläge och uppställning finns under <b>Fler val</b>.', '<b>Markera som hanterad</b> låser projektets tid i perioden – en månad eller en egen period. Det som redan är hanterat rörs inte.', 'Rader som redan ingick i en hanterad period visas <b>gråa</b>.', 'Tider utan anteckning står med som tomma rader – fyll i dem i tidboken innan du skickar dagboken.']) + `</div>`;
   }
   if (r.tab === 'invoice') return invPanelHtml();
   if (r.tab === 'person') return pHead('Personsammanställning', 'Tid per person och period') + `<div class="p-body">` + helpSec(['Välj <b>månad</b>, <b>vecka</b> eller egen period.', 'Sammanställningen visar tid per projekt, normtid, saldo och frånvaro – ett underlag för lön.', 'Ladda ner som PDF för att spara eller skicka.']) + `</div>`;
@@ -5646,7 +5652,7 @@ const A = {
   closePanel: () => deselect(),
   toSec: el => document.getElementById(el.dataset.id)?.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }),
   rpRange: el => { Object.assign(rep(), { custom: true, from: el.dataset.from, to: el.dataset.to }); renderMain(); },
-  rpOpen: el => { const o = openSplit(el.dataset.p); if (!o.first) return; Object.assign(rep(), { tab: 'diary', pid: el.dataset.p, custom: true, from: o.first, to: o.last }); st.page = 'rapporter'; st.pid = null; st.cid = null; render(); $('#main').scrollTop = 0; },
+  rpOpen: el => { const o = openSplit(el.dataset.p), t = today(); if (!o.first) return; Object.assign(rep(), { tab: 'diary', pid: el.dataset.p, custom: true, from: o.first < t ? o.first : t, to: o.last > t ? o.last : t }); st.page = 'rapporter'; st.pid = null; st.cid = null; render(); $('#main').scrollTop = 0; },
   step: el => { const [rk, d] = splitKey(el.dataset.key), e = cell(rk, d); setCell(rk, d, { hours: Math.max(0, (e?.hours || 0) + +el.dataset.d) }); if (st.view === 'day') st.day = d; patch(); },
   setH: el => { const [rk, d] = splitKey(el.dataset.key); setCell(rk, d, { hours: +el.dataset.h }); patch(); },
   fillDay: el => {
@@ -7002,8 +7008,18 @@ function diaryData(pid, from, to, amt, o) {
     budget: !P.internal && P.budgetKr > 0 ? { budget: P.budgetKr, used: usedTo, pct: usedTo / P.budgetKr, to } : null };
 }
 const dLong = d => `${pd(d).getDate()} ${MON[pd(d).getMonth()]} ${d.slice(0, 4)}`;
-const periodLabel = (from, to) => from.slice(8) === '01' && to === ymLast(ymOf(from)) ? ymLabel(ymOf(from)) : `${dLong(from)} – ${dLong(to)}`;
+// En hel månad heter månaden – utom när perioden slutar i dag (0.20.2): då står dagen ut
+const periodLabel = (from, to) => to === today() ? `${dLong(from)} – ${dLong(to)}` : invPerLabel(from, to);
+// Fakturornas text beror inte på dagens datum – en utfärdad faktura ska se likadan ut varje gång
+const invPerLabel = (from, to) => from.slice(8) === '01' && to === ymLast(ymOf(from)) ? ymLabel(ymOf(from)) : `${dLong(from)} – ${dLong(to)}`;
 function diaryPeriod() { const r = rep(); return r.custom ? [r.from, r.to] : [`${r.ym}-01`, ymLast(r.ym)]; }
+// Period (0.20.2): från och till alltid synliga; pilarna går en hel månad i taget
+const perFld = (p, act, [from, to]) => `<div class="fld per-f"><span class="lbl">Period</span><div class="mnav"><button class="icon-btn" data-act="${act}" data-d="-1" aria-label="Föregående månad">${ic('left')}</button><input type="date" id="${p}From" value="${from}" aria-label="Från"><span class="muted">–</span><input type="date" id="${p}To" value="${to}" aria-label="Till"><button class="icon-btn" data-act="${act}" data-d="1" aria-label="Nästa månad">${ic('right')}</button></div></div>`;
+// Fler val (0.20.2): avancerade inställningar i en utfällbar del, med en kort sammanfattning när den är stängd
+const advFld = (sum, body) => `<details class="rep-adv"${rep().adv ? ' open' : ''}><summary>Fler val${sum ? ` <span class="muted">· ${esc(sum)}</span>` : ''}</summary><div class="rep-adv-b">${body}</div></details>`;
+// Ändra ett datum: utgå från perioden som den ser ut nu (en hel månad blir en egen period)
+function perSet(o, [f, t], k, v) { o.custom = true; o.from = f; o.to = t; if (v) o[k] = v; if (o.from > o.to) [o.from, o.to] = [o.to, o.from]; }
+function perStep(o, [, t], d) { o.custom = false; o.ym = ymAdd(ymOf(t), d); o.from = `${o.ym}-01`; o.to = ymLast(o.ym); }
 function diaryTabHtml() {
   const r = rep(), [from, to] = diaryPeriod(), ps = R().projects.filter(p => p.kind !== 'absence');
   if (!ps.length || !r.pid) return `<p class="muted">Inga projekt än.</p>`;
@@ -7011,11 +7027,11 @@ function diaryTabHtml() {
   const sug = xrCtlHtml('diary') + repSuggestHtml('diary');
   const og = s => { const l = ps.filter(p => p.status === s).sort((a, b) => (pRank(a) - pRank(b)) || String(b.number).localeCompare(String(a.number))); return l.length ? `<optgroup label="${STATUS[s]}">${l.map(p => `<option value="${p.id}" ${p.id === r.pid ? 'selected' : ''}>${esc(p.number)} ${esc(p.name)}</option>`).join('')}</optgroup>` : ''; };
   let h = `<div class="rep-ctl"><div class="fld"><label for="rpP">Projekt</label><select id="rpP">${og('active')}${og('paused')}${og('closed')}</select></div>
-   <div class="fld"><label for="rpM">Månad</label>${r.custom ? `<div class="two"><input type="date" id="rpFrom" value="${r.from}" aria-label="Från"><input type="date" id="rpTo" value="${r.to}" aria-label="Till"></div>` : `<div class="mnav"><button class="icon-btn" data-act="rpMonth" data-d="-1" aria-label="Föregående månad">${ic('left')}</button><input type="month" id="rpM" value="${r.ym}"><button class="icon-btn" data-act="rpMonth" data-d="1" aria-label="Nästa månad">${ic('right')}</button></div>`}<label class="chk small"><input type="checkbox" id="rpCustom" ${r.custom ? 'checked' : ''}> Egen period</label></div>
-   <div class="fld"><label for="rpAmt">Belopp</label><select id="rpAmt"><option value="none" ${r.amount === 'none' ? 'selected' : ''}>Visa inte belopp</option><option value="ex" ${r.amount === 'ex' ? 'selected' : ''}>Exkl. moms</option><option value="inc" ${r.amount === 'inc' ? 'selected' : ''}>Inkl. moms ${fhs(+R().book.vatRate || 0)} %</option></select><label class="chk small"><input type="checkbox" id="rpBud" ${r.budget ? 'checked' : ''}> Visa budgetläge</label></div>
-   <div class="fld"><label for="rpLay">Uppställning</label><select id="rpLay"><option value="task" ${r.lay !== 'week' ? 'selected' : ''}>Per uppgift</option><option value="week" ${r.lay === 'week' ? 'selected' : ''}>Per dag och vecka</option></select><label class="chk small"><input type="checkbox" id="rpEmpty" ${r.empty && r.lay === 'week' ? 'checked' : ''} ${r.lay === 'week' ? '' : 'disabled'}> Visa veckor utan tid</label></div>
+   ${perFld('rp', 'rpMonth', [from, to])}
    <div class="rep-acts"><button class="btn primary" data-act="dlDiary" ${d.any ? '' : 'disabled'}>${ic('export')}Ladda ner PDF</button>
-   ${hd?.all ? `<button class="btn done" data-act="unhandle" ${pa} title="Häv hanterad och lås upp">${ic('lock')}Hanterad ${sdate(hd.at.slice(0, 10))}</button>` : d.any ? `<button class="btn" data-act="handle" ${pa}>${ic('lock')}${hd ? 'Markera resten som hanterad' : 'Markera som hanterad'}</button>${hd ? `<button class="btn ghost" data-act="unhandle" ${pa} title="Häv det som är hanterat i perioden (${hdSpan(hd)}) och lås upp">${ic('unlock')}Häv ${hdSpan(hd)}</button>` : ''}` : ''}</div></div>` + sug;
+   ${hd?.all ? `<button class="btn done" data-act="unhandle" ${pa} title="Häv hanterad och lås upp">${ic('lock')}Hanterad ${sdate(hd.at.slice(0, 10))}</button>` : d.any ? `<button class="btn" data-act="handle" ${pa}>${ic('lock')}${hd ? 'Markera resten som hanterad' : 'Markera som hanterad'}</button>${hd ? `<button class="btn ghost" data-act="unhandle" ${pa} title="Häv det som är hanterat i perioden (${hdSpan(hd)}) och lås upp">${ic('unlock')}Häv ${hdSpan(hd)}</button>` : ''}` : ''}</div>
+   ${advFld([{ none: 'Utan belopp', ex: 'Exkl. moms', inc: 'Inkl. moms' }[r.amount], r.lay === 'week' ? 'Per dag och vecka' : 'Per uppgift'].join(' · '), `<div class="fld"><label for="rpAmt">Belopp</label><select id="rpAmt"><option value="none" ${r.amount === 'none' ? 'selected' : ''}>Visa inte belopp</option><option value="ex" ${r.amount === 'ex' ? 'selected' : ''}>Exkl. moms</option><option value="inc" ${r.amount === 'inc' ? 'selected' : ''}>Inkl. moms ${fhs(+R().book.vatRate || 0)} %</option></select><label class="chk small"><input type="checkbox" id="rpBud" ${r.budget ? 'checked' : ''}> Visa budgetläge</label></div>
+   <div class="fld"><label for="rpLay">Uppställning</label><select id="rpLay"><option value="task" ${r.lay !== 'week' ? 'selected' : ''}>Per uppgift</option><option value="week" ${r.lay === 'week' ? 'selected' : ''}>Per dag och vecka</option></select><label class="chk small"><input type="checkbox" id="rpEmpty" ${r.empty && r.lay === 'week' ? 'checked' : ''} ${r.lay === 'week' ? '' : 'disabled'}> Visa veckor utan tid</label></div>`)}</div>` + sug;
   if (d.miss) h += `<div class="alert soft">${ic('alert')}<div class="txt">${d.miss === 1 ? 'En tid saknar' : d.miss + ' tider saknar'} anteckning i perioden. Den står med som tom rad i dagboken.</div></div>`;
   h += `<div class="paper">${diaryPreview(d)}</div>`;
   return h;
@@ -7109,10 +7125,10 @@ function invoiceData(sel, from, to, old, withRows) {
   const ps = invProjects(sel), C = sel === 'all' ? null : sel.startsWith('c:') ? cust(sel.slice(2)) : cust(proj(sel.slice(2))?.customerId), vat = +R().book.vatRate || 0;
   const out = { C, from, to, old, vat, projects: [], hours: 0, amount: 0, csA: 0, nc: 0, first: null, last: null, done: { h: 0, a: 0, c: 0 }, later: { h: 0, a: 0, c: 0 }, miss: 0, spans: [] };
   for (const P of ps) {
-    const lines = new Map(), rows = [], tIdx = id => P.tasks.findIndex(t => t.id === id); let ph = 0, pa = 0, pf = null;
+    const lines = new Map(), rows = [], tIdx = id => P.tasks.findIndex(t => t.id === id); let ph = 0, pa = 0, pf = null, hdA = 0;
     for (const e of pEs(P.id)) {
       if (e.deleted || !(e.hours > 0) || !billable(e)) continue;
-      if (handled(P.id, e.date)) { if (e.date >= from && e.date <= to) { out.done.h += e.hours; out.done.a += amountOf(e); } continue; }
+      if (handled(P.id, e.date)) { hdA += amountOf(e); if (e.date >= from && e.date <= to) { out.done.h += e.hours; out.done.a += amountOf(e); } continue; }
       if (e.date > to) { out.later.h += e.hours; out.later.a += amountOf(e); continue; }
       if (e.date < from && !old) continue;
       const k = [e.taskId, e.roleId || '', e.rate].join('|'), T = taskOf(P, e.taskId);
@@ -7126,7 +7142,7 @@ function invoiceData(sel, from, to, old, withRows) {
     // Kostnader (0.20.0): öppna (ej hanterade) i perioden, eller före den med All öppen tid
     const costs = [];
     for (const c of pCosts(P.id)) {
-      if (handled(P.id, c.date)) { if (c.date >= from && c.date <= to) out.done.c += cTot(c); continue; }
+      if (handled(P.id, c.date)) { hdA += cTot(c); if (c.date >= from && c.date <= to) out.done.c += cTot(c); continue; }
       if (c.date > to) { out.later.c += cTot(c); continue; }
       if (c.date < from && !old) continue;
       costs.push(costRow(P, c));
@@ -7137,7 +7153,7 @@ function invoiceData(sel, from, to, old, withRows) {
     const pFrom = old && pf && pf < from ? pf : from;
     // Perioden som låses när underlaget markeras som hanterat: från projektets äldsta öppna tid (eller periodens början) till periodens slut
     if (lines.size || costs.length) out.spans.push({ pid: P.id, from: pf < from ? pf : from, to });
-    if (lines.size || costs.length) out.projects.push({ P, lines: [...lines.values()].sort((a, b) => (a.i - b.i) || (b.rate - a.rate)), rows: rows.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.i - b.i), from: pFrom, hours: ph, amount: pa, costs, csA });
+    if (lines.size || costs.length) out.projects.push({ P, lines: [...lines.values()].sort((a, b) => (a.i - b.i) || (b.rate - a.rate)), rows: rows.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.i - b.i), from: pFrom, hours: ph, amount: pa, costs, csA, hdA });
     out.hours += ph; out.amount += pa; out.csA += csA; out.nc += costs.length;
   }
   out.projects.sort((a, b) => String(a.P.number).localeCompare(String(b.P.number), 'sv'));
@@ -7152,6 +7168,8 @@ function invoiceData(sel, from, to, old, withRows) {
   // Utöver tiden: kostnader (0.20.0) och egna rader – moms på allt
   out.ex = [...(out.nc ? [['Kostnader', out.csA]] : []), ...(out.xr.length ? [['Egna rader', out.xrA]] : [])]; out.exA = out.csA + out.xrA; out.vatX = out.exA * vat / 100;
   out.any = out.hours > 0 || out.nc > 0;
+  // Hanterat före och med detta underlag (0.20.2): det som redan är hanterat (fakturerat) i projekten + det här underlaget, exkl. moms
+  out.prev = out.money && !!v?.prev ? prevRows(out) : null;
   return out;
 }
 function costRow(P, c, k = 1) {
@@ -7180,24 +7198,24 @@ const INV_NOTE = 'Underlag för fakturering – inte en faktura. Fakturan upprä
 // Förslag på rapporter att ta fram: det som har öppen (ohanterad) tid, äldst först
 function repSuggestHtml(kind) {
   const l = openProjects(); if (!l.length) return '';
-  const cur = ymOf(today()), upTo = first => first < cm1() ? ymAdd(cur, -1) : cur, mon = d => MON[+d.slice(5, 7) - 1];
+  const mon = d => MON[+d.slice(5, 7) - 1];
   const span = o => ymOf(o.first) === ymOf(o.last) ? mon(o.first) : `${mon(o.first)}–${mon(o.last)}`;
   let items = [];
   if (kind === 'invoice') {
-    const v = invSel(), byC = new Map();
+    const v = invSel(), byC = new Map(), on = s => v.sel === s && v.custom && v.to === today() && v.old ? ' on' : '';
     for (const x of l) {
       const key = !simple() && x.p.customerId && cust(x.p.customerId) ? 'c:' + x.p.customerId : 'p:' + x.p.id;
       const o = byC.get(key) || { s: key, name: key.startsWith('c:') ? cust(x.p.customerId).name : x.p.name, pc: key.startsWith('p:') ? pc(x.p) : null, a: 0, first: x.o.first, last: x.o.last };
       o.a += x.o.all.a; if (x.o.first < o.first) o.first = x.o.first; if (x.o.last > o.last) o.last = x.o.last; byC.set(key, o);
     }
-    items = [...byC.values()].sort((a, b) => a.first < b.first ? -1 : 1).map(o => `<button class="sug${v.sel === o.s ? ' on' : ''}" data-act="ivSuggest" data-s="${o.s}" data-ym="${upTo(o.first)}" ${o.pc ? `style="--pc:${o.pc}"` : ''} title="Öppet sedan ${dYear(o.first)} – underlag till och med ${MONL[+upTo(o.first).slice(5, 7) - 1]}">${o.pc ? '<span class="dot"></span>' : ''}<b>${esc(o.name)}</b><span class="mono">${nk(o.a)}</span><small${o.first < cm1() ? ' class="due"' : ''}>${span(o)}</small></button>`);
-    if (byC.size > 1) items.unshift(`<button class="sug${v.sel === 'all' ? ' on' : ''}" data-act="ivSuggest" data-s="all" data-ym="${upTo(l[0].o.first)}"><b>Alla projekt</b><span class="mono">${nk(l.reduce((s, x) => s + x.o.all.a, 0))}</span></button>`);
+    items = [...byC.values()].sort((a, b) => a.first < b.first ? -1 : 1).map(o => `<button class="sug${on(o.s)}" data-act="ivSuggest" data-s="${o.s}" data-from="${o.first}" ${o.pc ? `style="--pc:${o.pc}"` : ''} title="All öppen tid ${dYear(o.first)} – till och med i dag">${o.pc ? '<span class="dot"></span>' : ''}<b>${esc(o.name)}</b><span class="mono">${nk(o.a)}</span><small${o.first < cm1() ? ' class="due"' : ''}>${span(o)}</small></button>`);
+    if (byC.size > 1) items.unshift(`<button class="sug${on('all')}" data-act="ivSuggest" data-s="all" data-from="${l.reduce((m, x) => x.o.first < m ? x.o.first : m, l[0].o.first)}" title="All öppen tid i alla projekt – till och med i dag"><b>Alla projekt</b><span class="mono">${nk(l.reduce((s, x) => s + x.o.all.a, 0))}</span></button>`);
   } else {
     const r = rep();
-    items = l.map(({ p, o }) => `<button class="sug${r.pid === p.id && r.custom && r.from === o.first && r.to === o.last ? ' on' : ''}" data-act="rpOpen" data-p="${p.id}" style="--pc:${pc(p)}" title="All öppen tid ${dYear(o.first)} – ${dYear(o.last)}"><span class="dot"></span><b>${esc(p.name)}</b><span class="mono">${nk(o.all.a)}</span><small${o.first < cm1() ? ' class="due"' : ''}>${span(o)}</small></button>`);
+    items = l.map(({ p, o }) => `<button class="sug${r.pid === p.id && r.custom && r.from === o.first && r.to === (o.last > today() ? o.last : today()) ? ' on' : ''}" data-act="rpOpen" data-p="${p.id}" style="--pc:${pc(p)}" title="All öppen tid ${dYear(o.first)} – till och med i dag"><span class="dot"></span><b>${esc(p.name)}</b><span class="mono">${nk(o.all.a)}</span><small${o.first < cm1() ? ' class="due"' : ''}>${span(o)}</small></button>`);
   }
   const max = 8, more = items.length - max;
-  return `<div class="rep-sug" role="group" aria-label="Rapportförslag"><div class="lbl">Rapportförslag <span>· öppen tid${kind === 'invoice' && !simple() ? ' att fakturera' : ''}, äldst först</span></div><div class="sug-row">${items.slice(0, max).join('')}${more > 0 ? `<span class="small muted">och ${more} till</span>` : ''}</div></div>`;
+  return `<div class="rep-sug" role="group" aria-label="Rapportförslag"><div class="lbl">Rapportförslag <span>· all öppen tid${kind === 'invoice' && !simple() ? ' att fakturera' : ''} till och med i dag, äldst först</span></div><div class="sug-row">${items.slice(0, max).join('')}${more > 0 ? `<span class="small muted">och ${more} till</span>` : ''}</div></div>`;
 }
 function invoiceTabHtml() {
   const r = rep(), v = invSel(), [from, to] = invPeriod();
@@ -7206,10 +7224,11 @@ function invoiceTabHtml() {
   if (!ps.length) return `<p class="muted">Inga debiterbara projekt än.</p>`;
   const d = invoiceData(v.sel, from, to, v.old, v.rows);
   let h = `<div class="rep-ctl"><div class="fld"><label for="ivS">${simple() ? 'Projekt' : 'Underlag för'}</label><select id="ivS"><option value="all" ${v.sel === 'all' ? 'selected' : ''}>Alla projekt</option>${cs.length && !simple() ? `<optgroup label="Kund – alla projekt">${cs.map(c => `<option value="c:${c.id}" ${v.sel === 'c:' + c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</optgroup>` : ''}<optgroup label="${simple() ? 'Projekt' : 'Ett projekt'}">${ps.map(p => `<option value="p:${p.id}" ${v.sel === 'p:' + p.id ? 'selected' : ''}>${esc(p.number)} ${esc(p.name)}</option>`).join('')}</optgroup></select></div>
-   <div class="fld"><label for="ivM">${v.custom ? 'Period' : 'Till och med månad'}</label>${v.custom ? `<div class="two"><input type="date" id="ivFrom" value="${v.from}" aria-label="Från"><input type="date" id="ivTo" value="${v.to}" aria-label="Till"></div>` : `<div class="mnav"><button class="icon-btn" data-act="ivMonth" data-d="-1" aria-label="Föregående månad">${ic('left')}</button><input type="month" id="ivM" value="${v.ym}"><button class="icon-btn" data-act="ivMonth" data-d="1" aria-label="Nästa månad">${ic('right')}</button></div>`}<label class="chk small"><input type="checkbox" id="ivCustom" ${v.custom ? 'checked' : ''}> Egen period</label></div>
-   <div class="fld"><span class="lbl">Innehåll</span><label class="chk small" style="margin-top:6px"><input type="checkbox" id="ivOld" ${v.old ? 'checked' : ''}> All öppen tid före perioden</label><label class="chk small"><input type="checkbox" id="ivRows" ${v.rows ? 'checked' : ''}> Dagboksrader med datum och anteckning</label><label class="chk small"><input type="checkbox" id="ivAmt" ${v.money !== false ? 'checked' : ''}> Belopp (av = bara timmar)</label></div>
-   <div class="fld"><label for="ivLay">Dagboksrader</label><select id="ivLay" ${v.rows ? '' : 'disabled'}><option value="rows" ${v.lay !== 'week' ? 'selected' : ''}>En rad per tidpost</option><option value="week" ${v.lay === 'week' ? 'selected' : ''}>Per dag och vecka</option></select><label class="chk small"><input type="checkbox" id="ivEmpty" ${v.empty && v.lay === 'week' ? 'checked' : ''} ${v.rows && v.lay === 'week' ? '' : 'disabled'}> Visa veckor utan tid</label></div>
-   <div class="rep-acts"><button class="btn${invOn() ? '' : ' primary'}" data-act="dlInvPdf" ${d.any ? '' : 'disabled'}>${ic('export')}PDF</button><button class="btn" data-act="dlInvCsv" ${d.any ? '' : 'disabled'}>${ic('export')}CSV</button>${invOn() ? `<button class="btn primary" data-act="invNew" ${d.any && v.sel !== 'all' ? '' : `disabled title="${d.any ? 'Välj en kund eller ett projekt' : 'Ingen öppen tid'}"`}>${ic('report')}Skapa faktura</button>` : ''}${d.spans.length ? `<button class="btn" data-act="invHandle">${ic('lock')}Markera som hanterat</button>` : ''}</div></div>` + xrCtlHtml('inv') + repSuggestHtml('invoice');
+   ${perFld('iv', 'ivMonth', [from, to])}
+   <div class="fld"><span class="lbl">Innehåll</span><label class="chk small" style="margin-top:6px"><input type="checkbox" id="ivOld" ${v.old ? 'checked' : ''}> All öppen tid före perioden</label><label class="chk small"><input type="checkbox" id="ivRows" ${v.rows ? 'checked' : ''}> Dagboksrader med datum och anteckning</label></div>
+   <div class="rep-acts"><button class="btn${invOn() ? '' : ' primary'}" data-act="dlInvPdf" ${d.any ? '' : 'disabled'}>${ic('export')}PDF</button><button class="btn" data-act="dlInvCsv" ${d.any ? '' : 'disabled'}>${ic('export')}CSV</button>${invOn() ? `<button class="btn primary" data-act="invNew" ${d.any && v.sel !== 'all' ? '' : `disabled title="${d.any ? 'Välj en kund eller ett projekt' : 'Ingen öppen tid'}"`}>${ic('report')}Skapa faktura</button>` : ''}${d.spans.length ? `<button class="btn" data-act="invHandle">${ic('lock')}Markera som hanterat</button>` : ''}</div>
+   ${advFld([v.money !== false ? 'Med belopp' : 'Bara timmar', v.rows ? (v.lay === 'week' ? 'Per dag och vecka' : 'En rad per tidpost') : '', v.money !== false && v.prev ? 'Tidigare hanterat' : ''].filter(Boolean).join(' · '), `<div class="fld"><span class="lbl">Belopp</span><label class="chk small" style="margin-top:6px"><input type="checkbox" id="ivAmt" ${v.money !== false ? 'checked' : ''}> Visa belopp (av = bara timmar)</label><label class="chk small"><input type="checkbox" id="ivPrev" ${v.prev && v.money !== false ? 'checked' : ''} ${v.money !== false ? '' : 'disabled'}> Hanterat före och med detta underlag</label></div>
+   <div class="fld"><label for="ivLay">Dagboksrader</label><select id="ivLay" ${v.rows ? '' : 'disabled'}><option value="rows" ${v.lay !== 'week' ? 'selected' : ''}>En rad per tidpost</option><option value="week" ${v.lay === 'week' ? 'selected' : ''}>Per dag och vecka</option></select><label class="chk small"><input type="checkbox" id="ivEmpty" ${v.empty && v.lay === 'week' ? 'checked' : ''} ${v.rows && v.lay === 'week' ? '' : 'disabled'}> Visa veckor utan tid</label></div>`)}</div>` + xrCtlHtml('inv') + repSuggestHtml('invoice');
   if (d.miss) h += `<div class="alert soft">${ic('alert')}<div class="txt">${d.miss === 1 ? 'En tid saknar' : d.miss + ' tider saknar'} anteckning. Fyll i dem i tidboken innan du skickar ${v.rows ? 'underlaget' : 'projektdagboken som bilaga'}.</div></div>`;
   h += `<div class="paper">${invPreview(d, v.sel)}</div>`;
   return h;
@@ -7233,11 +7252,32 @@ function invPreview(d, sel) {
   if (am) {
     const net = d.amount + d.exA, vatA = d.vatA + d.vatX;
     h += `<h3 class="pp-h">Att fakturera</h3><table class="pp-t sum"><tbody>${d.ex.length ? `<tr><td class="w">Tid</td><td class="r mono">${fh(d.hours)} h</td><td class="r mono">${fkr(d.amount)}</td></tr>${d.ex.map(([n, a]) => `<tr><td class="w">${n}</td><td></td><td class="r mono">${fkc(a)}</td></tr>`).join('')}` : ''}<tr${d.ex.length ? ' class="tot"' : ''}><td class="w">Summa exkl. moms</td><td class="r mono">${d.ex.length ? '' : fh(d.hours) + ' h'}</td><td class="r mono">${fkr(net)}</td></tr><tr><td class="w">Moms ${fhs(d.vat)} %</td><td></td><td class="r mono">${fkr(vatA)}</td></tr><tr class="tot"><td class="w">Summa inkl. moms</td><td></td><td class="r mono">${fkr(net + vatA)}</td></tr></tbody></table>`;
+    if (d.prev) h += prevHtml(d.prev);
   } else h += `<h3 class="pp-h">Summa</h3><table class="pp-t sum"><tbody><tr class="tot"><td class="w">Öppen tid${d.projects.length > 1 ? `, ${d.projects.length} projekt` : ''}</td><td class="r mono">${fh(d.hours)} h</td></tr>${d.nc ? `<tr><td class="w">Kostnader</td><td class="r mono">${d.nc} st</td></tr>` : ''}</tbody></table>`;
   h += `<p class="pp-hd-note">${am ? INV_NOTE : INV_NOTE_H}${d.done.h ? ` ${fh(d.done.h)} h i perioden är redan hanterade och ingår inte.` : ''}</p>`;
   return h;
 }
 const INV_NOTE_H = 'Öppen tid – timmar som ännu inte är hanterade (fakturerade).';
+// Tabellen "Hanterat före och med detta underlag" (0.20.2): rad per projekt, egna rader för sig, budget när den finns (inte för medarbetare)
+function prevRows(d) {
+  const rows = d.projects.map(x => { const b = !x.P.internal && x.P.budgetKr > 0 && !orgMember() ? x.P.budgetKr : 0, now = x.amount + x.csA; return { name: invPHead(d, x.P), before: x.hdA, now, total: x.hdA + now, budget: b }; });
+  if (d.xr.length) rows.push({ name: 'Egna rader', before: null, now: d.xrA, total: d.xrA, budget: 0 });
+  const sum = rows.length > 1 ? { name: 'Summa', before: rows.reduce((s, x) => s + (x.before || 0), 0), now: rows.reduce((s, x) => s + x.now, 0), total: rows.reduce((s, x) => s + x.total, 0) } : null;
+  return { rows, sum, bud: rows.some(x => x.budget) };
+}
+const PREV_NOTE = 'Belopp exkl. moms. Före = tid och kostnader i projektet som redan är markerade som hanterade (fakturerade).';
+const prevPct = x => x.budget ? `${Math.round(x.total / x.budget * 100)} %` : '';
+function prevHtml(p) {
+  const tr = (x, cls) => `<tr${cls ? ` class="${cls}"` : ''}><td class="w">${esc(x.name)}</td><td class="r mono">${x.before == null ? '' : fkr(x.before)}</td><td class="r mono">${fkr(x.now)}</td><td class="r mono">${fkr(x.total)}</td>${p.bud ? `<td class="r mono">${x.budget ? fkr(x.budget) : ''}</td><td class="r mono">${prevPct(x)}</td>` : ''}</tr>`;
+  return `<h3 class="pp-h">Hanterat före och med detta underlag</h3><table class="pp-t prev-t"><thead><tr><th class="w">Projekt</th><th class="r">Före</th><th class="r">Detta underlag</th><th class="r">Totalt</th>${p.bud ? '<th class="r">Budget</th><th class="r">Andel</th>' : ''}</tr></thead><tbody>${p.rows.map(x => tr(x)).join('')}${p.sum ? tr({ ...p.sum, budget: 0 }, 'tot') : ''}</tbody></table><p class="pp-hd-note">${PREV_NOTE}</p>`;
+}
+function prevPdf(doc, p) {
+  pdfH2(doc, 'Hanterat före och med detta underlag');
+  const row = x => [x.name, x.before == null ? '' : fkr(x.before), fkr(x.now), fkr(x.total), ...(p.bud ? [x.budget ? fkr(x.budget) : '', prevPct(x)] : [])];
+  pdfTable(doc, [{ h: 'Projekt', wrap: true }, { h: 'Före', w: 80, align: 'right' }, { h: 'Detta underlag', w: 84, align: 'right' }, { h: 'Totalt', w: 80, align: 'right' }, ...(p.bud ? [{ h: 'Budget', w: 80, align: 'right' }, { h: 'Andel', w: 40, align: 'right' }] : [])],
+    [...p.rows.map(row), ...(p.sum ? [{ cells: row({ ...p.sum, budget: 0 }), bold: true }] : [])]);
+  doc.ensure(20); doc.pdf.wrap(PREV_NOTE, 8, false, doc.w).forEach(l => { doc.pdf.text(doc.x, doc.y, l, { size: 8, color: MUTED }); doc.y += 11; }); doc.y += 6;
+}
 function invoicePdf(d, sel) {
   const am = d.money, doc = makeDoc(invTitle(sel, d.withRows, am), sel === 'all' ? '' : invName(sel)), bC = am ? [{ h: 'Belopp', w: 86, align: 'right' }] : [];
   pdfFacts(doc, invFacts(d));
@@ -7256,6 +7296,7 @@ function invoicePdf(d, sel) {
     pdfH2(doc, 'Att fakturera');
     pdfTable(doc, [{ h: '', wrap: true }, { h: 'Timmar', w: 70, align: 'right' }, { h: 'Belopp', w: 96, align: 'right' }],
       [...(d.ex.length ? [['Tid', fh(d.hours) + ' h', fkr(d.amount)], ...d.ex.map(([n, a]) => [n, '', fkc(a)])] : []), d.ex.length ? { cells: ['Summa exkl. moms', '', fkr(net)], bold: true } : ['Summa exkl. moms', fh(d.hours) + ' h', fkr(net)], [`Moms ${fhs(d.vat)} %`, '', fkr(vatA)], { cells: ['Summa inkl. moms', '', fkr(net + vatA)], bold: true }]);
+    if (d.prev) prevPdf(doc, d.prev);
   } else {
     pdfH2(doc, 'Summa');
     pdfTable(doc, [{ h: '', wrap: true }, { h: 'Timmar', w: 70, align: 'right' }], [{ cells: ['Öppen tid' + (d.projects.length > 1 ? `, ${d.projects.length} projekt` : ''), fh(d.hours) + ' h'], bold: true }, ...(d.nc ? [['Kostnader', d.nc + ' st']] : [])]);
@@ -7582,7 +7623,7 @@ function invPdf(x, draft) {
   const fx = W / 2 + 30; let yr = y0;
   for (const [k, v] of facts) { pdf.text(fx, yr, k, { size: 8.5, color: MUTED }); pdf.text(W - M, yr, String(v), { size: 9.5, bold: k.endsWith('nummer'), align: 'right' }); yr += 14; }
   doc.y = Math.max(yl, yr) + 18;
-  const intro = [credit ? `Kreditering av faktura ${x.creditsNum} daterad ${x.creditsDate}.` : '', x.period ? `Avser perioden ${periodLabel(x.period.from, x.period.to).toLowerCase()}.` : '', x.msg || ''].filter(Boolean);
+  const intro = [credit ? `Kreditering av faktura ${x.creditsNum} daterad ${x.creditsDate}.` : '', x.period ? `Avser perioden ${invPerLabel(x.period.from, x.period.to).toLowerCase()}.` : '', x.msg || ''].filter(Boolean);
   for (const t of intro) for (const w of pdf.wrap(t, 9.5, false, doc.w)) { doc.ensure(13); pdf.text(M, doc.y, w, { size: 9.5 }); doc.y += 13; }
   if (intro.length) doc.y += 8;
   pdfTable(doc, [{ h: 'Beskrivning', wrap: true }, { h: 'Antal', w: 52, align: 'right' }, { h: 'Enhet', w: 40 }, { h: 'À-pris', w: 76, align: 'right' }, { h: 'Belopp', w: 86, align: 'right' }], x.lines.filter(l => l.text || l.amount).map(l => [l.text, fq(l.qty), l.unit || '', fkr2(l.price), fkr2(l.amount)]), { size: 9 });
@@ -8060,7 +8101,7 @@ Object.assign(A, {
   handlePer: el => { closeFloating(); handlePerDlg(el.dataset.p, ...hdPer(el)); },
   handlePerGo: () => handlePerGo(),
   handlePerOff: () => handlePerGo(true),
-  rpMonth: el => { const r = rep(); r.ym = ymAdd(r.ym, +el.dataset.d); renderMain(); },
+  rpMonth: el => { perStep(rep(), diaryPeriod(), +el.dataset.d); renderMain(); },
   perType: el => { rep().ptype = el.dataset.t; renderMain(); },
   perStep: el => { const r = rep(), n = +el.dataset.d; if (r.ptype === 'week') r.pwk = addD(r.pwk, 7 * n); else r.pym = ymAdd(r.pym, n); renderMain(); },
   dlPerson: () => personDownload(),
@@ -8074,9 +8115,9 @@ Object.assign(A, {
   dlInvCsv: () => invDownload('csv'),
   invHandle: () => invHandleAsk(),
   invHandleDo: () => invHandleDo(),
-  ivMonth: el => { const v = invSel(); v.ym = ymAdd(v.ym, +el.dataset.d); renderMain(); },
+  ivMonth: el => { perStep(invSel(), invPeriod(), +el.dataset.d); renderMain(); },
   ivPick: el => { invSel().sel = el.dataset.s; renderMain(); },
-  ivSuggest: el => { Object.assign(invSel(), { sel: el.dataset.s, ym: el.dataset.ym, custom: false, old: true }); renderMain(); renderPanel(); },
+  ivSuggest: el => { const t = today(); Object.assign(invSel(), { sel: el.dataset.s, custom: true, from: el.dataset.from < t ? el.dataset.from : t, to: t, old: true }); renderMain(); renderPanel(); },
   showInvoice: el => { closeFloating(); const r = rep(); r.tab = 'invoice'; const v = invSel(); if (el.dataset.s) v.sel = el.dataset.s; if (el.dataset.ym) { v.custom = false; v.ym = el.dataset.ym; } if (st.page !== 'rapporter') { st.page = 'rapporter'; st.pid = null; st.cid = null; render(); $('#main').scrollTop = 0; } else renderMain(); }
 });
 document.addEventListener('change', ev => {
@@ -8103,8 +8144,10 @@ document.addEventListener('change', ev => {
   if (t.matches('#wzForm [data-w]')) { wizCollect(); if (t.dataset.w === 'emp' || t.dataset.w === 'team' || t.dataset.w === 'savedVac' || t.dataset.w === 'vacStart' || t.dataset.w === 'inv') { if (t.dataset.w === 'team' || t.dataset.w === 'vacStart') { wizRender(); return; } wizSync(); } return; }
   if (t.id === 'cuInvTog') { $('#cuInvF').hidden = !t.checked; if (t.checked) $('#cuInv').focus(); return; }
   if (t.id === 'pjInt') { syncProjDlg(); return; }
-  if (st.rep?.inv && ['ivS', 'ivM', 'ivCustom', 'ivFrom', 'ivTo', 'ivOld', 'ivRows', 'ivLay', 'ivEmpty', 'ivAmt'].includes(t.id)) {
+  if (st.rep?.inv && ['ivS', 'ivM', 'ivCustom', 'ivFrom', 'ivTo', 'ivOld', 'ivRows', 'ivLay', 'ivEmpty', 'ivAmt', 'ivPrev'].includes(t.id)) {
     const v = st.rep.inv;
+    if (t.id === 'ivPrev') v.prev = t.checked;
+    if ((t.id === 'ivFrom' || t.id === 'ivTo') && t.value) { perSet(v, invPeriod(), t.id === 'ivFrom' ? 'from' : 'to', t.value); renderMain(); return; }
     if (t.id === 'ivAmt') v.money = t.checked;
     if (t.id === 'ivLay') v.lay = t.value;
     if (t.id === 'ivEmpty') v.empty = t.checked;
@@ -8120,6 +8163,7 @@ document.addEventListener('change', ev => {
   }
   const r = st.rep;
   if (r && ['rpP', 'rpM', 'rpAmt', 'rpBud', 'rpCustom', 'rpFrom', 'rpTo', 'rpLay', 'rpEmpty'].includes(t.id)) {
+    if ((t.id === 'rpFrom' || t.id === 'rpTo') && t.value) { perSet(r, diaryPeriod(), t.id === 'rpFrom' ? 'from' : 'to', t.value); renderMain(); return; }
     if (t.id === 'rpLay') r.lay = t.value;
     if (t.id === 'rpEmpty') r.empty = t.checked;
     if (t.id === 'rpP') r.pid = t.value;
@@ -8184,7 +8228,7 @@ document.addEventListener('input', ev => { const t = ev.target; if (t.id === 'ls
 document.addEventListener('change', ev => { if (ev.target.id === 'rpPers') { st.as = ev.target.value || null; AGG = null; renderMain(); renderStatus(); } });
 document.addEventListener('change', ev => { if (ev.target.id === 'bkDays') { S.prefs.backupDays = +ev.target.value; save(); safetyRender(); } });
 document.addEventListener('change', ev => { const t = ev.target; if (t.id === 'lsSort') { lsPref(t.dataset.k).sort = t.value; save(); const b = $('#lsBody'); if (b) b.innerHTML = t.dataset.k === 'p' ? projListBody() : custListBody(); } if (t.id === 'npInt') $$('#npForm [data-ext]').forEach(x => x.hidden = t.checked); });
-document.addEventListener('toggle', ev => { const d = ev.target; if (d.matches?.('details.lgrp')) (st.lopen = st.lopen || {})[d.dataset.g] = d.open; }, true);
+document.addEventListener('toggle', ev => { const d = ev.target; if (d.matches?.('details.lgrp')) (st.lopen = st.lopen || {})[d.dataset.g] = d.open; if (d.matches?.('details.rep-adv')) rep().adv = d.open; }, true);
 document.addEventListener('keydown', ev => { const t = ev.target; if ((ev.key === 'Enter' || ev.key === ' ') && t.matches?.('article.click')) { ev.preventDefault(); A[t.dataset.act]?.(t); } });
 // Enter när inget fält, ingen knapp, ingen meny och ingen dialog har fokus: markören till smartshell (0.17.2)
 document.addEventListener('keydown', ev => {
@@ -8956,7 +9000,8 @@ if (/[?&]test\b/.test(location.search)) window.SISYFOS = { get S() { return S; }
   encCreate, encStore, keysEnsure, keysAdopt, keysCreate, keysOpen, keysPublic, encBookText, decBook, decParts, unseal, gz, aesKey, rnd, b64, unb64, kvGet, AAD_DATA, FORMAT_VERSION,
   rateFor, rv, rPut, rHist, rateSnap, repriceSince, signOn, checkOn, wkOpen, perReady, weekItems, invoiceData, invoicePdf, invoiceCsv, locked, handled, moveDay, dragAt, xrList, xrRows, invSel, costPut, costRemove, costsAt, pCosts, cTot, get COST() { return COST; }, setCell, weekEvent, weekState, webApply, save, log, uid, devId, apply, select, cell, closeCellPop, render, derive, diaryData, diaryPdf, rep,
   who, viewing, isAdm, asPick, wkChecked, openWeeksOf, repriceOrders, repricePrune, eRate, monday, today, live, mine, priceGate, closeDlg, alertsHtml, budgetPct, get E() { return E; },
-  orphanFix, proj, taskOf, parseQuick, r2, invCalc, keyFp, keyFpOk, kdfOk, keyProof, shRefHtml, restoreRow, removeRowData, invUnlockOf, spanMinus, hdSet, invNewFromBasis, invEdRead, orgOverlay, get IDX() { return IDX; } };
+  orphanFix, proj, taskOf, parseQuick, r2, invCalc, keyFp, keyFpOk, kdfOk, keyProof, shRefHtml, restoreRow, removeRowData, invUnlockOf, spanMinus, hdSet, invNewFromBasis, invEdRead, orgOverlay, get IDX() { return IDX; },
+  periodLabel, pEs, billable, amountOf, prevRows, invPeriod, diaryPeriod };
 })();
 </script>
 </body>
