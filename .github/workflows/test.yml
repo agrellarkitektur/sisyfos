@@ -53,6 +53,7 @@ jobs:
           python test/enkel_test.py
           python test/rapport2_test.py
           python test/rapport3_test.py
+          python test/ruta_test.py
           python test/kostnad_test.py
           python test/rattning_test.py
       - name: Servern för lagring på webben

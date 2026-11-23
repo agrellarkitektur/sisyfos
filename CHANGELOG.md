@@ -1,5 +1,16 @@
 # Ändringar i Sisyfos
 
+## 0.20.3
+
+Filformat 12, oförändrat. Synpunkter från en betatestare och inkorgen (23 november).
+
+- **Inga tomma rader i projektdagboken.** Tömdes timmarna i en ruta men anteckningen stod kvar blev det en rad med *0,0 · –* i projektdagboken (skärm och PDF). Nu tar rapporten bara med tid med timmar. Anteckningen ligger kvar i boken – inget går förlorat – och syns i den utfällda dagboken där den kan tas bort eller flyttas.
+- **Tydligare rutor.** Tid **utan anteckning** är uttonad: svagare fyllning, gråare siffror och streckad kant (den orange ringen finns kvar). **Hanterad tid** har ett grönt hänglås i rutans vänstra kant i stället för den lilla gröna pricken. Vecko- och dagvyn.
+- **Utfälld dagbok utan hopp.** När man skriver i en utfälld dagbok i veckovyn har förslagen under anteckningen en fast höjd i projektet man skriver i (rullar vid behov), så att raden inte växer och krymper med varje bokstav.
+- **Loggan med genomskinlighet.** En PNG med genomskinlig botten sparas också som PNG och visas utan vit ruta i rapporterna på skärmen. En svart eller grå logga inverteras i mörkt läge. PDF:erna och fakturorna använder som förut loggan på vit botten. Välj loggan igen (*Inställningar → Företaget*) för att få detta med en logga från tidigare.
+
+Test: nya `test/ruta_test.py` (i GitHub).
+
 ## 0.20.2
 
 Filformat 12, oförändrat. Synpunkter på rapporterna (23 november).
