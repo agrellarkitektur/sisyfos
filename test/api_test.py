@@ -56,27 +56,39 @@ def bok(v, n):
     return json.dumps({'format': 'sisyfos-krypterad', 'version': 1, 'app': 'test', 'saved': n, 'vault': v, 'zip': 'gzip', 'data': {'iv': 'x', 'ct': 'y' * (50 + n)}}).encode()
 
 
-def kor(laget):
+def kor(laget, apache=True):
+    """laget: 'outside', 'inside' eller 'config' (datamappen ur api-config.php, 0.20.4).
+    php -S är ingen Apache – SISYFOS_INSIDE_OK=1 låtsas att .htaccess läses (apache=True)."""
     tmp = tempfile.mkdtemp(prefix='sisyfos-api-')
     web = os.path.join(tmp, 'public_html', 'sisyfos'); os.makedirs(web)
     shutil.copy(os.path.join(ROOT, 'api.php'), web)
+    vald = os.path.join(tmp, 'srv', 'data', 'sisyfos')
     with open(os.path.join(web, 'api-config.php'), 'w') as f:
-        f.write("<?php return ['admin' => '%s'];\n" % hashlib.sha256(ADMIN.encode()).hexdigest())
-    if laget == 'inside':
+        extra = f", 'data' => '{vald}/'" if laget == 'config' else ''
+        f.write("<?php return ['admin' => '%s'%s];\n" % (hashlib.sha256(ADMIN.encode()).hexdigest(), extra))
+    if laget in ('inside', 'config'):
         open(os.path.join(tmp, 'sisyfos-data'), 'w').close()  # en fil i vägen: mappen utanför webbroten går inte att skapa
     port = ledig_port()
-    srv = subprocess.Popen(['php', '-S', f'127.0.0.1:{port}', '-t', os.path.join(tmp, 'public_html')], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    env = dict(os.environ, SISYFOS_INSIDE_OK='1') if apache else {k: v for k, v in os.environ.items() if k != 'SISYFOS_INSIDE_OK'}
+    srv = subprocess.Popen(['php', '-S', f'127.0.0.1:{port}', '-t', os.path.join(tmp, 'public_html')], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
     try:
         for _ in range(50):
             try: socket.create_connection(('127.0.0.1', port), 0.2).close(); break
             except OSError: time.sleep(0.1)
         api = Api(f'http://127.0.0.1:{port}/sisyfos')
-        print(f'--- datamappen {laget} ---')
+        print(f'--- datamappen {laget}{"" if apache else " (inte Apache)"} ---')
 
         s, d, _ = api.call('status')
-        ok(s == 200 and d['storage'] == laget and d['admin'] is True, f'status: lagring {d.get("storage")}, admin {d.get("admin")}')
+        if not apache:
+            ok(s == 500 and d.get('error') == 'storage' and 'api-config.php' in d.get('message', ''), f'utan Apache vägras data/ i webbroten ({s} {d.get("error")})')
+            ok(not os.path.exists(os.path.join(web, 'data')), 'ingen data/ skapad i webbroten')
+            return
+        ok(s == 200 and d['storage'] == ('outside' if laget == 'config' else laget) and d['admin'] is True, f'status: lagring {d.get("storage")}, admin {d.get("admin")}')
         if laget == 'inside':
             ok(os.path.isfile(os.path.join(web, 'data', '.htaccess')), '.htaccess skapad i data/')
+        elif laget == 'config':
+            ok(os.path.isdir(os.path.join(vald, 'acc')) and os.path.isfile(os.path.join(vald, 'secret.key')), 'datamappen ur api-config.php används')
+            ok(not os.path.exists(os.path.join(web, 'data')), 'ingen data/ i webbroten')
         else:
             ok(os.path.isdir(os.path.join(tmp, 'sisyfos-data', 'acc')), 'datamappen utanför webbroten')
 
@@ -207,7 +219,7 @@ def kor(laget):
         ok(d['accounts'] == [], 'inga konton kvar')
 
         # inget innehåll i klartext på disk
-        datadir = os.path.join(web, 'data') if laget == 'inside' else os.path.join(tmp, 'sisyfos-data')
+        datadir = os.path.join(web, 'data') if laget == 'inside' else vald if laget == 'config' else os.path.join(tmp, 'sisyfos-data')
         alla = ''.join(open(os.path.join(r, f), errors='ignore').read() for r, _, fs in os.walk(datadir) for f in fs)
         ok(login not in alla and login2 not in alla, 'inloggningshemligheterna finns inte på disk')
 
@@ -374,5 +386,7 @@ if __name__ == '__main__':
         print('php saknas – hoppar över'); sys.exit(0)
     kor('outside')
     kor('inside')
+    kor('config')
+    kor('inside', apache=False)
     print(f'\n{"Alla test gick igenom." if not fel else f"{len(fel)} fel."}')
     sys.exit(1 if fel else 0)

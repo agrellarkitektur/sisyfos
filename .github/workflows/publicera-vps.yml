@@ -1,0 +1,100 @@
+# Publicerar Sisyfos på VPS:en (sisyfos.danaid.cloud) med rsync vid varje push till main.
+# Går parallellt med FTP-publiceringen till webbhotellet (deploy.yml) tills flytten är klar.
+# Efter mallen drift/publicera-app.yml i agrellarkitektur/apps (som cad-apa och Höjdkurvor).
+#
+# Förutsättningar:
+#   - sudo apps-drift nyckel sisyfos www/sisyfos   → secret APPS_SSH_KEY i det här repot
+#   - en sajt för sisyfos.danaid.cloud i drift/apps.caddy i repot apps
+#   - .github/known_hosts (kopia av drift/known_hosts i repot apps)
+#   - på servern, en gång för hand (skickas aldrig och tas aldrig bort härifrån):
+#       /srv/apps/www/sisyfos/api-config.php       <?php return ['admin' => '<sha256>', 'data' => '/srv/apps/data/sisyfos'];
+#       /srv/apps/www/sisyfos/feedback-config.php  <?php return ['to' => '…', 'from' => 'noreply@agrellarkitektur.se'];
+#
+# Saknas APPS_SSH_KEY hoppas uppladdningen över, så att körningen inte blir röd innan nyckeln finns.
+
+name: Publicera på VPS:en
+
+on:
+  push:
+    branches: [main]
+    paths: ['index.html', 'feedback.php', 'api.php', 'sw.js', 'manifest.webmanifest', '*.png', 'icon.svg', '.github/workflows/publicera-vps.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: publicera-vps
+  cancel-in-progress: false
+
+env:
+  APP_ID: sisyfos                  # mappen /srv/apps/www/sisyfos
+  HOST: apps.danaid.cloud
+  USER: appsdeploy
+  URL: https://sisyfos.danaid.cloud/
+
+jobs:
+  publicera:
+    runs-on: ubuntu-latest
+    env:
+      HAR_NYCKEL: ${{ secrets.APPS_SSH_KEY != '' }}
+    steps:
+      - name: Hoppa över utan nyckel
+        if: env.HAR_NYCKEL != 'true'
+        run: echo "::notice::APPS_SSH_KEY saknas – inget publiceras på VPS:en."
+
+      - uses: actions/checkout@v7
+        if: env.HAR_NYCKEL == 'true'
+
+      - name: Samla filerna
+        if: env.HAR_NYCKEL == 'true'
+        run: |
+          mkdir -p publicera
+          cp index.html feedback.php api.php sw.js manifest.webmanifest icon.svg favicon-32.png icon-192.png icon-512.png icon-maskable-512.png apple-touch-icon.png publicera/
+
+      - name: Publicera
+        if: env.HAR_NYCKEL == 'true'
+        env:
+          KEY: ${{ secrets.APPS_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          cp .github/known_hosts ~/.ssh/known_hosts
+          # Nyckeln är låst till /srv/apps/www/sisyfos – därför står målet som "./".
+          rsync -rlz --checksum --delete --chmod=D755,F644 \
+            --exclude '*-config.php' --exclude 'data/' --exclude '.htaccess' \
+            -e "ssh -i $HOME/.ssh/id_deploy -o StrictHostKeyChecking=yes" \
+            publicera/ "$USER@$HOST:./"
+
+      - name: Kontrollera sidan och versionen
+        if: env.HAR_NYCKEL == 'true'
+        run: |
+          WANT=$(grep -oP "const VERSION = '\K[^']+" sw.js)
+          sleep 3
+          # "/" – inte bara index.html (Höjdkurvor svarade "File not found." på / utan { index off })
+          ROT=$(curl -sS -H 'Cache-Control: no-cache' "${URL}?t=$(date +%s)" | grep -c 'const APP_VERSION' || true)
+          [ "$ROT" -ge 1 ] || { echo "::error::${URL} visar inte appen."; exit 1; }
+          GOT=$(curl -fsS -H 'Cache-Control: no-cache' "${URL}sw.js?t=$(date +%s)" | grep -oP "const VERSION = '\K[^']+" || echo "hittades inte")
+          echo "Väntad version: $WANT · på ${URL}: $GOT"
+          [ "$GOT" = "$WANT" ] || { echo "::error::VPS:en visar version $GOT, väntad $WANT."; exit 1; }
+          for F in api-config.php feedback-config.php data/secret.key; do
+            C=$(curl -s -o /dev/null -w '%{http_code}' "${URL}${F}")
+            echo "${F}: HTTP $C"
+            if [ "$C" = "200" ]; then echo "::error::${URL}${F} går att hämta på webben!"; exit 1; fi
+          done
+          echo "::notice::VPS:en har version $GOT."
+
+      - name: Kontrollera servern för lagring och synpunkter
+        if: env.HAR_NYCKEL == 'true'
+        run: |
+          # Varnar i stället för att stoppa: api-config.php och feedback-config.php läggs på servern för hand
+          ST=$(curl -sS "${URL}api.php?a=status" || true)
+          echo "api.php: $ST"
+          if echo "$ST" | grep -q '"ok":true'; then
+            LAGE=$(echo "$ST" | grep -oP '"storage":"\K[a-z]+')
+            ADMIN=$(echo "$ST" | grep -oP '"admin":\K(true|false)')
+            [ "$LAGE" = "outside" ] || { echo "::error::api.php lagrar i webbroten ($LAGE) – ska vara utanför."; exit 1; }
+            echo "::notice::Lagringen utanför webbroten. Adminnyckel satt: $ADMIN"
+          else
+            echo "::warning::api.php svarar inte ok ännu – ligger api-config.php med 'data' på servern? $ST"
+          fi
+          FB=$(curl -sS "${URL}feedback.php" || true)
+          echo "feedback.php: $FB"
+          echo "$FB" | grep -q '"config":"feedback-config.php"' || echo "::warning::feedback.php hittar inte feedback-config.php – synpunkterna går till reservadressen. $FB"

@@ -11,13 +11,16 @@
  * upp boknyckeln och lämnar aldrig enheten; de sista 256 skickas hit som inloggningshemlighet,
  * och servern sparar bara password_hash() av dem.
  *
- * Lagring: inga databaser – JSON-filer med flock. Datamappen läggs utanför webbroten om PHP
- * får skriva där (../../sisyfos-data räknat från den här filen), annars i ./data/ som spärras
- * med .htaccess. Kontots mapp får ett namn som inte går att gissa (HMAC av e-postadressen).
+ * Lagring: inga databaser – JSON-filer med flock. Står 'data' i api-config.php används den mappen
+ * (0.20.4, t.ex. /srv/apps/data/sisyfos på en server med Caddy). Annars läggs datamappen utanför
+ * webbroten om PHP får skriva där (../../sisyfos-data räknat från den här filen), och sist i
+ * ./data/ som spärras med .htaccess – det läget vägras när servern inte är Apache, eftersom andra
+ * servrar inte läser .htaccess. Kontots mapp får ett namn som inte går att gissa (HMAC av e-postadressen).
  *
  * Administratör: om api-config.php finns och innehåller 'admin' (sha256 av en adminnyckel) kan
- * den som har nyckeln skapa inbjudningskoder, se konton och ta bort dem. Filen skrivs av
- * publiceringen på GitHub från hemligheten SISYFOS_ADMIN_KEY.
+ * den som har nyckeln skapa inbjudningskoder, se konton och ta bort dem. På webbhotellet skrivs filen
+ * av publiceringen på GitHub från hemligheten SISYFOS_ADMIN_KEY; på en egen server läggs den dit för
+ * hand en gång:  <?php return ['admin' => '<sha256 av nyckeln>', 'data' => '/srv/apps/data/sisyfos'];
  *
  * Inga cookies, inga CORS-rubriker (bara samma ursprung), ingen loggning av innehåll.
  */
@@ -86,9 +89,21 @@ function check_vault(mixed $v): array {
 function data_dir(): array {
   static $res = null;
   if ($res) return $res;
+  $vald = trim((string)(config()['data'] ?? ''));
+  if ($vald !== '') {
+    // Inställd datamapp (0.20.4): används den eller ingen – ingen reserv i webbroten
+    $vald = rtrim($vald, '/');
+    if (!is_dir($vald)) @mkdir($vald, 0700, true);
+    if (!is_dir($vald) || !is_writable($vald)) fel(500, 'storage', 'Servern kan inte skriva i datamappen som står i api-config.php.');
+    foreach (['acc', 'org'] as $sub) if (!is_dir("$vald/$sub")) mkdir("$vald/$sub", 0700);
+    return $res = ['outside', $vald];
+  }
+  $apache = stripos((string)($_SERVER['SERVER_SOFTWARE'] ?? ''), 'apache') !== false || stripos((string)($_SERVER['SERVER_SOFTWARE'] ?? ''), 'litespeed') !== false;
   $ute = dirname(__DIR__, 2) . '/sisyfos-data';
   $inne = __DIR__ . '/data';
-  foreach ([['outside', $ute], ['inside', $inne]] as [$mode, $dir]) {
+  $lagen = [['outside', $ute]];
+  if ($apache || getenv('SISYFOS_INSIDE_OK') === '1') $lagen[] = ['inside', $inne];
+  foreach ($lagen as [$mode, $dir]) {
     if (!is_dir($dir)) @mkdir($dir, 0700, true);
     if (is_dir($dir) && is_writable($dir)) {
       if ($mode === 'inside') {
@@ -100,7 +115,8 @@ function data_dir(): array {
       return $res = [$mode, $dir];
     }
   }
-  fel(500, 'storage', 'Servern kan inte skriva någonstans. Kontrollera rättigheterna för mappen sisyfos/ på webbhotellet.');
+  fel(500, 'storage', $apache ? 'Servern kan inte skriva någonstans. Kontrollera rättigheterna för mappen sisyfos/ på webbhotellet.'
+    : 'Servern kan inte skriva utanför webbroten. Ange en datamapp med \'data\' i api-config.php – mappen data/ i webbroten skyddas bara av Apache.');
 }
 function dpath(string $rel): string { return data_dir()[1] . '/' . $rel; }
 function secret(): string {

@@ -878,6 +878,7 @@ details.arch summary{cursor:pointer;color:var(--muted);font-weight:560;padding:6
 @media (width <= 760px){.app.nopanel,.app.nopanel.pmin{grid-template-columns:minmax(0,1fr)}}
 .alert.soft{background:var(--warn-soft);border-color:color-mix(in srgb,var(--warn) 40%,transparent)}
 .alert.soft>.ic{color:var(--warn-ink)}
+.alert.move .move-ol{margin:4px 0 0;padding-left:20px}.alert.move .move-ol li{margin:1px 0}
 .mo-wrap{overflow-x:auto;border:1px solid var(--rule);border-radius:14px;background:var(--chrome)}
 .mo{border-collapse:collapse;width:100%;min-width:980px;font-size:12.5px}
 .mo th,.mo td{padding:3px 3px;border-bottom:1px solid var(--faint);text-align:center;font-weight:500}
@@ -1201,7 +1202,7 @@ body.dragging,body.dragging *{cursor:grabbing!important;user-select:none!importa
 .wel-ch{display:grid;gap:10px}.wel-c{display:flex;gap:14px;align-items:flex-start;text-align:left;padding:16px 18px;border:1px solid var(--rule);border-radius:12px;background:var(--chrome);color:var(--ink);cursor:pointer;font:inherit}
 .wel-c:hover,.wel-c:focus-visible{border-color:var(--accent,var(--ink));background:color-mix(in srgb,var(--accent,var(--ink)) 5%,var(--chrome))}
 .wel-c svg{width:22px;height:22px;flex:none;margin-top:2px}.wel-c .r-text{display:flex;flex-direction:column;gap:3px}.wel-c b{font-size:15.5px}.wel-c .r-text span{color:var(--muted);font-size:13px;line-height:1.45}
-.wel-more{margin:18px 0 6px;font-size:13.5px}.wel .linkish{font-size:inherit}
+.wel-more{margin:18px 0 6px;font-size:13.5px}.wel-move{margin:14px 0 0;line-height:1.5}.wel .linkish{font-size:inherit}
 .mtab tr.m-prow,.mtab tr.m-trow{cursor:pointer}.mtab tr.m-prow:hover td,.mtab tr.m-trow:hover td{background:color-mix(in srgb,var(--pc) 6%,transparent)}
 .mtab tr.m-trow td:first-child{padding-left:22px}.mt-b{font-size:12.5px}.mt-b .tdot{width:7px;height:7px;border-radius:50%;border:1.5px solid var(--pc);flex:none}
 .mtab tr.m-trow.on .tdot{background:var(--pc)}.m-add{margin-top:6px}.mfocus .mf-tip{font-weight:400}
@@ -1309,10 +1310,20 @@ body.dragging,body.dragging *{cursor:grabbing!important;user-select:none!importa
 
 /* ───────────── Hjälpfunktioner ───────────── */
 const FORMAT = 'sisyfos', FORMAT_VERSION = 12, KEY = 'sisyfos.bok';
-const APP_VERSION = '0.20.3', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
+const APP_VERSION = '0.20.4', FEEDBACK_MAIL = ['ca', 'agrellarkitektur.se'].join('@');
 { const v = document.querySelector('#alfaBtn .v-num'); if (v) v.textContent = APP_VERSION; } // knappen följer alltid APP_VERSION
-// Synpunkter skickas via ett litet skript på egen server (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
-const FEEDBACK_URL = 'https://agrellarkitektur.se/sisyfos/feedback.php';
+/* Var appen ligger (0.20.4): Sisyfos flyttar från agrellarkitektur.se/sisyfos (webbhotell hos Loopia) till
+   sisyfos.danaid.cloud (egen server hos one.com). Under flytten ligger appen på båda; texterna om servern följer
+   adressen man är på. MOVE_ON slås på när den nya adressen är provad – då visas raden *Sisyfos flyttar* på den
+   gamla (provas före dess med ?flytt i adressen). */
+const NEW_HOST = 'sisyfos.danaid.cloud', NEW_URL = 'https://sisyfos.danaid.cloud/', OLD_HOST = 'agrellarkitektur.se', MOVE_ON = false;
+const SITE = location.hostname === NEW_HOST ? { ours: true, host: NEW_HOST, where: 'sisyfos.danaid.cloud, en egen server (VPS) som Agrell Arkitektur hyr hos one.com, i ett datacenter i EU' }
+  : /(^|\.)agrellarkitektur\.se$/.test(location.hostname) ? { ours: true, old: true, host: OLD_HOST, where: 'agrellarkitektur.se, ett webbhotell hos Loopia i Sverige' }
+  : { ours: false, host: location.host || 'den här datorn', where: `${location.host || 'den här datorn'}, servern som appen hämtades från` };
+const moveShown = () => !!SITE.old && (MOVE_ON || /[?&]flytt\b/.test(location.search));
+// Synpunkter skickas via ett litet skript bredvid appen (feedback.php). Når appen inte servern blir e-postprogrammet reserv.
+// En kopia på en annan server (eller lokalt) skickar till webbhotellet som förut.
+const FEEDBACK_URL = SITE.ours ? 'feedback.php' : 'https://agrellarkitektur.se/sisyfos/feedback.php';
 const DOW = ['sön','mån','tis','ons','tor','fre','lör'];
 const DOWL = ['söndag','måndag','tisdag','onsdag','torsdag','fredag','lördag'];
 const MON = ['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
@@ -3535,7 +3546,7 @@ function webSectionHtml() {
   let h = `<h3 class="dsub" id="set-web">Spara på webben</h3>`;
   if (!encOk()) return h + `<p class="muted small">Kräver att Sisyfos öppnas över https i en uppdaterad webbläsare.</p>`;
   if (!srv && !webOn()) return h + `<p class="muted small">Kontrollerar servern …</p>`;
-  if (srv?.err && !webOn() && !w?.expired) return h + `<p class="muted small">Servern för lagring på webben svarar inte här: ${esc(srv.err)} Den finns där Sisyfos ligger på agrellarkitektur.se – eller på ett eget webbhotell med filen api.php bredvid appen.</p>`;
+  if (srv?.err && !webOn() && !w?.expired) return h + `<p class="muted small">Servern för lagring på webben svarar inte här: ${esc(srv.err)} Den finns där Sisyfos ligger på ${SITE.ours ? SITE.host : NEW_HOST} – eller på ett eget webbhotell med filen api.php bredvid appen.</p>`;
   if (!webOn()) {
     h += `<p class="muted small">Spara boken <b>krypterad</b> på servern där Sisyfos ligger, så når du den från flera enheter – telefonen och datorn. Boken krypteras på enheten innan den skickas; servern ser din e-postadress och en krypterad fil, aldrig innehållet. ${st.enc ? 'Du loggar in med krypteringens lösenord.' : 'Krypteringen slås på när du skapar kontot.'} Under testperioden krävs en inbjudningskod. <button type="button" class="linkish" data-act="dataInfo">Data och integritet</button></p>`;
     if (w?.expired) h += `<p class="small"><span class="neg">Inloggningen för ${esc(w.email)} har gått ut.</span> Logga in igen – ändringar som inte har synkats slås ihop med boken på webben.</p>`;
@@ -4032,6 +4043,7 @@ const welcomeHtml = () => `<div class="view wel-v"><div class="wel"><h1>Välkomm
   <div class="wel-ch"><button class="wel-c" data-act="webLogin">${ic('lock')}<span class="r-text"><b>Logga in och synka</b><span>Har du redan en bok på webben? Logga in så hämtas den hit, krypterad.</span></span></button>
   <button class="wel-c" data-act="importBook">${ic('import')}<span class="r-text"><b>Öppna en bok från fil</b><span>En kopia (.json) eller krypterad kopia (.sisyfos) från en annan enhet.</span></span></button>
   <button class="wel-c" data-act="askNew">${ic('newbook')}<span class="r-text"><b>Starta en ny bok</b><span>Guiden frågar efter företaget, arbetstiden och hur projekten numreras.</span></span></button></div>
+  ${SITE.host === NEW_HOST ? `<p class="small wel-move"><b>Flyttar du från agrellarkitektur.se/sisyfos?</b> Spara boken som fil där och välj <i>Öppna en bok från fil</i> här. Kontot på webben följer inte med – skapa ett nytt efteråt.</p>` : ''}
   <p class="wel-more"><button class="linkish" data-act="webReg">Har du en inbjudningskod? Skapa ett konto …</button> · <button class="linkish" data-act="welcomeSample">Titta på exempelboken</button></p>
   <p class="small muted">Ingen datainsamling. <button class="linkish" data-act="dataInfo">Data och integritet</button></p></div></div>`;
 function renderMain() {
@@ -4230,9 +4242,25 @@ function runAlertHtml(p) {
   const m = pMoney(p.id), c = cust(p.customerId);
   return `<div class="alert soft run" role="status">${ic('snooze')}<div class="txt"><b>${esc(p.name)}</b> går fortfarande på löpande räkning – <span class="mono">${fkr(m.a)}</span> upparbetat${m.oa > 0 ? `, varav <span class="mono">${fkr(m.oa)}</span> inte hanterat` : ''}. Dags att skicka en budget eller en uppskattning till ${c ? esc(c.name) : 'kunden'}?</div><button class="btn sm" data-act="projEdit" data-p="${p.id}">${ic('note')}Ange budget</button><button class="btn sm" data-act="runSnoozeMenu" data-p="${p.id}" aria-haspopup="menu">${ic('snooze')}Påminn senare</button><button class="btn sm ghost" data-act="runOff" data-p="${p.id}">Visa inte igen</button></div>`;
 }
+/* Sisyfos flyttar (0.20.4): bara på den gamla adressen, när MOVE_ON är på (eller med ?flytt). Boken flyttas
+   med en fil – de två servrarna vet inget om varandra, så varje bok flyttas en gång. */
+function moveAlertHtml() {
+  if (!moveShown()) return '';
+  const link = `<a href="${NEW_URL}" target="_blank" rel="noopener">${NEW_HOST}</a>`;
+  if (orgMember()) return `<div class="alert soft move" role="status">${ic('info')}<div class="txt"><b>Sisyfos flyttar till ${link}.</b> Organisationens admin flyttar boken och bjuder in dig igen där. Du behöver inte spara något – se bara till att din tid är synkad (<i>Synka med webben</i> i Sisyfos-menyn) och skriv sedan tid på den nya adressen när du fått inbjudan.</div></div>`;
+  const org = webOn() && st.web.org;
+  const steg = [
+    org ? 'Be medarbetarna synka, och synka själv.' : webOn() ? 'Synka boken.' : '',
+    'Spara en kopia som fil här (knappen).',
+    `Öppna ${link} och välj <i>Öppna en bok från fil</i>. Jämför summorna för en månad och ett projekt.`,
+    webOn() ? `Skapa ett konto där (ny inbjudningskod) – kontot och återställningsnyckeln följer inte med, så spara den nya nyckeln.${org ? ' Gör boken till en organisation igen och bjud in var och en med <i>Bjud in …</i> på personen.' : ''}` : '',
+    'Skriv sedan bara på den nya adressen. Den här finns kvar en tid, men de två vet inget om varandra.'
+  ].filter(Boolean);
+  return `<div class="alert soft move" role="status">${ic('info')}<div class="txt"><b>Sisyfos flyttar till ${link}.</b> Så flyttar du boken, en gång:<ol class="move-ol">${steg.map(x => `<li>${x}</li>`).join('')}</ol></div><button class="btn sm" data-act="moveSave">${ic('save')}Spara kopia som fil</button></div>`;
+}
 function alertsHtml() {
-  if (orgMember()) return backupAlertHtml();
-  return backupAlertHtml() + R().projects.filter(runDue).map(runAlertHtml).join('') + R().projects.filter(alertOn).map(p => {
+  if (orgMember()) return moveAlertHtml() + backupAlertHtml();
+  return moveAlertHtml() + backupAlertHtml() + R().projects.filter(runDue).map(runAlertHtml).join('') + R().projects.filter(alertOn).map(p => {
     const x = budgetPct(p), over = alertLevel(p) === '100';
     return `<div class="alert" role="alert">${ic('alert')}<div class="txt"><b>${esc(p.name)}</b> ${over ? 'har passerat budgeten' : 'har nått ' + fpct(x) + ' av budgeten'}, ${fkr(used(p.id))} av ${fkr(p.budgetKr)}. ${over ? 'Stäm av med kunden om fortsatt arbete.' : 'Underrätta kunden innan budgeten tar slut.'}</div><button class="btn sm" data-act="snoozeMenu" data-p="${p.id}" aria-haspopup="menu">${ic('snooze')}Skjut upp</button><button class="btn sm" data-act="notify" data-p="${p.id}">${ic('bell')}Markera som underrättad</button></div>`;
   }).join('');
@@ -5395,14 +5423,14 @@ function dataDlg() {
   <ul><li><b>I den här webbläsaren, på den här enheten</b> (IndexedDB med en kopia i webbläsarens lokala lagring), tillsammans med automatiska ögonblicksbilder. En app installerad på iPhones hemskärm har en egen, separat lagring.</li>
   <li><b>Filer du själv sparar</b> – kopior av boken, autospar till en mapp, PDF- och CSV-rapporter – är vanliga, okrypterade filer. Hantera dem som andra affärshandlingar.</li>
   <li><b>Krypterade kopior</b> (.sisyfos, när du slagit på kryptering under <i>Spara boken</i>) kan bara öppnas med ditt lösenord eller din utskrivna återställningsnyckel. Lösenordet sparas ingenstans. Glömmer du båda går kopian inte att öppna – inte heller för oss. Sedan 0.16.0 krypteras boken i delar – registret, fakturorna, personkortet och tidloggen var för sig – och du har en personlig nyckel vars privata del bara finns låst i dina krypterade filer; den offentliga delen står i boken.</li>
-  <li><b>På webben – bara om du skapar ett konto</b> under <i>Spara boken → Spara på webben</i>. Boken krypteras på enheten innan den skickas till servern där Sisyfos ligger (agrellarkitektur.se, ett webbhotell hos Loopia i Sverige). Servern sparar din e-postadress, när kontot skapades, vilka enheter som är inloggade (t.ex. ”iPhone · Safari”) och när de senast användes, och den krypterade boken med de tio senaste versionerna, deras storlek och tidpunkter. Lösenordet, boknyckeln och innehållet lämnar aldrig enheten okrypterade. Du kan logga ut och radera kontot med allt på servern när du vill.</li>
+  <li><b>På webben – bara om du skapar ett konto</b> under <i>Spara boken → Spara på webben</i>. Boken krypteras på enheten innan den skickas till servern där Sisyfos ligger (${esc(SITE.where)}). Servern sparar din e-postadress, när kontot skapades, vilka enheter som är inloggade (t.ex. ”iPhone · Safari”) och när de senast användes, och den krypterade boken med de tio senaste versionerna, deras storlek och tidpunkter. Lösenordet, boknyckeln och innehållet lämnar aldrig enheten okrypterade. Du kan logga ut och radera kontot med allt på servern när du vill.</li>
   <li><b>I en organisation</b> (en bok som flera delar, 0.16.1) ligger boken på servern i delar – registret, fakturorna, ett personkort och en tidlogg per person – var och en krypterad till dem som får läsa den. Servern ser organisationens namn, medlemmarnas e-postadresser och roller, deras offentliga nycklar, vem som skrev varje del och till vilka den är krypterad, och delarnas storlek och tidpunkter – inte innehållet. En medarbetares tid kan bara läsas av personen och organisationens admin; fakturorna bara av admin. Admin bjuder in och tar bort medarbetare. Den som driver servern ser organisationens namn, admins e-post och antalet personer.</li>
   <li><b>Ingen annan kan läsa boken</b> – inte heller Agrell Arkitektur, som gör Sisyfos och driver servern. Det betyder också att ingen kan återställa den åt dig: glömmer du både lösenordet och återställningsnyckeln, eller rensar du webbplatsdata utan konto eller kopia, är boken borta.</li>
   <li><b>Ett ärligt förbehåll:</b> krypteringen görs av appen, som hämtas från samma server. Den som kontrollerar servern skulle i teorin kunna byta ut appen mot en som läser lösenordet. Sisyfos är öppen källkod och läggs bara ut på servern från GitHub, där varje ändring syns; en installerad app minskar risken ytterligare.</li></ul>
   <h3>Vad som skickas över nätet</h3>
-  <ul><li><b>Appen hämtas</b> från agrellarkitektur.se. Webbhotellet för, som alla webbservrar, tekniska loggar över anrop (IP-adress, tidpunkt, vilken fil). Inget ur boken följer med.</li>
+  <ul><li><b>Appen hämtas</b> från ${esc(SITE.host)}. Servern för, som alla webbservrar, tekniska loggar över anrop (IP-adress, tidpunkt, vilken fil). Inget ur boken följer med.</li>
   <li><b>Synpunkter</b> – bara när du trycker på Skicka: det du skrivit i formuläret, din e-postadress om du anger den och, om du kryssat i det, version och skärmstorlek. Skriptet skickar det vidare som e-post och sparar ingenting.</li>
-  <li><b>Med konto på webben:</b> den krypterade boken när den ändras, e-postadressen och en inloggning som räknas fram ur lösenordet och ett bevis som räknas fram ur boknyckeln (servern sparar bara hashvärden av dem). Webbhotellets loggar visar då också IP-adress och tidpunkt för synken.</li>
+  <li><b>Med konto på webben:</b> den krypterade boken när den ändras, e-postadressen och en inloggning som räknas fram ur lösenordet och ett bevis som räknas fram ur boknyckeln (servern sparar bara hashvärden av dem). Serverns loggar visar då också IP-adress och tidpunkt för synken.</li>
   <li><b>Inget annat.</b> Ingen statistik, spårning, reklam, AI eller tjänster från andra företag. Typsnitten är inbyggda.</li></ul>
   <h3>Ditt ansvar</h3>
   <ul><li>Du ansvarar för personuppgifterna du för in i boken, på samma sätt som för ett eget kalkylark eller pappersarkiv. Utan konto på webben når inget ur boken Agrell Arkitektur. Med konto sparar vi din e-postadress och den krypterade boken – som vi inte kan läsa – bara för att tjänsten ska fungera. Lagringen på webben är ett test utan garanti; ändras eller avvecklas den får du besked till e-postadressen, och boken finns kvar på dina enheter.</li>
@@ -5420,7 +5448,7 @@ function feedbackDlg() {
    <div class="fld full"><label for="fbReply">Din e-post <span class="opt-lbl">– frivilligt, bara om du vill ha svar</span></label><input id="fbReply" type="email" inputmode="email" autocomplete="email" maxlength="200" placeholder="namn@exempel.se"></div>
    <div class="hp" aria-hidden="true"><label for="fbHp">Lämna tomt</label><input id="fbHp" tabindex="-1" autocomplete="off"></div>
    <label class="chk fld full"><input type="checkbox" id="fbInfo" checked> Ta med version och skärmstorlek (inget annat följer med)</label>
-   <p class="fb-to fld full" style="margin:0">Skickas <b>anonymt</b> via agrellarkitektur.se – ingen e-postadress följer med om du inte skriver en, och inget ur din bok. <button type="button" class="linkish" data-act="dataInfo">Data och integritet</button></p>
+   <p class="fb-to fld full" style="margin:0">Skickas <b>anonymt</b> via ${esc(SITE.ours ? SITE.host : OLD_HOST)} – ingen e-postadress följer med om du inte skriver en, och inget ur din bok. <button type="button" class="linkish" data-act="dataInfo">Data och integritet</button></p>
    <div class="err fld full" id="fbErr"></div>
    <div class="fb-alt fld full" id="fbAlt" hidden><span>Synpunkten kunde inte skickas härifrån. Skicka den med ditt e-postprogram i stället – då syns din e-postadress som avsändare – eller kopiera texten.</span><div class="acts"><button type="button" class="btn sm" data-act="fbMail">${ic('mail')}Öppna i e-post</button><button type="button" class="btn sm" data-act="fbCopy">${ic('copy')}Kopiera texten</button></div></div>
    <div class="dlg-foot fld full"><button type="button" class="btn ghost" data-act="closeDlg">Avbryt</button><button class="btn primary" type="submit" id="fbSend">${ic('send')}Skicka</button></div></form>`);
@@ -5504,6 +5532,8 @@ function brandMenu(btn) {
 /* ───────────── Händelser ───────────── */
 const A = {
   backupFile: () => { closeFloating(); backupFile().then(() => { if (st.page === 'installningar') safetyRender(); }); },
+  // Flytten (0.20.4): synka först om boken ligger på webben, så att kopian har allt
+  moveSave: async () => { closeFloating(); if (webOn()) { await webSync(); if (st.webS.s !== 'ok') { toast(webSaveText()?.[0] || 'Synken gick inte – kopian sparas ändå'); } } await backupFile(); },
   backupSnooze: () => { metaSet({ remindUntil: addD(today(), 7) }); const a = $('#alerts'); if (a) a.innerHTML = alertsHtml(); toast('Påminner om en vecka'); },
   dirPick: () => dirPick(),
   dirReconnect: () => dirReconnect(),

@@ -64,3 +64,5 @@ jobs:
         run: python test/org_test.py
       - name: Två enheter – borttaget projekt mot osynkad tid, prisdialogen öppen under synk
         run: python test/synk_test.py
+      - name: Flytten – gamla och nya adressen
+        run: python test/flytt_test.py

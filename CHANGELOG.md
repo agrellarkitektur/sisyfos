@@ -1,5 +1,18 @@
 # Ändringar i Sisyfos
 
+## 0.20.4
+
+Filformat 12, oförändrat. Förberedelse för flytten till **sisyfos.danaid.cloud** – inget ändras i tidboken.
+
+- **Samma app på två adresser.** Texterna om servern följer adressen man är på: *Data och integritet*, synpunktsformuläret och *Spara på webben* nämner Loopia och agrellarkitektur.se på den gamla adressen, one.com och sisyfos.danaid.cloud på den nya.
+- **Raden *Sisyfos flyttar*** överst i tidboken på den gamla adressen, med stegen och knappen *Spara kopia som fil* (synkar först om boken ligger på webben). Olika för den som har en egen bok, ett konto, en organisation (admin) och en medarbetare. Visas när den nya adressen är provad; före det med `?flytt` i adressen.
+- **Startrutan på den nya adressen** säger hur man tar med sig boken: spara som fil på den gamla, *Öppna en bok från fil* här.
+- **Synpunkter till servern där appen ligger.** `feedback.php` i samma mapp i stället för alltid webbhotellet. Mottagaren kan stå i `feedback-config.php` bredvid skriptet (som i de andra apparna); öppnar man `feedback.php` i webbläsaren säger den vilken inställning som gäller.
+- **Servern: datamappen kan ställas in.** `'data'` i `api-config.php` pekar ut mappen (på VPS:en `/srv/apps/data/sisyfos`). Läget med `data/` i webbroten används bara med Apache, som läser `.htaccess` – på andra servrar vägrar `api.php` hellre än att lägga böckerna där de kan hämtas.
+- **Publicering till VPS:en** (`publicera-vps.yml`) med rsync parallellt med webbhotellet, när nyckeln finns.
+
+Test: nya `test/flytt_test.py` (i GitHub); `api_test.py` provar den inställda datamappen och att `data/` vägras utan Apache.
+
 ## 0.20.3
 
 Filformat 12, oförändrat. Synpunkter från en betatestare och inkorgen (23 november).
